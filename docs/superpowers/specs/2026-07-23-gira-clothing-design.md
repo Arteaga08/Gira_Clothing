@@ -8,7 +8,7 @@ Gira Clothing es una marca mexicana de bolsos, tote bags, fundas para laptop y c
 diferenciador es el **estampado (print)**: un mismo modelo existe en varias telas, y la clienta elige
 tanto la pieza como el print. Hoy el catálogo vive en Instagram, un canal que la marca no controla.
 
-
+Las plataformas de renta (Shopify, Wix) modelan variantes por talla/color, no por *print como decisión
 principal de compra* con swatches de fotografía macro, filtro cruzado por tela y **stock independiente
 por combinación modelo + print**. Por eso se construye a medida.
 
