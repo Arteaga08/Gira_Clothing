@@ -24,13 +24,17 @@ delete process.env.CLOUDINARY_API_SECRET;
 
 import { beforeAll, afterAll, afterEach } from "vitest";
 import mongoose from "mongoose";
-import { MongoMemoryServer } from "mongodb-memory-server";
+import { randomBytes } from "node:crypto";
 
-let memoryServer: MongoMemoryServer;
+// Each test FILE gets its own database on the shared replica set (booted once
+// by tests/globalSetup.ts), so the afterEach wipe never touches another file's
+// data while both run in parallel.
+const dbName = `gira_test_${randomBytes(6).toString("hex")}`;
 
 beforeAll(async () => {
-  memoryServer = await MongoMemoryServer.create();
-  await mongoose.connect(memoryServer.getUri());
+  const uri = process.env.MONGO_TEST_URI;
+  if (!uri) throw new Error("globalSetup no expuso MONGO_TEST_URI.");
+  await mongoose.connect(uri, { dbName });
   // Unique-index assertions (duplicate slug/sku -> 409) must be deterministic
   // on the very first test — autoIndex builds lazily otherwise.
   await Promise.all(mongoose.modelNames().map((name) => mongoose.model(name).init()));
@@ -44,6 +48,6 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
+  await mongoose.connection.dropDatabase();
   await mongoose.disconnect();
-  await memoryServer.stop();
 });
