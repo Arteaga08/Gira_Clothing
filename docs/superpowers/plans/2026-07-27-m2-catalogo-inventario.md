@@ -4,6 +4,10 @@
 >
 > **Al aprobar:** copiar este archivo a `docs/superpowers/plans/2026-07-27-m2-catalogo-inventario.md` (convención del repo) antes de empezar.
 
+## Estado: mergeado a `main` (2026-07-27)
+
+Verificación completa (tsc/build/lint/test/audit + recorrido manual end-to-end) y code review pasados — ver detalle abajo. `Ready to merge: Yes`. Dos pendientes **no bloqueantes** quedaron documentados para retomar en M3 (sección "Pendientes conocidos (post-review)" al final de este archivo).
+
 ## Context
 
 Gira Clothing es un e-commerce a medida cuyo diferenciador es el **print como decisión principal de compra**: el mismo modelo existe en varias telas, y el stock es independiente por combinación modelo + print. Por eso no sirve el modelo talla/color de Shopify.
@@ -1520,3 +1524,27 @@ const listPublicProducts = async (query: PublicProductQuery) => {
 6. **`mongoSanitize` borra claves con `$` y con puntos** de `req.query`/`req.body` — nunca diseñar un parámetro tipo `measurements.widthCm` en query.
 7. **`sanitizeInput` escapa XSS en todos los strings**: una descripción con `<` vuelve escapada. Asertar sobre la salida escapada, no "arreglar" el middleware.
 8. **Git:** ninguna tarea ejecuta `git add`/`commit`/`push` sin mostrar el diff y recibir aprobación explícita.
+
+---
+
+## Pendientes conocidos (post-review, no bloqueantes para el merge)
+
+El code review previo al merge (`Ready to merge: Yes`, sin issues Critical) dejó dos notas Important para retomar. Ninguna es un bug de datos ni afecta el invariante de stock — quedan aquí para que M3 no las pierda de vista.
+
+### 1. Flakiness de la suite bajo ejecución paralela completa
+
+`pnpm test` corrido de punta a punta ocasionalmente falló 1-2 tests en `adminPrints.test.ts` o `adminProducts.test.ts` con errores de parseo HTTP o de setup — nunca al correr esos archivos aislados, y nunca en la lógica de negocio. Causa: cada archivo de test levanta su propio `MongoMemoryServer` + Express app en `tests/setup.ts`, y el pool de workers por defecto de Vitest satura CPU/IO cuando corren muchos archivos a la vez. Este patrón viene de M1 (`vitest.config.ts` no se tocó en M2) — M2 solo lo hizo más visible al sumar 10 archivos de test nuevos.
+
+**Acción sugerida para M3** (antes de sumar más archivos de test, ya que la contención empeora):
+- Probar `pool: "forks"` o ajustar `poolOptions.threads.maxWorkers` en `apps/api/vitest.config.ts`.
+- Si el ajuste no lo resuelve del todo, documentar el flake conocido en el README de tests en vez de perseguirlo indefinidamente — no es un bug de aplicación.
+
+### 2. Reactivar una `Variant` no valida que su `Product`/`Print` padre siga activo
+
+`variantService.updateVariant` (`apps/api/src/services/variantService.ts`) permite `PATCH { isActive: true }` sobre una variante sin comprobar que el producto o el print a los que apunta sigan activos. Es intencional — el propio plan (Tarea 12, test `catalogPublic.test.ts` "excluye variantes cuyo estampado fue desactivado") explota este comportamiento a propósito para llegar al estado "variante activa con print retirado", y el catálogo público ya filtra ese caso correctamente al armar el detalle de producto (`catalogService.getPublicProduct`).
+
+El riesgo real: un admin puede reactivar por error una variante huérfana (padre retirado) vía la API sin ninguna advertencia. Hoy es inofensivo — la variante queda invisible en el catálogo público pero sigue siendo ajustable por `PATCH /:id/stock`, lo cual podría ser confuso desde el panel admin.
+
+**Acción sugerida para M3:**
+- Cuando se construya el flujo de reserva de stock (que lee `Variant.isActive`), decidir explícitamente si una variante huérfana debe poder reservarse. Probablemente no — el punto natural para cerrar esto es ahí, no en M2.
+- Alternativa más simple si se quiere cerrar antes: agregar un warning (no un bloqueo duro) en `updateVariant` cuando `isActive` pasa a `true` y el producto o print padre no están activos, dejando la decisión final al admin pero visible en la respuesta.
