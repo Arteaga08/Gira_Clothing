@@ -22,6 +22,13 @@ interface CloudinaryConfig {
   folder: string;
 }
 
+interface StripeConfig {
+  secretKey: string;
+  webhookSecret: string;
+  /** Signature timestamp tolerance in seconds (anti-replay). */
+  webhookToleranceSeconds: number;
+}
+
 interface Env {
   nodeEnv: NodeEnv;
   port: number;
@@ -34,6 +41,8 @@ interface Env {
   logLevel: string;
   /** null outside production when no provider is configured -> stub adapter. */
   cloudinary: CloudinaryConfig | null;
+  /** null outside production when no provider is configured -> stub adapter. */
+  stripe: StripeConfig | null;
 }
 
 const requireVar = (source: NodeJS.ProcessEnv, key: string, errors: string[]): string => {
@@ -111,6 +120,34 @@ const loadEnv = (source: NodeJS.ProcessEnv = process.env): Readonly<Env> => {
     }
   }
 
+  const toleranceRaw = source.STRIPE_WEBHOOK_TOLERANCE_SECONDS?.trim();
+  const webhookToleranceSeconds = toleranceRaw ? Number(toleranceRaw) : 300;
+  if (!Number.isInteger(webhookToleranceSeconds) || webhookToleranceSeconds <= 0) {
+    errors.push("STRIPE_WEBHOOK_TOLERANCE_SECONDS debe ser un entero positivo de segundos.");
+  }
+
+  let stripe: StripeConfig | null = null;
+
+  if (nodeEnv === "production") {
+    // In production the real provider is mandatory — no silent stub charges.
+    const secretKey = requireVar(source, "STRIPE_SECRET_KEY", errors);
+    const webhookSecret = requireVar(source, "STRIPE_WEBHOOK_SECRET", errors);
+    if (secretKey && webhookSecret) {
+      stripe = { secretKey, webhookSecret, webhookToleranceSeconds };
+    }
+  } else {
+    const secretKey = source.STRIPE_SECRET_KEY?.trim();
+    const webhookSecret = source.STRIPE_WEBHOOK_SECRET?.trim();
+    // Both or neither — a half-configured provider fails at charge time instead.
+    if (secretKey && webhookSecret) {
+      stripe = { secretKey, webhookSecret, webhookToleranceSeconds };
+    } else if (secretKey || webhookSecret) {
+      errors.push(
+        "Configuración de Stripe incompleta: define STRIPE_SECRET_KEY y STRIPE_WEBHOOK_SECRET, o ninguna.",
+      );
+    }
+  }
+
   if (errors.length > 0) {
     throw new Error(
       `Configuración de entorno inválida:\n  - ${errors.join("\n  - ")}`,
@@ -128,6 +165,7 @@ const loadEnv = (source: NodeJS.ProcessEnv = process.env): Readonly<Env> => {
     cookieName,
     logLevel,
     cloudinary,
+    stripe,
   });
 };
 
@@ -141,5 +179,5 @@ if (existsSync(envFile)) {
 
 const env = loadEnv();
 
-export type { Env, NodeEnv, CloudinaryConfig };
+export type { Env, NodeEnv, CloudinaryConfig, StripeConfig };
 export { loadEnv, env };

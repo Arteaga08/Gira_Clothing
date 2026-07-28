@@ -90,4 +90,52 @@ describe("loadEnv", () => {
       folder: "gira",
     });
   });
+
+  it("en producción exige las dos variables de Stripe", () => {
+    const source = validSource();
+    source.NODE_ENV = "production";
+    source.CLIENT_URL = "https://gira.mx";
+    source.CLOUDINARY_CLOUD_NAME = "gira-cloud";
+    source.CLOUDINARY_API_KEY = "key123";
+    source.CLOUDINARY_API_SECRET = "secret123";
+    expect(() => loadEnv(source)).toThrow(/STRIPE_SECRET_KEY/);
+  });
+
+  it("fuera de producción, sin variables de Stripe usa el adapter stub (stripe: null)", () => {
+    const env = loadEnv(validSource());
+    expect(env.stripe).toBeNull();
+  });
+
+  it("fuera de producción, una sola variable de Stripe configurada aborta (todo o nada)", () => {
+    const source = validSource();
+    source.STRIPE_SECRET_KEY = "sk_test_x";
+    expect(() => loadEnv(source)).toThrow(/Configuración de Stripe incompleta/);
+  });
+
+  it("con las dos variables de Stripe completas, arma la configuración con la tolerancia por default", () => {
+    const source = validSource();
+    source.STRIPE_SECRET_KEY = "sk_test_x";
+    source.STRIPE_WEBHOOK_SECRET = "whsec_x";
+    const env = loadEnv(source);
+    expect(env.stripe).toEqual({
+      secretKey: "sk_test_x",
+      webhookSecret: "whsec_x",
+      webhookToleranceSeconds: 300,
+    });
+  });
+
+  it("respeta STRIPE_WEBHOOK_TOLERANCE_SECONDS cuando se configura", () => {
+    const source = validSource();
+    source.STRIPE_SECRET_KEY = "sk_test_x";
+    source.STRIPE_WEBHOOK_SECRET = "whsec_x";
+    source.STRIPE_WEBHOOK_TOLERANCE_SECONDS = "120";
+    const env = loadEnv(source);
+    expect(env.stripe?.webhookToleranceSeconds).toBe(120);
+  });
+
+  it("aborta si STRIPE_WEBHOOK_TOLERANCE_SECONDS no es un entero positivo", () => {
+    const source = validSource();
+    source.STRIPE_WEBHOOK_TOLERANCE_SECONDS = "-5";
+    expect(() => loadEnv(source)).toThrow(/STRIPE_WEBHOOK_TOLERANCE_SECONDS/);
+  });
 });

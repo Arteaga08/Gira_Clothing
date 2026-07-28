@@ -22,6 +22,12 @@ delete process.env.CLOUDINARY_CLOUD_NAME;
 delete process.env.CLOUDINARY_API_KEY;
 delete process.env.CLOUDINARY_API_SECRET;
 
+// Force the stub payment adapter (M3): no test may reach Stripe's network.
+// Webhook tests build the real adapter explicitly with a fake key — constructEvent
+// is pure crypto and needs no network.
+delete process.env.STRIPE_SECRET_KEY;
+delete process.env.STRIPE_WEBHOOK_SECRET;
+
 import { beforeAll, afterAll, afterEach } from "vitest";
 import mongoose from "mongoose";
 import { randomBytes } from "node:crypto";
