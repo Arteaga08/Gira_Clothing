@@ -12,7 +12,7 @@ import { logger } from "../config/logger.js";
 
 interface MongoLikeError {
   name?: string;
-  code?: number;
+  code?: number | string; // widened: multer error codes are strings
   type?: string;
   message?: string;
   errors?: Record<string, { message: string }>;
@@ -30,6 +30,18 @@ const normalize = (err: unknown): AppError => {
   }
   if (e.type === "entity.parse.failed") {
     return new AppError("El cuerpo de la solicitud no es un JSON válido.", 400);
+  }
+
+  if (e.name === "MulterError") {
+    switch (e.code) {
+      case "LIMIT_FILE_SIZE":
+        return new AppError("La imagen excede el tamaño máximo permitido (5 MB).", 413);
+      case "LIMIT_FILE_COUNT":
+      case "LIMIT_UNEXPECTED_FILE":
+        return new AppError('Envía un solo archivo en el campo "file".', 400);
+      default:
+        return new AppError("No se pudo procesar el archivo enviado.", 400);
+    }
   }
 
   switch (e.name) {

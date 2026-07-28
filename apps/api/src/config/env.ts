@@ -15,6 +15,13 @@ type NodeEnv = (typeof NODE_ENVS)[number];
 
 const MIN_SECRET_LENGTH = 48;
 
+interface CloudinaryConfig {
+  cloudName: string;
+  apiKey: string;
+  apiSecret: string;
+  folder: string;
+}
+
 interface Env {
   nodeEnv: NodeEnv;
   port: number;
@@ -25,6 +32,8 @@ interface Env {
   clientUrl: string;
   cookieName: string;
   logLevel: string;
+  /** null outside production when no provider is configured -> stub adapter. */
+  cloudinary: CloudinaryConfig | null;
 }
 
 const requireVar = (source: NodeJS.ProcessEnv, key: string, errors: string[]): string => {
@@ -77,6 +86,31 @@ const loadEnv = (source: NodeJS.ProcessEnv = process.env): Readonly<Env> => {
     errors.push("En producción CLIENT_URL debe usar https://.");
   }
 
+  const cloudFolder = source.CLOUDINARY_FOLDER?.trim() || "gira";
+  let cloudinary: CloudinaryConfig | null = null;
+
+  if (nodeEnv === "production") {
+    // In production the real provider is mandatory — no silent stub uploads.
+    const cloudName = requireVar(source, "CLOUDINARY_CLOUD_NAME", errors);
+    const apiKey = requireVar(source, "CLOUDINARY_API_KEY", errors);
+    const apiSecret = requireVar(source, "CLOUDINARY_API_SECRET", errors);
+    if (cloudName && apiKey && apiSecret) {
+      cloudinary = { cloudName, apiKey, apiSecret, folder: cloudFolder };
+    }
+  } else {
+    const cloudName = source.CLOUDINARY_CLOUD_NAME?.trim();
+    const apiKey = source.CLOUDINARY_API_KEY?.trim();
+    const apiSecret = source.CLOUDINARY_API_SECRET?.trim();
+    // All three or none — a half-configured provider fails at request time instead.
+    if (cloudName && apiKey && apiSecret) {
+      cloudinary = { cloudName, apiKey, apiSecret, folder: cloudFolder };
+    } else if (cloudName || apiKey || apiSecret) {
+      errors.push(
+        "Configuración de Cloudinary incompleta: define CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY y CLOUDINARY_API_SECRET, o ninguna.",
+      );
+    }
+  }
+
   if (errors.length > 0) {
     throw new Error(
       `Configuración de entorno inválida:\n  - ${errors.join("\n  - ")}`,
@@ -93,6 +127,7 @@ const loadEnv = (source: NodeJS.ProcessEnv = process.env): Readonly<Env> => {
     clientUrl,
     cookieName,
     logLevel,
+    cloudinary,
   });
 };
 
@@ -106,5 +141,5 @@ if (existsSync(envFile)) {
 
 const env = loadEnv();
 
-export type { Env, NodeEnv };
+export type { Env, NodeEnv, CloudinaryConfig };
 export { loadEnv, env };

@@ -58,4 +58,36 @@ describe("loadEnv", () => {
     source.CLIENT_URL = "http://insecure.com";
     expect(() => loadEnv(source)).toThrow(/CLIENT_URL/);
   });
+
+  it("en producción exige las tres variables de Cloudinary", () => {
+    const source = validSource();
+    source.NODE_ENV = "production";
+    source.CLIENT_URL = "https://gira.mx";
+    expect(() => loadEnv(source)).toThrow(/CLOUDINARY_CLOUD_NAME/);
+  });
+
+  it("fuera de producción, una sola variable de Cloudinary configurada aborta (todo o nada)", () => {
+    const source = validSource();
+    source.CLOUDINARY_CLOUD_NAME = "gira-cloud";
+    expect(() => loadEnv(source)).toThrow(/Cloudinary/);
+  });
+
+  it("fuera de producción, sin variables de Cloudinary usa el adapter stub (cloudinary: null)", () => {
+    const env = loadEnv(validSource());
+    expect(env.cloudinary).toBeNull();
+  });
+
+  it("con las tres variables de Cloudinary completas, arma la configuración", () => {
+    const source = validSource();
+    source.CLOUDINARY_CLOUD_NAME = "gira-cloud";
+    source.CLOUDINARY_API_KEY = "key123";
+    source.CLOUDINARY_API_SECRET = "secret123";
+    const env = loadEnv(source);
+    expect(env.cloudinary).toEqual({
+      cloudName: "gira-cloud",
+      apiKey: "key123",
+      apiSecret: "secret123",
+      folder: "gira",
+    });
+  });
 });
