@@ -16,6 +16,12 @@ process.env.CLIENT_URL ??= "http://localhost:3000";
 process.env.COOKIE_NAME ??= "gira_session";
 process.env.LOG_LEVEL ??= "silent";
 
+// Force the stub upload adapter (M2): a developer's shell must never leak
+// real Cloudinary credentials into the test run.
+delete process.env.CLOUDINARY_CLOUD_NAME;
+delete process.env.CLOUDINARY_API_KEY;
+delete process.env.CLOUDINARY_API_SECRET;
+
 import { beforeAll, afterAll, afterEach } from "vitest";
 import mongoose from "mongoose";
 import { MongoMemoryServer } from "mongodb-memory-server";
@@ -25,6 +31,9 @@ let memoryServer: MongoMemoryServer;
 beforeAll(async () => {
   memoryServer = await MongoMemoryServer.create();
   await mongoose.connect(memoryServer.getUri());
+  // Unique-index assertions (duplicate slug/sku -> 409) must be deterministic
+  // on the very first test — autoIndex builds lazily otherwise.
+  await Promise.all(mongoose.modelNames().map((name) => mongoose.model(name).init()));
 });
 
 afterEach(async () => {

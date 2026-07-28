@@ -3,7 +3,8 @@ import tseslint from "typescript-eslint";
 import prettier from "eslint-config-prettier";
 
 // Layering guard (non-negotiable #2): controllers and routes must never import
-// models directly — only services touch models. Enforced statically here.
+// models or adapters directly — only services touch models, and only services
+// reach third-party integrations. Enforced statically here.
 const noModelImports = {
   files: ["apps/api/src/controllers/**/*.ts", "apps/api/src/routes/**/*.ts"],
   rules: {
@@ -15,6 +16,11 @@ const noModelImports = {
             group: ["**/models/*", "**/models"],
             message:
               "Controllers y routes no acceden a models directamente. Usa la capa services.",
+          },
+          {
+            group: ["**/adapters/*", "**/adapters"],
+            message:
+              "Controllers y routes no acceden a adapters directamente. Usa la capa services.",
           },
         ],
       },
