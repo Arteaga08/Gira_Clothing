@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import request from "supertest";
 import { buildApp } from "../../src/app.js";
 import { loginAsAdmin, loginAsCustomer, ORIGIN } from "../helpers/auth.js";
+import { Print } from "../../src/models/Print.js";
+import { Product } from "../../src/models/Product.js";
 
 const app = buildApp();
 
@@ -183,5 +185,102 @@ describe("Admin · Product · guard de baja con Variant activa (activado en Tare
       .set("Origin", ORIGIN)
       .set("Cookie", cookie);
     expect(res.status).toBe(409);
+  });
+});
+
+describe("Admin · Variant · guard de reactivación de variante huérfana (M2 pendiente #2 / M3 Tarea 9)", () => {
+  it("rechaza reactivar una variante cuyo producto está retirado", async () => {
+    const cookie = await loginAsAdmin(app);
+    const { productId, printId } = await seedProductAndPrint(cookie, "L1");
+    const created = await createVariant(cookie, productId, printId);
+    const variantId = created.body.data.variant.id as string;
+
+    // Deactivating the variant first is required: the product's own guard
+    // forbids retiring it while an active variant still references it.
+    await request(app)
+      .delete(`${BASE}/${variantId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", cookie);
+    await request(app)
+      .delete(`${PRODUCTS_BASE}/${productId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", cookie);
+
+    const res = await request(app)
+      .patch(`${BASE}/${variantId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", cookie)
+      .send({ isActive: true });
+
+    expect(res.status).toBe(409);
+    expect(res.body.message).toMatch(/producto/i);
+
+    const printStillActive = await Print.findById(printId).lean();
+    expect(printStillActive?.isActive).toBe(true);
+  });
+
+  it("rechaza reactivar una variante cuyo estampado está retirado", async () => {
+    const cookie = await loginAsAdmin(app);
+    const { productId, printId } = await seedProductAndPrint(cookie, "L2");
+    const created = await createVariant(cookie, productId, printId);
+    const variantId = created.body.data.variant.id as string;
+
+    await request(app)
+      .delete(`${BASE}/${variantId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", cookie);
+    await request(app)
+      .delete(`${PRINTS_BASE}/${printId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", cookie);
+
+    const res = await request(app)
+      .patch(`${BASE}/${variantId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", cookie)
+      .send({ isActive: true });
+
+    expect(res.status).toBe(409);
+    expect(res.body.message).toMatch(/estampado/i);
+
+    const productStillActive = await Product.findById(productId).lean();
+    expect(productStillActive?.isActive).toBe(true);
+  });
+
+  it("permite reactivar cuando ambos padres siguen activos", async () => {
+    const cookie = await loginAsAdmin(app);
+    const { productId, printId } = await seedProductAndPrint(cookie, "L3");
+    const created = await createVariant(cookie, productId, printId);
+    const variantId = created.body.data.variant.id as string;
+
+    await request(app)
+      .delete(`${BASE}/${variantId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", cookie);
+
+    const res = await request(app)
+      .patch(`${BASE}/${variantId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", cookie)
+      .send({ isActive: true });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.variant.isActive).toBe(true);
+  });
+
+  it("permite desactivar sin revisar a los padres", async () => {
+    const cookie = await loginAsAdmin(app);
+    const { productId, printId } = await seedProductAndPrint(cookie, "L4");
+    const created = await createVariant(cookie, productId, printId);
+    const variantId = created.body.data.variant.id as string;
+
+    const res = await request(app)
+      .patch(`${BASE}/${variantId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", cookie)
+      .send({ isActive: false });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.variant.isActive).toBe(false);
   });
 });

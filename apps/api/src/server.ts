@@ -3,6 +3,7 @@ import { env } from "./config/env.js";
 import { logger } from "./config/logger.js";
 import { connectDB, disconnectDB } from "./config/db.js";
 import { buildApp } from "./app.js";
+import { startJobs, stopJobs } from "./jobs/scheduler.js";
 
 /**
  * Process entry point: load env (already validated on import), connect the DB,
@@ -18,6 +19,7 @@ const start = async (): Promise<void> => {
     logger.info(`API escuchando en el puerto ${env.port} (${env.nodeEnv})`);
   });
 
+  startJobs();
   registerShutdown(server);
 };
 
@@ -28,6 +30,7 @@ const registerShutdown = (server: Server): void => {
     if (shuttingDown) return;
     shuttingDown = true;
     logger.info(`Recibido ${signal}. Cerrando ordenadamente…`);
+    stopJobs();
 
     // Safety net: force exit if graceful close hangs.
     const forceTimer = setTimeout(() => {
