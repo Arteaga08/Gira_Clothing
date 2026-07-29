@@ -1,10 +1,18 @@
 import type { Types } from "mongoose";
-import { AuditAction, AuditModule, OrderStatus, PaymentStatus } from "@gira/shared";
-import { Order } from "../models/Order.js";
+import {
+  AuditAction,
+  AuditModule,
+  NotificationChannelKind,
+  NotificationType,
+  OrderStatus,
+  PaymentStatus,
+} from "@gira/shared";
+import { Order, type OrderDocument } from "../models/Order.js";
 import { commitReservation, releaseReservation } from "./reservationService.js";
 import { adjustOnHand } from "./inventoryService.js";
 import { assertTransition } from "../utils/orderTransitions.js";
 import { recordAudit } from "./auditService.js";
+import { enqueueNotification } from "./notificationService.js";
 import type { RequestContext } from "../utils/requestContext.js";
 
 /**
@@ -20,6 +28,53 @@ import type { RequestContext } from "../utils/requestContext.js";
  */
 
 const SYSTEM_CTX: RequestContext = {};
+
+/**
+ * Notifications are queued, never sent here. Two reasons this is not a detail:
+ * a Resend timeout inside applyPaymentSucceeded would delay committing the
+ * stock reservation, and this function runs twice by design (webhook +
+ * reconciliation job) — the outbox's unique index is what keeps the customer
+ * from getting two confirmations.
+ *
+ * The payload is a FLAT SNAPSHOT of what the email says, frozen now: the order
+ * is immutable, but the template must not re-read anything at delivery time.
+ */
+const queueOrderPaidNotifications = async (order: OrderDocument): Promise<void> => {
+  await enqueueNotification({
+    channel: NotificationChannelKind.EMAIL,
+    type: NotificationType.ORDER_CONFIRMATION,
+    to: order.customer.email,
+    order: order._id,
+    payload: {
+      publicId: order.publicId,
+      customerName: order.customer.name,
+      currency: order.currency,
+      subtotal: order.subtotal,
+      shippingCost: order.shippingCost,
+      total: order.total,
+      lines: order.lines.map((line) => ({
+        productName: line.productName,
+        printName: line.printName,
+        qty: line.qty,
+        lineTotal: line.lineTotal,
+      })),
+    },
+  });
+
+  // No `order` field: team pings are not subject to the one-per-order index,
+  // and the channel id is the recipient, not a person.
+  await enqueueNotification({
+    channel: NotificationChannelKind.TEAM,
+    type: NotificationType.TEAM_ORDER_PAID,
+    to: "team",
+    payload: {
+      publicId: order.publicId,
+      total: order.total,
+      currency: order.currency,
+      itemCount: order.lines.reduce((sum, line) => sum + line.qty, 0),
+    },
+  });
+};
 
 /** Statuses reached only once fulfillment started — the restock boundary. */
 const LEFT_THE_WAREHOUSE = new Set<OrderStatus>([
@@ -43,6 +98,8 @@ const applyPaymentSucceeded = async (orderId: Types.ObjectId): Promise<void> => 
   // Only now do the held units leave the warehouse for good. Idempotent by design.
   await commitReservation(order._id);
 
+  await queueOrderPaidNotifications(order);
+
   await recordAudit({
     actorType: "system",
     action: AuditAction.PAYMENT_SUCCEEDED,
@@ -64,6 +121,16 @@ const applyPaymentFailed = async (orderId: Types.ObjectId, reason?: string): Pro
   order.payment.status = PaymentStatus.FAILED;
   if (reason) order.payment.lastError = reason;
   await order.save();
+
+  // No email here — Stripe's own Payment Element already tells the customer
+  // the card was declined. The team gets pinged because a failed payment on a
+  // retryable order is exactly the kind of thing that needs a human glance.
+  await enqueueNotification({
+    channel: NotificationChannelKind.TEAM,
+    type: NotificationType.TEAM_PAYMENT_FAILED,
+    to: "team",
+    payload: { publicId: order.publicId, ...(reason ? { reason } : {}) },
+  });
 
   await recordAudit({
     actorType: "system",

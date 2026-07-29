@@ -138,4 +138,83 @@ describe("loadEnv", () => {
     source.STRIPE_WEBHOOK_TOLERANCE_SECONDS = "-5";
     expect(() => loadEnv(source)).toThrow(/STRIPE_WEBHOOK_TOLERANCE_SECONDS/);
   });
+
+  describe("loadEnv · Resend", () => {
+    it("en producción exige RESEND_API_KEY y MAIL_FROM", () => {
+      const source = validSource();
+      source.NODE_ENV = "production";
+      source.CLIENT_URL = "https://gira.mx";
+      source.CLOUDINARY_CLOUD_NAME = "gira-cloud";
+      source.CLOUDINARY_API_KEY = "key123";
+      source.CLOUDINARY_API_SECRET = "secret123";
+      source.STRIPE_SECRET_KEY = "sk_test_x";
+      source.STRIPE_WEBHOOK_SECRET = "whsec_x";
+      expect(() => loadEnv(source)).toThrow(/RESEND_API_KEY/);
+    });
+
+    it("fuera de producción, sin variables de Resend usa el mailer stub (mail: null)", () => {
+      const env = loadEnv(validSource());
+      expect(env.mail).toBeNull();
+    });
+
+    it("fuera de producción, una sola variable de Resend configurada aborta (todo o nada)", () => {
+      const source = validSource();
+      source.RESEND_API_KEY = "re_test_x";
+      expect(() => loadEnv(source)).toThrow(/Configuración de correo incompleta/);
+    });
+
+    it("rechaza un MAIL_FROM sin formato de correo", () => {
+      const source = validSource();
+      source.RESEND_API_KEY = "re_test_x";
+      source.MAIL_FROM = "no-es-correo";
+      expect(() => loadEnv(source)).toThrow(/MAIL_FROM/);
+    });
+
+    it("acepta un MAIL_FROM en formato \"Nombre <correo@dominio>\"", () => {
+      const source = validSource();
+      source.RESEND_API_KEY = "re_test_x";
+      source.MAIL_FROM = "Gira Clothing <hola@giraclothing.mx>";
+      const env = loadEnv(source);
+      expect(env.mail).toEqual({ apiKey: "re_test_x", from: "Gira Clothing <hola@giraclothing.mx>" });
+    });
+
+    it("acepta un MAIL_FROM en formato correo simple", () => {
+      const source = validSource();
+      source.RESEND_API_KEY = "re_test_x";
+      source.MAIL_FROM = "hola@giraclothing.mx";
+      const env = loadEnv(source);
+      expect(env.mail).toEqual({ apiKey: "re_test_x", from: "hola@giraclothing.mx" });
+    });
+  });
+
+  describe("loadEnv · Telegram", () => {
+    it("deja telegram en null cuando no hay credenciales, incluso en producción", () => {
+      const source = validSource();
+      source.NODE_ENV = "production";
+      source.CLIENT_URL = "https://gira.mx";
+      source.CLOUDINARY_CLOUD_NAME = "gira-cloud";
+      source.CLOUDINARY_API_KEY = "key123";
+      source.CLOUDINARY_API_SECRET = "secret123";
+      source.STRIPE_SECRET_KEY = "sk_test_x";
+      source.STRIPE_WEBHOOK_SECRET = "whsec_x";
+      source.RESEND_API_KEY = "re_test_x";
+      source.MAIL_FROM = "hola@giraclothing.mx";
+      const env = loadEnv(source);
+      expect(env.telegram).toBeNull();
+    });
+
+    it("rechaza una configuración a medias", () => {
+      const source = validSource();
+      source.TELEGRAM_BOT_TOKEN = "123:abc";
+      expect(() => loadEnv(source)).toThrow(/Configuración de Telegram incompleta/);
+    });
+
+    it("con las dos variables completas, arma la configuración", () => {
+      const source = validSource();
+      source.TELEGRAM_BOT_TOKEN = "123:abc";
+      source.TELEGRAM_CHAT_ID = "-100";
+      const env = loadEnv(source);
+      expect(env.telegram).toEqual({ botToken: "123:abc", chatId: "-100" });
+    });
+  });
 });

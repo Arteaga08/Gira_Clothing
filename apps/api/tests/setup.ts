@@ -28,6 +28,13 @@ delete process.env.CLOUDINARY_API_SECRET;
 delete process.env.STRIPE_SECRET_KEY;
 delete process.env.STRIPE_WEBHOOK_SECRET;
 
+// Force the stub mailer and the stub team channel (M4): no test may reach
+// Resend or Telegram over the network.
+delete process.env.RESEND_API_KEY;
+delete process.env.MAIL_FROM;
+delete process.env.TELEGRAM_BOT_TOKEN;
+delete process.env.TELEGRAM_CHAT_ID;
+
 import { beforeAll, afterAll, afterEach } from "vitest";
 import mongoose from "mongoose";
 import { randomBytes } from "node:crypto";

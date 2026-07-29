@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { validate } from "../../middlewares/validate.js";
+import { catalogLimiter } from "../../middlewares/rateLimit.js";
 import { slugParamSchema } from "../../validators/commonValidator.js";
 import {
   publicListQuerySchema,
@@ -20,6 +21,8 @@ import {
  * Public catalog router — no auth, read-only, isActive:true only.
  */
 const catalogRouter = Router();
+
+catalogRouter.use(catalogLimiter);
 
 catalogRouter.get("/families", validate(publicListQuerySchema, "query"), listFamilies);
 catalogRouter.get("/families/:slug", validate(slugParamSchema, "params"), familyDetail);

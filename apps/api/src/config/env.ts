@@ -29,6 +29,17 @@ interface StripeConfig {
   webhookToleranceSeconds: number;
 }
 
+interface MailConfig {
+  apiKey: string;
+  /** Verified sender, e.g. "Gira Clothing <hola@giraclothing.mx>". */
+  from: string;
+}
+
+interface TelegramConfig {
+  botToken: string;
+  chatId: string;
+}
+
 interface Env {
   nodeEnv: NodeEnv;
   port: number;
@@ -43,6 +54,10 @@ interface Env {
   cloudinary: CloudinaryConfig | null;
   /** null outside production when no provider is configured -> stub adapter. */
   stripe: StripeConfig | null;
+  /** null outside production when no provider is configured -> stub mailer. */
+  mail: MailConfig | null;
+  /** null whenever credentials are absent — including production. Internal channel. */
+  telegram: TelegramConfig | null;
 }
 
 const requireVar = (source: NodeJS.ProcessEnv, key: string, errors: string[]): string => {
@@ -148,6 +163,52 @@ const loadEnv = (source: NodeJS.ProcessEnv = process.env): Readonly<Env> => {
     }
   }
 
+  const MAIL_FROM_PATTERN =
+    /^[^<>@\s]+@[^<>@\s]+\.[^<>@\s]+$|^[^<>]+<[^<>@\s]+@[^<>@\s]+\.[^<>@\s]+>$/;
+
+  const validateFrom = (from: string): void => {
+    if (!MAIL_FROM_PATTERN.test(from)) {
+      errors.push('MAIL_FROM debe ser un correo válido o "Nombre <correo@dominio>".');
+    }
+  };
+
+  let mail: MailConfig | null = null;
+
+  if (nodeEnv === "production") {
+    // A paid order with no confirmation email is a business incident, not a
+    // degraded mode — production must fail fast instead of silently stubbing.
+    const apiKey = requireVar(source, "RESEND_API_KEY", errors);
+    const from = requireVar(source, "MAIL_FROM", errors);
+    if (apiKey && from) {
+      validateFrom(from);
+      mail = { apiKey, from };
+    }
+  } else {
+    const apiKey = source.RESEND_API_KEY?.trim();
+    const from = source.MAIL_FROM?.trim();
+    if (apiKey && from) {
+      validateFrom(from);
+      mail = { apiKey, from };
+    } else if (apiKey || from) {
+      errors.push(
+        "Configuración de correo incompleta: define RESEND_API_KEY y MAIL_FROM, o ninguna.",
+      );
+    }
+  }
+
+  // Telegram is the INTERNAL channel: optional in every environment (spec:
+  // "stub si no hay credenciales"). An internal ping is never worth blocking boot.
+  let telegram: TelegramConfig | null = null;
+  const botToken = source.TELEGRAM_BOT_TOKEN?.trim();
+  const chatId = source.TELEGRAM_CHAT_ID?.trim();
+  if (botToken && chatId) {
+    telegram = { botToken, chatId };
+  } else if (botToken || chatId) {
+    errors.push(
+      "Configuración de Telegram incompleta: define TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID, o ninguna.",
+    );
+  }
+
   if (errors.length > 0) {
     throw new Error(
       `Configuración de entorno inválida:\n  - ${errors.join("\n  - ")}`,
@@ -166,6 +227,8 @@ const loadEnv = (source: NodeJS.ProcessEnv = process.env): Readonly<Env> => {
     logLevel,
     cloudinary,
     stripe,
+    mail,
+    telegram,
   });
 };
 
@@ -179,5 +242,5 @@ if (existsSync(envFile)) {
 
 const env = loadEnv();
 
-export type { Env, NodeEnv, CloudinaryConfig, StripeConfig };
+export type { Env, NodeEnv, CloudinaryConfig, StripeConfig, MailConfig, TelegramConfig };
 export { loadEnv, env };

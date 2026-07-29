@@ -42,4 +42,18 @@ const updateReservationSchema = Joi.object({
   .min(1)
   .messages({ "object.min": "Envía al menos un campo para actualizar." });
 
-export { updateShippingSchema, updateCurrencySchema, updateReservationSchema };
+const updateInventorySchema = Joi.object({
+  lowStockThreshold: Joi.number().integer().min(0).max(1000).messages({
+    "number.integer": "El umbral debe ser un número entero de unidades.",
+    "number.max": "El umbral no puede superar 1000 unidades.",
+  }),
+})
+  .min(1)
+  .messages({ "object.min": "Envía al menos un campo para actualizar." });
+
+export {
+  updateShippingSchema,
+  updateCurrencySchema,
+  updateReservationSchema,
+  updateInventorySchema,
+};

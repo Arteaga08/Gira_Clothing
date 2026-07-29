@@ -48,6 +48,14 @@ const registerLimiter = createLimiter({
   message: "Demasiados registros desde esta dirección. Intenta de nuevo más tarde.",
 });
 
+// Public catalog reads: anti-scraping, not anti-abuse. Generous enough that a
+// real storefront session never notices, strict enough that a crawler does.
+const catalogLimiter = createLimiter({
+  windowMs: FIFTEEN_MIN,
+  max: 500,
+  message: "Demasiadas solicitudes al catálogo. Espera unos minutos.",
+});
+
 // Cart writes are frequent and low-risk, but not unlimited: a script hammering
 // PUT /cart/lines is still write load on the DB.
 const cartLimiter = createLimiter({
@@ -70,13 +78,24 @@ const orderLookupLimiter = createLimiter({
   message: "Demasiadas consultas. Espera unos minutos.",
 });
 
+// The tracking link ships in the shipping email and gets opened repeatedly by
+// the same customer — looser than orderLookupLimiter, but never absent
+// (BACKEND_ARCHITECTURE_GUIDELINES: a public sub-resource always carries its own).
+const trackingLimiter = createLimiter({
+  windowMs: FIFTEEN_MIN,
+  max: 60,
+  message: "Demasiadas consultas de seguimiento. Espera unos minutos.",
+});
+
 export type { LimiterOptions };
 export {
   createLimiter,
   globalLimiter,
   loginLimiter,
   registerLimiter,
+  catalogLimiter,
   cartLimiter,
   checkoutLimiter,
   orderLookupLimiter,
+  trackingLimiter,
 };

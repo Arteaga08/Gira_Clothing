@@ -1,14 +1,20 @@
 import { Router } from "express";
 import { protect, optionalAuth } from "../../middlewares/protect.js";
 import { validate } from "../../middlewares/validate.js";
-import { checkoutLimiter, orderLookupLimiter } from "../../middlewares/rateLimit.js";
+import { checkoutLimiter, orderLookupLimiter, trackingLimiter } from "../../middlewares/rateLimit.js";
 import { objectIdParamSchema } from "../../validators/commonValidator.js";
 import {
   createOrderSchema,
   publicIdParamSchema,
   myOrdersQuerySchema,
 } from "../../validators/orderValidator.js";
-import { create, detailByPublicId, listMine, detailMine } from "../../controllers/orderController.js";
+import {
+  create,
+  detailByPublicId,
+  listMine,
+  detailMine,
+  tracking,
+} from "../../controllers/orderController.js";
 
 const orderRouter = Router();
 
@@ -21,6 +27,13 @@ orderRouter.post("/", checkoutLimiter, optionalAuth, validate(createOrderSchema)
 // swallowed by the param route.
 orderRouter.get("/mine", protect, validate(myOrdersQuerySchema, "query"), listMine);
 orderRouter.get("/mine/:id", protect, validate(objectIdParamSchema, "params"), detailMine);
+
+orderRouter.get(
+  "/:publicId/tracking",
+  trackingLimiter,
+  validate(publicIdParamSchema, "params"),
+  tracking,
+);
 
 orderRouter.get(
   "/:publicId",
