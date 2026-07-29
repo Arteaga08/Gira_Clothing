@@ -11,6 +11,7 @@ import {
 import { Cart } from "../models/Cart.js";
 import { AppError } from "../utils/AppError.js";
 import { generatePublicId } from "../utils/publicId.js";
+import { idempotencyOwner, scopeIdempotencyKey } from "../utils/idempotency.js";
 import { resolveOrderLines, quoteTotals, type RequestedLine, type QuotedLine } from "./pricingService.js";
 import { reserveStock, releaseReservation } from "./reservationService.js";
 import { getSettings } from "./settingsService.js";
@@ -167,7 +168,16 @@ const toLineSnapshot = (l: QuotedLine): OrderLineSnapshot => ({
 });
 
 const createOrder = async (input: CreateOrderInput, ctx: OrderContext): Promise<CreatedOrder> => {
-  const existing = await Order.findOne({ idempotencyKey: input.idempotencyKey }).lean();
+  // The client's key is NEVER the stored key: it is namespaced to whoever is
+  // checking out first. Without this, a replay lookup is a global lookup, and
+  // whoever guesses a key someone else used gets that order — customer email,
+  // phone, address and all — handed back as a 201.
+  const idempotencyKey = scopeIdempotencyKey(
+    input.idempotencyKey,
+    idempotencyOwner(ctx.userId ? String(ctx.userId) : undefined, input.customer.email),
+  );
+
+  const existing = await Order.findOne({ idempotencyKey }).lean();
   if (existing) {
     return toCreatedOrder(
       toPublicOrder(existing),
@@ -215,13 +225,13 @@ const createOrder = async (input: CreateOrderInput, ctx: OrderContext): Promise<
       status: OrderStatus.PENDING_PAYMENT,
       statusHistory: [{ status: OrderStatus.PENDING_PAYMENT, at: new Date() }],
       payment: { provider: "stripe", status: PaymentStatus.REQUIRES_PAYMENT },
-      idempotencyKey: input.idempotencyKey,
+      idempotencyKey,
     });
   } catch (err) {
     await releaseReservation(orderId, "order_creation_failed");
     // A racing request with the same key won: return ITS order, not an error.
     if (isDuplicateKeyError(err)) {
-      const winner = await Order.findOne({ idempotencyKey: input.idempotencyKey }).lean();
+      const winner = await Order.findOne({ idempotencyKey }).lean();
       if (winner) {
         return toCreatedOrder(
           toPublicOrder(winner),

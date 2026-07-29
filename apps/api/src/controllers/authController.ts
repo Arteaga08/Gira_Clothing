@@ -61,7 +61,11 @@ const requireUser = (req: Request): string => {
 };
 
 const twoFactorSetup = asyncHandler(async (req: Request, res: Response) => {
-  const { otpauthUrl, secret } = await setupTwoFactor(requireUser(req), { ip: req.ip });
+  // Only used when the account already has 2FA active — see setupTwoFactor.
+  // A request with no body at all leaves req.body undefined in Express 5, and
+  // that is the normal case here: the first-time setup sends nothing.
+  const { code } = (req.body ?? {}) as { code?: string };
+  const { otpauthUrl, secret } = await setupTwoFactor(requireUser(req), { ip: req.ip }, code);
   sendResponse(res, 200, "Escanea el código con tu app de autenticación.", {
     otpauthUrl,
     secret,

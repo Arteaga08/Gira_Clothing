@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { sendResponse } from "../utils/sendResponse.js";
 import { AppError } from "../utils/AppError.js";
+import { isValidIdempotencyKey } from "../utils/idempotency.js";
 import {
   createOrder,
   getOrderByPublicId,
@@ -16,15 +17,18 @@ import { getPublicTracking } from "../services/shipmentService.js";
  * Order controllers — orchestrate req/res only, never touch models.
  */
 
-const MIN_IDEMPOTENCY_KEY_LENGTH = 8;
-const MAX_IDEMPOTENCY_KEY_LENGTH = 200;
-
+/**
+ * A UUID is REQUIRED, not merely preferred: the key is one half of the guard
+ * that keeps a replay from returning someone else's order (the other half is
+ * the owner scoping in utils/idempotency.ts). A length check alone lets a
+ * client pick "12345678" and collide on purpose.
+ */
 const requireIdempotencyKey = (req: Request): string => {
   const header = req.headers["idempotency-key"];
   const key = typeof header === "string" ? header.trim() : "";
-  if (key.length < MIN_IDEMPOTENCY_KEY_LENGTH || key.length > MAX_IDEMPOTENCY_KEY_LENGTH) {
+  if (!isValidIdempotencyKey(key)) {
     throw new AppError(
-      "Falta o es inválido el header Idempotency-Key (mínimo 8 caracteres).",
+      "Falta o es inválido el header Idempotency-Key: debe ser un UUID.",
       400,
     );
   }

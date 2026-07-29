@@ -1,3 +1,4 @@
+import type { ClientSession, Types } from "mongoose";
 import { AuditAction, AuditModule } from "@gira/shared";
 import { Variant } from "../models/Variant.js";
 import { AppError } from "../utils/AppError.js";
@@ -66,7 +67,7 @@ const setOnHand = async (
 
   await recordAudit({
     actorId: ctx.actorId,
-    actorType: "user",
+    actorType: ctx.actorId ? "user" : "system",
     action: AuditAction.STOCK_SET,
     module: AuditModule.INVENTORY,
     targetId: variantId,
@@ -103,7 +104,7 @@ const adjustOnHand = async (
 
   await recordAudit({
     actorId: ctx.actorId,
-    actorType: "user",
+    actorType: ctx.actorId ? "user" : "system",
     action: AuditAction.STOCK_ADJUSTED,
     module: AuditModule.INVENTORY,
     targetId: variantId,
@@ -115,5 +116,32 @@ const adjustOnHand = async (
   return toStockView(updated);
 };
 
+/**
+ * Puts units BACK, inside a caller-owned transaction. Separate from
+ * `adjustOnHand` on purpose:
+ *
+ *  - It takes a session, so the restock and the order's own status change land
+ *    as ONE unit of work. A refund that reposts two of three lines and then
+ *    throws used to leave the books permanently wrong, with no retry behind it
+ *    (the webhook event was already claimed).
+ *  - It needs no availability guard: adding units can never drive
+ *    `onHand - reserved` negative, which is the only invariant here.
+ *  - It does NOT audit per line. The caller records one entry for the whole
+ *    refund — auditing inside a transaction that may still abort would leave a
+ *    trail of things that never happened.
+ *
+ * A line whose variant no longer exists is a silent no-op rather than a throw:
+ * blocking a refund on a missing catalog row helps nobody, and the caller's
+ * audit entry is what tells the admin to reconcile by hand.
+ */
+const restockUnits = async (
+  lines: readonly { variant: Types.ObjectId; qty: number }[],
+  session: ClientSession,
+): Promise<void> => {
+  for (const line of lines) {
+    await Variant.updateOne({ _id: line.variant }, { $inc: { onHand: line.qty } }, { session });
+  }
+};
+
 export type { StockView };
-export { setOnHand, adjustOnHand };
+export { setOnHand, adjustOnHand, restockUnits };

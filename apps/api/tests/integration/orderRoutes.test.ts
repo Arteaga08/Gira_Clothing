@@ -1,4 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest";
+import { randomUUID } from "node:crypto";
 import request from "supertest";
 import { buildApp } from "../../src/app.js";
 import { Variant } from "../../src/models/Variant.js";
@@ -72,7 +73,9 @@ const seedVariant = async (adminCookie: string, suffix: string): Promise<string>
   return variantId;
 };
 
-const uniqueKey = (): string => `key-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+// El endpoint exige un UUID: una clave con poca entropía sería adivinable, y
+// adivinarla es lo que permitiría recuperar la orden de otra persona.
+const uniqueKey = (): string => randomUUID();
 
 describe("Order routes · checkout", () => {
   it("POST /orders anónimo con lines responde 201", async () => {

@@ -4,9 +4,10 @@ import mongoose from "mongoose";
 import { Currency, OrderStatus, PaymentStatus, ReservationStatus } from "@gira/shared";
 import { loginAsAdmin, ORIGIN } from "../helpers/auth.js";
 
-const { mockGetPayment, mockCreate } = vi.hoisted(() => ({
+const { mockGetPayment, mockCreate, mockCancel } = vi.hoisted(() => ({
   mockGetPayment: vi.fn(),
   mockCreate: vi.fn(),
+  mockCancel: vi.fn(),
 }));
 
 // createOrder (used to seed fixtures) needs a working createPayment; the
@@ -20,6 +21,7 @@ vi.mock("../../src/adapters/payment/index.js", async (importOriginal) => {
     ...real,
     createPayment: mockCreate,
     getPayment: mockGetPayment,
+    cancelPayment: mockCancel,
   };
   return { ...actual, getPaymentProvider: () => provider };
 });
@@ -42,6 +44,10 @@ const { reconcilePayments } = await import("../../src/jobs/reconcilePayments.js"
 const { Order } = await import("../../src/models/Order.js");
 const { Variant } = await import("../../src/models/Variant.js");
 const { StockReservation } = await import("../../src/models/StockReservation.js");
+const { AuditLog } = await import("../../src/models/AuditLog.js");
+const { Notification } = await import("../../src/models/Notification.js");
+const { applyPaymentSucceeded } = await import("../../src/services/orderPaymentService.js");
+const { releaseReservation } = await import("../../src/services/reservationService.js");
 
 const app = buildApp();
 
@@ -133,6 +139,8 @@ const backdateReservation = async (orderId: mongoose.Types.ObjectId, minutesAgo 
 
 beforeEach(() => {
   mockGetPayment.mockReset();
+  mockCancel.mockReset();
+  mockCancel.mockResolvedValue(undefined);
   intentCounter = 0;
 });
 
@@ -364,5 +372,119 @@ describe("reconcilePayments", () => {
     expect(goodOrder?.status).toBe(OrderStatus.PAID);
     const badOrder = await Order.findById(bad.order._id).lean();
     expect(badOrder?.status).toBe(OrderStatus.PENDING_PAYMENT);
+  });
+});
+
+/**
+ * La ventana para cobrar es exactamente la ventana en la que se apartó el
+ * stock. Pasada esa ventana el inventario ya volvió a estar a la venta y el
+ * precio pudo moverse, así que el intent debe quedar cancelado en el proveedor:
+ * si el cliente pudiera confirmarlo una hora después, estaríamos cobrando algo
+ * que ya no podemos surtir al precio que se le mostró.
+ */
+describe("expireReservations · cierre de la ventana de cobro", () => {
+  it("cancela el PaymentIntent de la orden que expira", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { order } = await seedOrder(adminCookie, "CANCEL1");
+    await backdateReservation(order._id);
+
+    await expireReservations();
+
+    expect(mockCancel).toHaveBeenCalledTimes(1);
+    expect(mockCancel).toHaveBeenCalledWith(order.payment.intentId);
+    const expired = await Order.findById(order._id).lean();
+    expect(expired?.status).toBe(OrderStatus.EXPIRED);
+  });
+
+  it("si el proveedor rechaza la cancelación, la orden igual expira y el stock vuelve", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { order, variantId, qty } = await seedOrder(adminCookie, "CANCEL2");
+    await backdateReservation(order._id);
+    mockCancel.mockRejectedValue(new Error("provider outage"));
+
+    await expireReservations();
+
+    const expired = await Order.findById(order._id).lean();
+    expect(expired?.status).toBe(OrderStatus.EXPIRED);
+    const variant = await Variant.findById(variantId).lean();
+    expect(variant?.reserved).toBe(0);
+    expect(variant?.onHand).toBe(10 - 0);
+    // Queda constancia de que ese intent sigue vivo y necesita una mano.
+    const audit = await AuditLog.findOne({
+      action: "payment_cancel_failed",
+      targetId: order.publicId,
+    }).lean();
+    expect(audit).not.toBeNull();
+    void qty;
+  });
+});
+
+/**
+ * Las dos formas en que el dinero y el inventario podían quedar desalineados
+ * sin dejar rastro. Ninguna mueve la orden por su cuenta: qué hacer con un
+ * cobro sobre un pedido muerto es una decisión de negocio, y el trabajo del
+ * código es que un humano se entere, no adivinar.
+ */
+describe("carrera entre la expiración y el cobro", () => {
+  it("un pago que llega sobre una orden ya expirada no la revive: audita y alerta al equipo", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { order, variantId } = await seedOrder(adminCookie, "RACE1");
+    await backdateReservation(order._id);
+    await expireReservations();
+
+    // El webhook llega tarde, con la orden ya expirada.
+    await applyPaymentSucceeded(order._id);
+
+    const after = await Order.findById(order._id).lean();
+    expect(after?.status).toBe(OrderStatus.EXPIRED);
+
+    const audit = await AuditLog.findOne({
+      action: "payment_after_expiry",
+      targetId: order.publicId,
+    }).lean();
+    expect(audit).not.toBeNull();
+
+    const alert = await Notification.findOne({
+      type: "team_payment_needs_review",
+      order: order._id,
+    }).lean();
+    expect(alert).not.toBeNull();
+    expect(alert?.payload.reason).toBe("payment_after_expiry");
+
+    // Y el stock liberado NO se vuelve a descontar por la puerta de atrás.
+    const variant = await Variant.findById(variantId).lean();
+    expect(variant?.reserved).toBe(0);
+    expect(variant?.onHand).toBe(10);
+  });
+
+  it("si el apartado ya se liberó, el pago deja alerta de stock_commit_missed", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { order, variantId, qty } = await seedOrder(adminCookie, "RACE2");
+    // El barrido ganó la carrera y devolvió las unidades, pero la orden seguía
+    // pending_payment cuando entró el webhook.
+    await releaseReservation(order._id, "expired");
+
+    await applyPaymentSucceeded(order._id);
+
+    const after = await Order.findById(order._id).lean();
+    expect(after?.status).toBe(OrderStatus.PAID);
+
+    const audit = await AuditLog.findOne({
+      action: "stock_commit_missed",
+      targetId: order.publicId,
+    }).lean();
+    expect(audit).not.toBeNull();
+
+    const alert = await Notification.findOne({
+      type: "team_payment_needs_review",
+      order: order._id,
+    }).lean();
+    expect(alert?.payload.reason).toBe("stock_commit_missed");
+
+    // La orden quedó pagada SIN descontar stock: justo lo que la alerta denuncia.
+    const variant = await Variant.findById(variantId).lean();
+    expect(variant?.onHand).toBe(10);
+    expect(variant?.reserved).toBe(0);
+    void qty;
   });
 });

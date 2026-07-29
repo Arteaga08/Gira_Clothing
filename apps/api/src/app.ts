@@ -4,6 +4,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import { pinoHttp } from "pino-http";
 import { allowedOrigins } from "./config/cors.js";
+import { env } from "./config/env.js";
 import { logger } from "./config/logger.js";
 import { mongoSanitize } from "./middlewares/mongoSanitize.js";
 import { sanitizeInput } from "./middlewares/sanitizeInput.js";
@@ -23,6 +24,13 @@ import { webhookRouter } from "./routes/webhookRoutes.js";
  */
 const buildApp = (): Express => {
   const app = express();
+
+  // Must be set BEFORE the limiters, and it is a hop count, never `true`.
+  // Without it every request behind a proxy shares one bucket: the login
+  // limiter would lock out the whole world after five failures, the checkout
+  // limiter would cap the entire store at ten purchases per window, and every
+  // AuditLog.ip would record the proxy instead of the caller.
+  app.set("trust proxy", env.trustProxyHops);
 
   app.use(helmet());
 

@@ -4,6 +4,7 @@ import { Currency, NotificationType, OrderStatus, ShipmentStatus } from "@gira/s
 import { buildApp } from "../../src/app.js";
 import { Variant } from "../../src/models/Variant.js";
 import { Order, type OrderDocument } from "../../src/models/Order.js";
+import { Shipment } from "../../src/models/Shipment.js";
 import { AuditLog } from "../../src/models/AuditLog.js";
 import { Notification } from "../../src/models/Notification.js";
 import { createOrder } from "../../src/services/orderService.js";
@@ -259,5 +260,36 @@ describe("shipmentService · getPublicTracking", () => {
 
   it("responde el mismo 404 cuando el publicId no existe", async () => {
     await expect(getPublicTracking("no-existe-este-id")).rejects.toMatchObject({ statusCode: 404 });
+  });
+});
+
+/**
+ * Capturar la guía es una sola realidad operativa. Dos clics simultáneos desde
+ * el panel no pueden producir dos paquetes ni dejar la orden movida a `shipped`
+ * por el que perdió: el índice único de `order` es la garantía, y esto lo
+ * comprueba bajo carrera real, no en secuencia.
+ */
+describe("shipmentService · createShipment bajo carrera", () => {
+  it("dos capturas simultáneas: exactamente una gana, la otra 409, un solo envío", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const order = await seedProcessingOrder(adminCookie, "SRACE");
+
+    const results = await Promise.allSettled([
+      createShipment(String(order._id), { carrier: "Estafeta", trackingNumber: "AAA" }, {}),
+      createShipment(String(order._id), { carrier: "DHL", trackingNumber: "BBB" }, {}),
+    ]);
+
+    const ok = results.filter((r) => r.status === "fulfilled");
+    const failed = results.filter((r) => r.status === "rejected");
+    expect(ok).toHaveLength(1);
+    expect(failed).toHaveLength(1);
+    expect((failed[0] as PromiseRejectedResult).reason).toMatchObject({ statusCode: 409 });
+
+    expect(await Shipment.countDocuments({ order: order._id })).toBe(1);
+
+    // La orden avanzó una sola vez, y a un estado consistente con el envío que sí existe.
+    const after = await Order.findById(order._id);
+    expect(after?.status).toBe(OrderStatus.SHIPPED);
+    expect(after?.statusHistory.filter((h) => h.status === OrderStatus.SHIPPED)).toHaveLength(1);
   });
 });

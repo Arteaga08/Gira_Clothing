@@ -58,6 +58,8 @@ const createStubPaymentProvider = (): PaymentProvider => {
       currency: Currency.MXN,
     });
 
+  const cancelPayment = (): Promise<void> => Promise.resolve();
+
   const refundPayment = (): Promise<void> => Promise.resolve();
 
   const parseWebhookEvent = (rawBody: Buffer, signature: string): ProviderEvent => {
@@ -85,7 +87,7 @@ const createStubPaymentProvider = (): PaymentProvider => {
     };
   };
 
-  return { createPayment, getPayment, refundPayment, parseWebhookEvent };
+  return { createPayment, getPayment, cancelPayment, refundPayment, parseWebhookEvent };
 };
 
 export { createStubPaymentProvider, STUB_WEBHOOK_SECRET };

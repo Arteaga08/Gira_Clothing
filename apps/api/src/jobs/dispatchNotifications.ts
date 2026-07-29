@@ -13,6 +13,7 @@ import {
 import {
   renderTeamOrderPaid,
   renderTeamPaymentFailed,
+  renderTeamPaymentNeedsReview,
   renderTeamShipmentIncident,
   type TeamOrderSnapshot,
 } from "../templates/teamMessages.js";
@@ -55,6 +56,8 @@ const renderTeam = (doc: NotificationDocument): TeamMessage => {
         String(payload.publicId),
         typeof payload.reason === "string" ? payload.reason : undefined,
       );
+    case NotificationType.TEAM_PAYMENT_NEEDS_REVIEW:
+      return renderTeamPaymentNeedsReview(String(payload.publicId), String(payload.reason));
     case NotificationType.TEAM_SHIPMENT_INCIDENT:
       return renderTeamShipmentIncident(
         String(payload.publicId),
