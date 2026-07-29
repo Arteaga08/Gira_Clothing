@@ -12,6 +12,7 @@ import {
   type UpdateVariantInput,
 } from "../services/variantService.js";
 import { setOnHand, adjustOnHand } from "../services/inventoryService.js";
+import { getInventoryStats } from "../services/inventoryStatsService.js";
 
 /**
  * Variant admin controllers — orchestrate req/res only, never touch models.
@@ -57,4 +58,9 @@ const updateStock = asyncHandler(async (req: Request, res: Response) => {
   sendResponse(res, 200, "Stock actualizado correctamente.", { variant });
 });
 
-export { create, list, detail, update, deactivate, updateStock };
+const stats = asyncHandler(async (_req: Request, res: Response) => {
+  const data = await getInventoryStats();
+  sendResponse(res, 200, "Estadísticas de inventario obtenidas correctamente.", data);
+});
+
+export { create, list, detail, update, deactivate, updateStock, stats };

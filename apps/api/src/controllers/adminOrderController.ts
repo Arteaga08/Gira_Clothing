@@ -9,6 +9,7 @@ import {
   changeOrderStatus,
   requestRefund,
 } from "../services/adminOrderService.js";
+import { getOrderStats } from "../services/orderStatsService.js";
 
 /**
  * Admin order controllers — orchestrate req/res only, never touch models.
@@ -35,4 +36,9 @@ const refund = asyncHandler(async (req: Request, res: Response) => {
   sendResponse(res, 200, "Reembolso solicitado correctamente.", { order });
 });
 
-export { list, detail, updateStatus, refund };
+const stats = asyncHandler(async (req: Request, res: Response) => {
+  const data = await getOrderStats(req.query);
+  sendResponse(res, 200, "Estadísticas de órdenes obtenidas correctamente.", data);
+});
+
+export { list, detail, updateStatus, refund, stats };

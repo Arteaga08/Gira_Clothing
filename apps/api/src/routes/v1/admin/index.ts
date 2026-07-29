@@ -9,6 +9,8 @@ import { productRouter } from "./productRoutes.js";
 import { variantRouter } from "./variantRoutes.js";
 import { settingsRouter } from "./settingsRoutes.js";
 import { adminOrderRouter } from "./adminOrderRoutes.js";
+import { statsRouter } from "./statsRoutes.js";
+import { auditLogRouter } from "./auditLogRoutes.js";
 
 /**
  * Admin router. protect + restrictTo are applied ONCE here, at mount level, so
@@ -29,5 +31,7 @@ adminRouter.use("/products", productRouter);
 adminRouter.use("/variants", variantRouter);
 adminRouter.use("/settings", settingsRouter);
 adminRouter.use("/orders", adminOrderRouter);
+adminRouter.use("/stats", statsRouter);
+adminRouter.use("/audit-logs", auditLogRouter);
 
 export { adminRouter };

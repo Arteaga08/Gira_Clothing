@@ -6,6 +6,7 @@ import {
   type ShippingSettings,
   type CurrencySettings,
   type ReservationSettings,
+  type InventorySettings,
 } from "../models/Settings.js";
 import { recordAudit } from "./auditService.js";
 import type { RequestContext } from "../utils/requestContext.js";
@@ -25,6 +26,7 @@ interface PublicSettings {
   shipping: ShippingSettings;
   currency: CurrencySettings;
   reservation: ReservationSettings;
+  inventory: InventorySettings;
 }
 
 const toPublicSettings = (doc: SettingsDocument): PublicSettings => ({
@@ -32,6 +34,7 @@ const toPublicSettings = (doc: SettingsDocument): PublicSettings => ({
   shipping: doc.shipping,
   currency: doc.currency,
   reservation: doc.reservation,
+  inventory: doc.inventory,
 });
 
 const getSettings = async (): Promise<SettingsDocument> => {
@@ -129,11 +132,38 @@ const updateReservationSettings = async (
   return toPublicSettings(settings);
 };
 
+const updateInventorySettings = async (
+  input: Partial<InventorySettings>,
+  ctx: RequestContext,
+): Promise<PublicSettings> => {
+  const settings = await getSettings();
+  const before = { ...settings.inventory };
+
+  if (input.lowStockThreshold !== undefined) {
+    settings.inventory.lowStockThreshold = input.lowStockThreshold;
+  }
+
+  await settings.save();
+  await recordAudit({
+    actorId: ctx.actorId,
+    actorType: "user",
+    action: AuditAction.SETTINGS_INVENTORY_UPDATED,
+    module: AuditModule.SETTINGS,
+    targetId: settings.id as string,
+    before,
+    after: { ...settings.inventory },
+    ip: ctx.ip,
+  });
+
+  return toPublicSettings(settings);
+};
+
 export type {
   PublicSettings,
   ShippingSettings,
   CurrencySettings,
   ReservationSettings,
+  InventorySettings,
 };
 export {
   getSettings,
@@ -141,4 +171,5 @@ export {
   updateShippingSettings,
   updateCurrencySettings,
   updateReservationSettings,
+  updateInventorySettings,
 };

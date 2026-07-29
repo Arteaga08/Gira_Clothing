@@ -12,6 +12,8 @@ enum AuditModule {
   CART = "cart",
   ORDERS = "orders",
   PAYMENTS = "payments",
+  SHIPPING = "shipping",
+  NOTIFICATIONS = "notifications",
 }
 
 enum AuditAction {
@@ -57,6 +59,10 @@ enum AuditAction {
   PAYMENT_REFUNDED = "payment_refunded",
   PAYMENT_DISPUTED = "payment_disputed",
   WEBHOOK_REJECTED = "webhook_rejected",
+  SETTINGS_INVENTORY_UPDATED = "settings_inventory_updated",
+  SHIPMENT_CREATED = "shipment_created",
+  SHIPMENT_STATUS_CHANGED = "shipment_status_changed",
+  NOTIFICATION_FAILED = "notification_failed",
 }
 
 export { AuditModule, AuditAction };

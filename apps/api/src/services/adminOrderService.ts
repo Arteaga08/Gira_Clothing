@@ -1,11 +1,18 @@
 import type { Types } from "mongoose";
 import type { ApiMeta } from "@gira/shared";
-import { AuditAction, AuditModule, OrderStatus } from "@gira/shared";
+import {
+  AuditAction,
+  AuditModule,
+  NotificationChannelKind,
+  NotificationType,
+  OrderStatus,
+} from "@gira/shared";
 import { Order, type OrderDocument } from "../models/Order.js";
 import { AppError } from "../utils/AppError.js";
 import { assertAdminTransition } from "../utils/orderTransitions.js";
 import { getPaymentProvider } from "../adapters/payment/index.js";
 import { recordAudit } from "./auditService.js";
+import { enqueueNotification } from "./notificationService.js";
 import { parseListQuery, buildMeta, type ListQueryConfig, type RawListQuery } from "../utils/parseListQuery.js";
 import { toPublicOrder, type PublicOrder, type OrderLean } from "./orderService.js";
 import type { RequestContext } from "../utils/requestContext.js";
@@ -88,6 +95,31 @@ const changeOrderStatus = async (
   order.status = status;
   order.statusHistory.push({ status, at: new Date() });
   await order.save();
+
+  // Only PROCESSING triggers a customer email here; SHIPPED belongs to the
+  // shipment flow, which owns the tracking data the email needs.
+  if (status === OrderStatus.PROCESSING) {
+    await enqueueNotification({
+      channel: NotificationChannelKind.EMAIL,
+      type: NotificationType.ORDER_PREPARING,
+      to: order.customer.email,
+      order: order._id,
+      payload: {
+        publicId: order.publicId,
+        customerName: order.customer.name,
+        currency: order.currency,
+        subtotal: order.subtotal,
+        shippingCost: order.shippingCost,
+        total: order.total,
+        lines: order.lines.map((line) => ({
+          productName: line.productName,
+          printName: line.printName,
+          qty: line.qty,
+          lineTotal: line.lineTotal,
+        })),
+      },
+    });
+  }
 
   await recordAudit({
     actorId: ctx.actorId,

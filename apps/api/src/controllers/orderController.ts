@@ -10,6 +10,7 @@ import {
   type CreateOrderInput,
   type OrderContext,
 } from "../services/orderService.js";
+import { getPublicTracking } from "../services/shipmentService.js";
 
 /**
  * Order controllers — orchestrate req/res only, never touch models.
@@ -62,4 +63,9 @@ const detailMine = asyncHandler(async (req: Request, res: Response) => {
   sendResponse(res, 200, "Orden obtenida correctamente.", { order });
 });
 
-export { create, detailByPublicId, listMine, detailMine };
+const tracking = asyncHandler(async (req: Request, res: Response) => {
+  const shipment = await getPublicTracking(req.params.publicId as string);
+  sendResponse(res, 200, "Seguimiento obtenido correctamente.", { tracking: shipment });
+});
+
+export { create, detailByPublicId, listMine, detailMine, tracking };

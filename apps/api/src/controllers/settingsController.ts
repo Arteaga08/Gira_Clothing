@@ -7,9 +7,11 @@ import {
   updateShippingSettings,
   updateCurrencySettings,
   updateReservationSettings,
+  updateInventorySettings,
   type ShippingSettings,
   type CurrencySettings,
   type ReservationSettings,
+  type InventorySettings,
 } from "../services/settingsService.js";
 
 /**
@@ -45,4 +47,12 @@ const updateReservation = asyncHandler(async (req: Request, res: Response) => {
   sendResponse(res, 200, "Configuración de reserva actualizada correctamente.", { settings });
 });
 
-export { detail, updateShipping, updateCurrency, updateReservation };
+const updateInventory = asyncHandler(async (req: Request, res: Response) => {
+  const settings = await updateInventorySettings(
+    req.body as Partial<InventorySettings>,
+    buildContext(req),
+  );
+  sendResponse(res, 200, "Configuración de inventario actualizada correctamente.", { settings });
+});
+
+export { detail, updateShipping, updateCurrency, updateReservation, updateInventory };

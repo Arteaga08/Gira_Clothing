@@ -234,4 +234,52 @@ describe("Admin · Settings", () => {
       expect(reservation).toBe(1);
     });
   });
+
+  describe("inventario", () => {
+    it("actualiza el umbral de bajo stock", async () => {
+      const res = await request(app)
+        .patch("/api/v1/admin/settings/inventory")
+        .set("Origin", ORIGIN)
+        .set("Cookie", adminCookie)
+        .send({ lowStockThreshold: 5 });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.settings.inventory.lowStockThreshold).toBe(5);
+    });
+
+    it("rechaza un umbral negativo o no entero", async () => {
+      for (const value of [-1, 2.5]) {
+        const res = await request(app)
+          .patch("/api/v1/admin/settings/inventory")
+          .set("Origin", ORIGIN)
+          .set("Cookie", adminCookie)
+          .send({ lowStockThreshold: value });
+        expect(res.status).toBe(400);
+      }
+    });
+
+    it("no altera las otras secciones", async () => {
+      const before = await request(app).get("/api/v1/admin/settings").set("Cookie", adminCookie);
+      await request(app)
+        .patch("/api/v1/admin/settings/inventory")
+        .set("Origin", ORIGIN)
+        .set("Cookie", adminCookie)
+        .send({ lowStockThreshold: 7 });
+      const after = await request(app).get("/api/v1/admin/settings").set("Cookie", adminCookie);
+
+      expect(after.body.data.settings.shipping).toEqual(before.body.data.settings.shipping);
+      expect(after.body.data.settings.currency).toEqual(before.body.data.settings.currency);
+    });
+
+    it("escribe su propia acción de auditoría", async () => {
+      await request(app)
+        .patch("/api/v1/admin/settings/inventory")
+        .set("Origin", ORIGIN)
+        .set("Cookie", adminCookie)
+        .send({ lowStockThreshold: 4 });
+
+      const entry = await AuditLog.findOne({ action: AuditAction.SETTINGS_INVENTORY_UPDATED });
+      expect(entry).not.toBeNull();
+    });
+  });
 });

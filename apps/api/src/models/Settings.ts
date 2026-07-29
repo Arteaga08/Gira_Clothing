@@ -35,11 +35,17 @@ interface ReservationSettings {
   cartInactivityDays: number;
 }
 
+interface InventorySettings {
+  /** Available units at or below this count show up as "low stock" in the panel. */
+  lowStockThreshold: number;
+}
+
 interface SettingsAttrs {
   key: string;
   shipping: ShippingSettings;
   currency: CurrencySettings;
   reservation: ReservationSettings;
+  inventory: InventorySettings;
 }
 
 type SettingsModel = Model<SettingsAttrs>;
@@ -82,6 +88,16 @@ const settingsSchema = new Schema<SettingsAttrs, SettingsModel>(
       ttlMinutes: { type: Number, required: true, min: 1, max: 1440, default: 30 },
       cartInactivityDays: { type: Number, required: true, min: 1, max: 365, default: 30 },
     },
+    inventory: {
+      lowStockThreshold: {
+        type: Number,
+        required: true,
+        min: 0,
+        max: 1000,
+        validate: { validator: Number.isInteger, message: "El umbral debe ser un entero." },
+        default: 3,
+      },
+    },
   },
   { timestamps: true },
 );
@@ -94,5 +110,6 @@ export type {
   ShippingSettings,
   CurrencySettings,
   ReservationSettings,
+  InventorySettings,
 };
 export { Settings, SINGLETON_KEY };
