@@ -48,5 +48,35 @@ const registerLimiter = createLimiter({
   message: "Demasiados registros desde esta dirección. Intenta de nuevo más tarde.",
 });
 
+// Cart writes are frequent and low-risk, but not unlimited: a script hammering
+// PUT /cart/lines is still write load on the DB.
+const cartLimiter = createLimiter({
+  windowMs: FIFTEEN_MIN,
+  max: 120,
+  message: "Demasiadas operaciones sobre el carrito. Espera un momento.",
+});
+
+// Anti card-testing: a scripted checkout loop is how stolen cards get validated.
+const checkoutLimiter = createLimiter({
+  windowMs: FIFTEEN_MIN,
+  max: 10,
+  message: "Demasiados intentos de compra. Espera unos minutos e intenta de nuevo.",
+});
+
+// The publicId is unguessable, but a leaked link should not be a scraping tool.
+const orderLookupLimiter = createLimiter({
+  windowMs: FIFTEEN_MIN,
+  max: 30,
+  message: "Demasiadas consultas. Espera unos minutos.",
+});
+
 export type { LimiterOptions };
-export { createLimiter, globalLimiter, loginLimiter, registerLimiter };
+export {
+  createLimiter,
+  globalLimiter,
+  loginLimiter,
+  registerLimiter,
+  cartLimiter,
+  checkoutLimiter,
+  orderLookupLimiter,
+};

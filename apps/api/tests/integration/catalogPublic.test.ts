@@ -4,6 +4,7 @@ import { buildApp } from "../../src/app.js";
 import { loginAsAdmin, ORIGIN } from "../helpers/auth.js";
 import { setOnHand } from "../../src/services/inventoryService.js";
 import type { RequestContext } from "../../src/utils/requestContext.js";
+import { Print } from "../../src/models/Print.js";
 
 const app = buildApp();
 
@@ -239,26 +240,17 @@ describe("Catálogo público · detalle de producto", () => {
     const print = await createPrint(cookie, family.id, "Print Detalle 2", "SKU-DETALLE-2");
     const category = await createCategory(cookie, "Categoría Detalle 2");
     const product = await createProduct(cookie, category.id, "Producto Detalle Dos");
-    const variant = await createVariant(cookie, product.id, print.id);
+    await createVariant(cookie, product.id, print.id);
 
-    // The print↔active-variant guard (printService) forbids deactivating a
-    // print while a variant still references it — so this state is reached
-    // the way the API actually allows it: deactivate the variant first, then
-    // the print, then reactivate the variant independently (nothing guards
-    // a variant reactivation against its parent's state).
-    await request(app)
-      .delete(`${VARIANTS_BASE}/${variant.id}`)
-      .set("Origin", ORIGIN)
-      .set("Cookie", cookie);
-    await request(app)
-      .delete(`${PRINTS_BASE}/${print.id}`)
-      .set("Origin", ORIGIN)
-      .set("Cookie", cookie);
-    await request(app)
-      .patch(`${VARIANTS_BASE}/${variant.id}`)
-      .set("Origin", ORIGIN)
-      .set("Cookie", cookie)
-      .send({ isActive: true });
+    // Unreachable via the API by design (M3 Tarea 9 closes M2's pendiente #2):
+    // the print↔active-variant guard forbids deactivating a print while an
+    // active variant references it, AND variantService now forbids
+    // reactivating a variant whose print is retired. So "active variant,
+    // retired print" can no longer be produced through any request sequence —
+    // it only exists as legacy/manually-edited data. This test simulates that
+    // by writing isActive:false directly on the Print document, and asserts
+    // the public catalog still defends against it either way.
+    await Print.updateOne({ _id: print.id }, { $set: { isActive: false } });
 
     const res = await request(app).get(`${CATALOG_PRODUCTS}/${product.slug}`);
     expect(res.body.data.product.variants).toHaveLength(0);

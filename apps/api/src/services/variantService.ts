@@ -160,6 +160,29 @@ const updateVariant = async (
   const variant = await Variant.findById(id);
   if (!variant) throw new AppError("La variante no existe.", 404);
 
+  // Reactivation guard (M2 post-review, pendiente #2): an active variant whose
+  // product or print was retired is an ORPHAN. It stays hidden in the public
+  // catalog but is still reachable by id, so letting it back on is a silent
+  // trap. Retiring it, on the other hand, is always allowed.
+  if (input.isActive === true && !variant.isActive) {
+    const [product, print] = await Promise.all([
+      Product.findById(variant.product).select("isActive").lean(),
+      Print.findById(variant.print).select("isActive").lean(),
+    ]);
+    if (!product?.isActive) {
+      throw new AppError(
+        "No puedes reactivar esta variante: su producto está retirado. Reactiva primero el producto.",
+        409,
+      );
+    }
+    if (!print?.isActive) {
+      throw new AppError(
+        "No puedes reactivar esta variante: su estampado está retirado. Reactiva primero el estampado.",
+        409,
+      );
+    }
+  }
+
   if (input.images !== undefined) variant.images = input.images;
   if (input.priceOverride !== undefined) variant.priceOverride = input.priceOverride;
   if (input.isActive !== undefined) variant.isActive = input.isActive;

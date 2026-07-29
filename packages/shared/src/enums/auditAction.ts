@@ -8,6 +8,10 @@ enum AuditModule {
   AUTH = "auth",
   CATALOG = "catalog",
   INVENTORY = "inventory",
+  SETTINGS = "settings",
+  CART = "cart",
+  ORDERS = "orders",
+  PAYMENTS = "payments",
 }
 
 enum AuditAction {
@@ -35,6 +39,24 @@ enum AuditAction {
   IMAGE_UPLOADED = "image_uploaded",
   STOCK_SET = "stock_set",
   STOCK_ADJUSTED = "stock_adjusted",
+  SETTINGS_SHIPPING_UPDATED = "settings_shipping_updated",
+  SETTINGS_CURRENCY_UPDATED = "settings_currency_updated",
+  SETTINGS_RESERVATION_UPDATED = "settings_reservation_updated",
+  ORDER_CREATED = "order_created",
+  ORDER_STATUS_CHANGED = "order_status_changed",
+  ORDER_EXPIRED = "order_expired",
+  ORDER_REFUND_REQUESTED = "order_refund_requested",
+  STOCK_RESERVED = "stock_reserved",
+  STOCK_RESERVATION_COMMITTED = "stock_reservation_committed",
+  STOCK_RESERVATION_RELEASED = "stock_reservation_released",
+  STOCK_RESTOCKED_ON_REFUND = "stock_restocked_on_refund",
+  PAYMENT_INTENT_CREATED = "payment_intent_created",
+  PAYMENT_SUCCEEDED = "payment_succeeded",
+  PAYMENT_FAILED = "payment_failed",
+  PAYMENT_CANCELLED = "payment_cancelled",
+  PAYMENT_REFUNDED = "payment_refunded",
+  PAYMENT_DISPUTED = "payment_disputed",
+  WEBHOOK_REJECTED = "webhook_rejected",
 }
 
 export { AuditModule, AuditAction };

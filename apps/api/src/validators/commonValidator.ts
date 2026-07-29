@@ -23,6 +23,7 @@ const slugValue = Joi.string()
 
 const objectIdParamSchema = Joi.object({ id: objectId.required() });
 const slugParamSchema = Joi.object({ slug: slugValue.required() });
+const variantIdParamSchema = Joi.object({ variantId: objectId.required() });
 
 const imageObjectSchema = Joi.object({
   url: Joi.string()
@@ -37,4 +38,11 @@ const imageObjectSchema = Joi.object({
   height: Joi.number().integer().min(1).required(),
 });
 
-export { objectId, slugValue, objectIdParamSchema, slugParamSchema, imageObjectSchema };
+export {
+  objectId,
+  slugValue,
+  objectIdParamSchema,
+  slugParamSchema,
+  variantIdParamSchema,
+  imageObjectSchema,
+};
