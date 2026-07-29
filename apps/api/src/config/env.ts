@@ -50,6 +50,17 @@ interface Env {
   clientUrl: string;
   cookieName: string;
   logLevel: string;
+  /**
+   * How many reverse proxies sit in front of the API. 0 = none (local).
+   * Feeds Express's `trust proxy`, which decides what `req.ip` resolves to —
+   * and therefore what every rate limiter buckets by and what the audit trail
+   * records. Behind a proxy with 0, every request looks like it came from the
+   * proxy: the login limiter locks out the whole world after 5 failures and
+   * the audit log stores one useless IP. A HOP COUNT, never `true`: trusting
+   * the whole chain makes X-Forwarded-For attacker-controlled and hands the
+   * limiters back to the attacker.
+   */
+  trustProxyHops: number;
   /** null outside production when no provider is configured -> stub adapter. */
   cloudinary: CloudinaryConfig | null;
   /** null outside production when no provider is configured -> stub adapter. */
@@ -104,6 +115,12 @@ const loadEnv = (source: NodeJS.ProcessEnv = process.env): Readonly<Env> => {
   const clientUrl = requireVar(source, "CLIENT_URL", errors);
   const cookieName = requireVar(source, "COOKIE_NAME", errors);
   const logLevel = source.LOG_LEVEL?.trim() || "info";
+
+  const hopsRaw = source.TRUST_PROXY_HOPS?.trim();
+  const trustProxyHops = hopsRaw ? Number(hopsRaw) : 0;
+  if (!Number.isInteger(trustProxyHops) || trustProxyHops < 0) {
+    errors.push("TRUST_PROXY_HOPS debe ser un entero mayor o igual a 0.");
+  }
 
   // In production the public client URL must be HTTPS (cookies are `secure`).
   if (nodeEnv === "production" && clientUrl && !clientUrl.startsWith("https://")) {
@@ -225,6 +242,7 @@ const loadEnv = (source: NodeJS.ProcessEnv = process.env): Readonly<Env> => {
     clientUrl,
     cookieName,
     logLevel,
+    trustProxyHops,
     cloudinary,
     stripe,
     mail,

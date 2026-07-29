@@ -44,6 +44,18 @@ const loginSchema = Joi.object({
   }),
 });
 
+/**
+ * `code` is OPTIONAL here: it is only required when the account already has an
+ * active second factor, which is a question about stored state, not about the
+ * payload — authService decides and rejects.
+ */
+const twoFactorSetupSchema = Joi.object({
+  code: Joi.string()
+    .trim()
+    .pattern(/^\d{6}$/)
+    .messages({ "string.pattern.base": "El código de verificación debe tener 6 dígitos." }),
+});
+
 const twoFactorCodeSchema = Joi.object({
   code: Joi.string()
     .trim()
@@ -56,4 +68,4 @@ const twoFactorCodeSchema = Joi.object({
     }),
 });
 
-export { registerSchema, loginSchema, twoFactorCodeSchema };
+export { registerSchema, loginSchema, twoFactorSetupSchema, twoFactorCodeSchema };

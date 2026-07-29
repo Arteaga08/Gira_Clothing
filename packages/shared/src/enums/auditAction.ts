@@ -58,6 +58,12 @@ enum AuditAction {
   PAYMENT_CANCELLED = "payment_cancelled",
   PAYMENT_REFUNDED = "payment_refunded",
   PAYMENT_DISPUTED = "payment_disputed",
+  /** Money landed on an order that had already expired or been cancelled. */
+  PAYMENT_AFTER_EXPIRY = "payment_after_expiry",
+  /** An order went to paid but its hold was already gone: stock never left. */
+  STOCK_COMMIT_MISSED = "stock_commit_missed",
+  /** The provider refused to cancel the intent of an expired order. */
+  PAYMENT_CANCEL_FAILED = "payment_cancel_failed",
   WEBHOOK_REJECTED = "webhook_rejected",
   SETTINGS_INVENTORY_UPDATED = "settings_inventory_updated",
   SHIPMENT_CREATED = "shipment_created",

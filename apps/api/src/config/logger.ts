@@ -7,18 +7,22 @@ import { env } from "./env.js";
  * `debug` is effectively silenced outside development via LOG_LEVEL.
  */
 
+/**
+ * A pino wildcard matches ONE level, so `*.email` covers `err.email` but not
+ * `err.keyValue.email` — which is exactly where a Mongo duplicate-key error
+ * puts the address. Every level a sensitive value can realistically appear at
+ * is listed explicitly; `**` is deliberately avoided (it walks the whole object
+ * on every log line).
+ */
+const SENSITIVE = ["password", "token", "secret", "email", "phone", "twoFactor"];
+
 const redactPaths = [
   "req.headers.cookie",
   "req.headers.authorization",
-  "*.password",
-  "*.token",
-  "*.secret",
-  "*.email",
-  "*.twoFactor",
-  "password",
-  "token",
-  "secret",
-  "email",
+  ...SENSITIVE,
+  ...SENSITIVE.map((key) => `*.${key}`),
+  ...SENSITIVE.map((key) => `*.*.${key}`),
+  ...SENSITIVE.map((key) => `*.*.*.${key}`),
 ];
 
 const isDev = env.nodeEnv === "development";

@@ -180,3 +180,73 @@ describe("2FA · disable", () => {
     expect(stored?.twoFactor.secret).toBeFalsy();
   });
 });
+
+/**
+ * `setup` apaga el segundo factor de camino a emitir un secreto nuevo. Sin este
+ * guard era una vía de una sola petición para quitar el 2FA de una cuenta
+ * admin: exactamente lo que `disable` se niega a hacer sin el código, pero por
+ * la otra puerta. Una sesión robada no debe poder desactivarlo por ninguna.
+ */
+describe("2FA · setup sobre una cuenta que YA tiene el segundo factor activo", () => {
+  let cookie: string;
+  let secret: string;
+
+  beforeEach(async () => {
+    cookie = await loginAsAdmin();
+    const setup = await request(app)
+      .post("/api/v1/auth/2fa/setup")
+      .set("Cookie", cookie)
+      .set("Origin", ORIGIN);
+    secret = new URL(setup.body.data.otpauthUrl).searchParams.get("secret") ?? "";
+    await request(app)
+      .post("/api/v1/auth/2fa/enable")
+      .set("Cookie", cookie)
+      .set("Origin", ORIGIN)
+      .send({ code: authenticator.generate(secret) });
+  });
+
+  it("sin código responde 400 y el segundo factor sigue activo con su secreto intacto", async () => {
+    const before = await User.findOne({ email: adminCreds.email }).select("+twoFactor.secret");
+
+    const res = await request(app)
+      .post("/api/v1/auth/2fa/setup")
+      .set("Cookie", cookie)
+      .set("Origin", ORIGIN);
+
+    expect(res.status).toBe(400);
+    const after = await User.findOne({ email: adminCreds.email }).select("+twoFactor.secret");
+    expect(after?.twoFactor.enabled).toBe(true);
+    expect(after?.twoFactor.secret).toBe(before?.twoFactor.secret);
+  });
+
+  it("con código incorrecto responde 400 y no rota el secreto", async () => {
+    const before = await User.findOne({ email: adminCreds.email }).select("+twoFactor.secret");
+
+    const res = await request(app)
+      .post("/api/v1/auth/2fa/setup")
+      .set("Cookie", cookie)
+      .set("Origin", ORIGIN)
+      .send({ code: "000000" });
+
+    expect(res.status).toBe(400);
+    const after = await User.findOne({ email: adminCreds.email }).select("+twoFactor.secret");
+    expect(after?.twoFactor.enabled).toBe(true);
+    expect(after?.twoFactor.secret).toBe(before?.twoFactor.secret);
+  });
+
+  it("con el código vigente sí permite reconfigurar: emite secreto nuevo y vuelve a pendiente", async () => {
+    const before = await User.findOne({ email: adminCreds.email }).select("+twoFactor.secret");
+
+    const res = await request(app)
+      .post("/api/v1/auth/2fa/setup")
+      .set("Cookie", cookie)
+      .set("Origin", ORIGIN)
+      .send({ code: authenticator.generate(secret) });
+
+    expect(res.status).toBe(200);
+    const after = await User.findOne({ email: adminCreds.email }).select("+twoFactor.secret");
+    // Vuelve a "pendiente": el alta sigue siendo de dos pasos.
+    expect(after?.twoFactor.enabled).toBe(false);
+    expect(after?.twoFactor.secret).not.toBe(before?.twoFactor.secret);
+  });
+});

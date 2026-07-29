@@ -110,6 +110,17 @@ const createStripePaymentProvider = (config: StripeConfig): PaymentProvider => {
     }
   };
 
+  const cancelPayment = async (providerId: string): Promise<void> => {
+    try {
+      await client.paymentIntents.cancel(providerId);
+    } catch (err) {
+      // Stripe also rejects a cancel on an intent that already succeeded or was
+      // cancelled. The caller decides what that means — here we only report it.
+      logger.error({ err }, "Stripe cancelPayment failed");
+      throw new AppError("No se pudo cancelar el cobro pendiente.", 502);
+    }
+  };
+
   const refundPayment = async (providerId: string, amount?: number): Promise<void> => {
     try {
       await client.refunds.create({
@@ -152,7 +163,7 @@ const createStripePaymentProvider = (config: StripeConfig): PaymentProvider => {
     return { id: event.id, type, ...extractRefs(event), raw: event };
   };
 
-  return { createPayment, getPayment, refundPayment, parseWebhookEvent };
+  return { createPayment, getPayment, cancelPayment, refundPayment, parseWebhookEvent };
 };
 
 export { createStripePaymentProvider };

@@ -8,6 +8,7 @@ import { Order } from "../../src/models/Order.js";
 import { StockReservation } from "../../src/models/StockReservation.js";
 import { AuditLog } from "../../src/models/AuditLog.js";
 import { loginAsAdmin, loginAsCustomer, ORIGIN } from "../helpers/auth.js";
+import { idempotencyOwner, scopeIdempotencyKey } from "../../src/utils/idempotency.js";
 
 const { getFailFlag, setShouldFail } = vi.hoisted(() => {
   let shouldFail = false;
@@ -261,8 +262,65 @@ describe("orderService.createOrder · idempotencia", () => {
     const [a, b] = await Promise.all([createOrder(input, {}), createOrder(input, {})]);
     expect(a.order.publicId).toBe(b.order.publicId);
 
-    const count = await Order.countDocuments({ idempotencyKey: key });
-    expect(count).toBe(1);
+    expect(await Order.countDocuments({})).toBe(1);
+  });
+
+  it("la clave del cliente nunca se guarda tal cual: se almacena acotada al comprador", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { variantId } = await seedVariant(adminCookie, "I3");
+    const key = uniqueKey();
+
+    await createOrder(
+      {
+        lines: [{ variantId, qty: 1 }],
+        currency: Currency.MXN,
+        customer: validCustomer,
+        shipping: validShipping,
+        idempotencyKey: key,
+      },
+      {},
+    );
+
+    const stored = await Order.findOne({}).lean();
+    expect(stored?.idempotencyKey).not.toBe(key);
+    expect(stored?.idempotencyKey).toBe(
+      scopeIdempotencyKey(key, idempotencyOwner(undefined, validCustomer.email)),
+    );
+    // Buscar por la clave cruda no encuentra nada: ese era el oráculo de A1.
+    expect(await Order.countDocuments({ idempotencyKey: key })).toBe(0);
+  });
+
+  it("dos compradores distintos con la MISMA clave obtienen cada quien su orden", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { variantId } = await seedVariant(adminCookie, "I4", { onHand: 5 });
+    const sharedKey = uniqueKey();
+
+    const victima = await createOrder(
+      {
+        lines: [{ variantId, qty: 1 }],
+        currency: Currency.MXN,
+        customer: { email: "victima@example.com", name: "Vic Tima" },
+        shipping: validShipping,
+        idempotencyKey: sharedKey,
+      },
+      {},
+    );
+
+    const atacante = await createOrder(
+      {
+        lines: [{ variantId, qty: 1 }],
+        currency: Currency.MXN,
+        customer: { email: "atacante@example.com", name: "Ata Cante" },
+        shipping: validShipping,
+        idempotencyKey: sharedKey,
+      },
+      {},
+    );
+
+    // Dos órdenes distintas: el atacante NO recibe el pedido de la víctima.
+    expect(atacante.order.publicId).not.toBe(victima.order.publicId);
+    expect(atacante.order.customer.email).toBe("atacante@example.com");
+    expect(await Order.countDocuments({})).toBe(2);
   });
 });
 

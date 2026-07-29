@@ -13,13 +13,17 @@ interface AuthTokenPayload {
   role: string;
 }
 
+/** Pinned on both sides: the verifier must never let the token pick the algorithm. */
+const ALGORITHM = "HS256" as const;
+
 const signAuthToken = (payload: AuthTokenPayload): string =>
   jwt.sign(payload, env.jwtSecret, {
+    algorithm: ALGORITHM,
     expiresIn: env.jwtExpiresIn as NonNullable<jwt.SignOptions["expiresIn"]>,
   });
 
 const verifyAuthToken = (token: string): AuthTokenPayload => {
-  const decoded = jwt.verify(token, env.jwtSecret);
+  const decoded = jwt.verify(token, env.jwtSecret, { algorithms: [ALGORITHM] });
   if (typeof decoded === "string" || typeof decoded.sub !== "string") {
     throw new jwt.JsonWebTokenError("Token inválido");
   }

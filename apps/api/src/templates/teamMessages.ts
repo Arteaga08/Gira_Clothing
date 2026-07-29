@@ -29,6 +29,24 @@ const renderTeamPaymentFailed = (publicId: string, reason?: string): TeamMessage
   lines: [`Folio: ${publicId}`, ...(reason ? [`Motivo: ${reason}`] : [])],
 });
 
+/**
+ * The one ping that means "money and inventory disagree, decide now". `reason`
+ * is a short internal code (never provider text), so this message stays free of
+ * anything a customer typed.
+ */
+const REVIEW_REASONS: Readonly<Record<string, string>> = Object.freeze({
+  payment_after_expiry: "Se cobró un pedido que ya había expirado. Revisa si hay stock para surtirlo o reembolsa.",
+  stock_commit_missed: "El pedido quedó pagado pero su apartado ya se había liberado: el stock NO se descontó.",
+});
+
+const renderTeamPaymentNeedsReview = (publicId: string, reason: string): TeamMessage => ({
+  title: "🚨 Pedido pagado que necesita revisión",
+  lines: [
+    `Folio: ${publicId}`,
+    REVIEW_REASONS[reason] ?? `Motivo: ${reason}`,
+  ],
+});
+
 const renderTeamShipmentIncident = (
   publicId: string,
   status: string,
@@ -39,4 +57,9 @@ const renderTeamShipmentIncident = (
 });
 
 export type { TeamOrderSnapshot };
-export { renderTeamOrderPaid, renderTeamPaymentFailed, renderTeamShipmentIncident };
+export {
+  renderTeamOrderPaid,
+  renderTeamPaymentFailed,
+  renderTeamPaymentNeedsReview,
+  renderTeamShipmentIncident,
+};

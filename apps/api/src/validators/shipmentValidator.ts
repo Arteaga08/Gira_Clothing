@@ -10,8 +10,9 @@ const createShipmentSchema = Joi.object({
     "any.required": "Indica el número de guía.",
     "string.empty": "Indica el número de guía.",
   }),
-  trackingUrl: Joi.string().trim().uri({ scheme: ["http", "https"] }).max(500).messages({
-    "string.uri": "El enlace de seguimiento no es una URL válida.",
+  // https only: this link ships inside the customer's tracking email.
+  trackingUrl: Joi.string().trim().uri({ scheme: ["https"] }).max(500).messages({
+    "string.uri": "El enlace de seguimiento debe ser una URL https válida.",
   }),
 });
 

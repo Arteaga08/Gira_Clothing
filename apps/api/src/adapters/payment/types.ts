@@ -52,6 +52,12 @@ interface ProviderEvent {
 interface PaymentProvider {
   createPayment(input: CreatePaymentInput): Promise<PaymentView>;
   getPayment(providerId: string): Promise<PaymentView>;
+  /**
+   * Closes the charging window. Called when an order expires: the hold is gone
+   * and the price and the stock behind it may both have moved, so the customer
+   * must not be able to confirm that intent minutes or hours later.
+   */
+  cancelPayment(providerId: string): Promise<void>;
   refundPayment(providerId: string, amount?: number): Promise<void>;
   /** Verifies signature + timestamp tolerance. Throws AppError(400) on failure. */
   parseWebhookEvent(rawBody: Buffer, signature: string): ProviderEvent;

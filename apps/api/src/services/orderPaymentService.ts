@@ -1,4 +1,4 @@
-import type { Types } from "mongoose";
+import mongoose, { type Types } from "mongoose";
 import {
   AuditAction,
   AuditModule,
@@ -9,11 +9,10 @@ import {
 } from "@gira/shared";
 import { Order, type OrderDocument } from "../models/Order.js";
 import { commitReservation, releaseReservation } from "./reservationService.js";
-import { adjustOnHand } from "./inventoryService.js";
+import { restockUnits } from "./inventoryService.js";
 import { assertTransition } from "../utils/orderTransitions.js";
 import { recordAudit } from "./auditService.js";
 import { enqueueNotification } from "./notificationService.js";
-import type { RequestContext } from "../utils/requestContext.js";
 
 /**
  * The effects of a payment outcome on an order. Lives apart from
@@ -26,8 +25,6 @@ import type { RequestContext } from "../utils/requestContext.js";
  * and no-ops if the effect already landed. That is what makes a re-delivered
  * Stripe webhook (or a job that runs twice) harmless.
  */
-
-const SYSTEM_CTX: RequestContext = {};
 
 /**
  * Notifications are queued, never sent here. Two reasons this is not a detail:
@@ -83,10 +80,52 @@ const LEFT_THE_WAREHOUSE = new Set<OrderStatus>([
   OrderStatus.DELIVERED,
 ]);
 
+/** Terminal statuses that mean the order is dead but the money still arrived. */
+const DEAD_ON_ARRIVAL = new Set<OrderStatus>([OrderStatus.EXPIRED, OrderStatus.CANCELLED]);
+
+/**
+ * Raises the one alarm a human must act on. The order is NOT moved: what to do
+ * with money that landed on a dead order (surtir si queda stock, o reembolsar)
+ * is a business call, and guessing it in code would be worse than asking.
+ *
+ * The audit entry and the alert both carry only the folio and a short internal
+ * reason code — no customer data reaches the Telegram group.
+ */
+const flagForReview = async (
+  order: OrderDocument,
+  reason: string,
+  action: AuditAction,
+): Promise<void> => {
+  await recordAudit({
+    actorType: "system",
+    action,
+    module: AuditModule.PAYMENTS,
+    targetId: order.publicId,
+    after: { reason, status: order.status },
+  });
+  await enqueueNotification({
+    channel: NotificationChannelKind.TEAM,
+    type: NotificationType.TEAM_PAYMENT_NEEDS_REVIEW,
+    to: "team",
+    order: order._id,
+    payload: { publicId: order.publicId, reason },
+  });
+};
+
 const applyPaymentSucceeded = async (orderId: Types.ObjectId): Promise<void> => {
   const order = await Order.findById(orderId);
   if (!order) return;
-  if (order.status !== OrderStatus.PENDING_PAYMENT) return; // already settled — idempotent
+  if (order.status !== OrderStatus.PENDING_PAYMENT) {
+    // Already paid/shipped/refunded: genuinely idempotent, nothing to say.
+    // Expired or cancelled is NOT the same thing — the charging window was
+    // supposed to be closed and the customer was charged anyway. Returning
+    // quietly here is how an order used to dead-end with the money taken, no
+    // email, no stock movement and no trace.
+    if (DEAD_ON_ARRIVAL.has(order.status)) {
+      await flagForReview(order, "payment_after_expiry", AuditAction.PAYMENT_AFTER_EXPIRY);
+    }
+    return;
+  }
 
   assertTransition(order.status, OrderStatus.PAID);
   order.status = OrderStatus.PAID;
@@ -96,7 +135,13 @@ const applyPaymentSucceeded = async (orderId: Types.ObjectId): Promise<void> => 
   await order.save();
 
   // Only now do the held units leave the warehouse for good. Idempotent by design.
-  await commitReservation(order._id);
+  // A `false` here means the hold was already released (the expiry sweep won the
+  // race): the order is paid but its units went back on sale, so somebody has to
+  // look. Discarding this boolean is what made that outcome invisible.
+  const committed = await commitReservation(order._id);
+  if (!committed) {
+    await flagForReview(order, "stock_commit_missed", AuditAction.STOCK_COMMIT_MISSED);
+  }
 
   await queueOrderPaidNotifications(order);
 
@@ -175,25 +220,54 @@ const applyPaymentCancelled = async (orderId: Types.ObjectId): Promise<void> => 
  * landing back here, and the current status alone would lose that context.
  */
 const applyRefund = async (orderId: Types.ObjectId): Promise<void> => {
-  const order = await Order.findById(orderId);
-  if (!order || order.status === OrderStatus.REFUNDED) return;
+  // The status change and the restock are ONE unit of work. Before, the order
+  // was saved first and the lines were reposted afterwards in a bare loop: a
+  // throw on line 2 of 3 left the order refunded with the inventory permanently
+  // half-corrected, and nothing retried it — webhookService had already claimed
+  // the event, so the redelivery was discarded as a duplicate.
+  let publicId = "";
+  let restocked = false;
 
-  const everLeftTheWarehouse = order.statusHistory.some((h) => LEFT_THE_WAREHOUSE.has(h.status));
-  assertTransition(order.status, OrderStatus.REFUNDED);
-  order.status = OrderStatus.REFUNDED;
-  order.payment.status = PaymentStatus.REFUNDED;
-  order.statusHistory.push({ status: OrderStatus.REFUNDED, at: new Date() });
-  await order.save();
+  const session = await mongoose.startSession();
+  try {
+    await session.withTransaction(async () => {
+      // Reset per attempt: withTransaction retries its callback on transient errors.
+      publicId = "";
+      restocked = false;
 
-  if (!everLeftTheWarehouse) {
-    for (const line of order.lines) {
-      await adjustOnHand(String(line.variant), line.qty, SYSTEM_CTX);
-    }
+      const order = await Order.findById(orderId).session(session);
+      if (!order || order.status === OrderStatus.REFUNDED) return;
+
+      const everLeftTheWarehouse = order.statusHistory.some((h) =>
+        LEFT_THE_WAREHOUSE.has(h.status),
+      );
+      assertTransition(order.status, OrderStatus.REFUNDED);
+      order.status = OrderStatus.REFUNDED;
+      order.payment.status = PaymentStatus.REFUNDED;
+      order.statusHistory.push({ status: OrderStatus.REFUNDED, at: new Date() });
+      await order.save({ session });
+
+      if (!everLeftTheWarehouse) {
+        await restockUnits(order.lines, session);
+        restocked = true;
+      }
+      publicId = order.publicId;
+    });
+  } finally {
+    await session.endSession();
+  }
+
+  // Nothing moved (already refunded, or the order is gone) -> nothing to audit.
+  if (!publicId) return;
+
+  // Audited only after the transaction committed: an entry for a write that was
+  // rolled back is worse than no entry at all.
+  if (restocked) {
     await recordAudit({
       actorType: "system",
       action: AuditAction.STOCK_RESTOCKED_ON_REFUND,
       module: AuditModule.INVENTORY,
-      targetId: order.publicId,
+      targetId: publicId,
     });
   }
 
@@ -201,7 +275,7 @@ const applyRefund = async (orderId: Types.ObjectId): Promise<void> => {
     actorType: "system",
     action: AuditAction.PAYMENT_REFUNDED,
     module: AuditModule.PAYMENTS,
-    targetId: order.publicId,
+    targetId: publicId,
   });
 };
 

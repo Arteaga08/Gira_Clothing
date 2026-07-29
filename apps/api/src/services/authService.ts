@@ -141,14 +141,33 @@ const verifyTotp = (encryptedSecret: string, code: string): boolean => {
  * Two-step activation (BACKEND_SECURITY_GUIDELINES §2). `setup` generates and
  * stores the encrypted secret with enabled:false ("pending"); `enable` requires
  * a valid TOTP before flipping enabled:true.
+ *
+ * RE-configuring an ALREADY ACTIVE second factor requires the current code, for
+ * the same reason `disableTwoFactor` does: this function turns 2FA off on its
+ * way to issuing a new secret, so without the check it is a one-request bypass
+ * of the very control `disable` refuses to perform without proof. A stolen
+ * session must not be able to strip the second factor by either door.
  */
 const setupTwoFactor = async (
   userId: string,
   ctx: RequestContext = {},
+  code?: string,
 ): Promise<{ otpauthUrl: string; secret: string }> => {
   const user = await User.findById(userId).select("+twoFactor.secret");
   if (!user) {
     throw new AppError("Usuario no encontrado.", 404);
+  }
+
+  if (user.twoFactor.enabled) {
+    if (!code) {
+      throw new AppError(
+        "Tu verificación en dos pasos ya está activa: ingresa el código actual para reconfigurarla.",
+        400,
+      );
+    }
+    if (!user.twoFactor.secret || !verifyTotp(user.twoFactor.secret, code)) {
+      throw new AppError("El código de verificación es incorrecto.", 400);
+    }
   }
 
   const secret = authenticator.generateSecret();

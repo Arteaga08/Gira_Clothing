@@ -42,13 +42,14 @@ const twoFactorSchema = new Schema<TwoFactor>(
 const userSchema = new Schema<UserAttrs, UserModel, UserMethods>(
   {
     name: { type: String, required: true, trim: true, maxlength: 120 },
+    // `unique` already builds the index — adding `index: true` too makes
+    // Mongoose declare it twice and warn on every boot.
     email: {
       type: String,
       required: true,
       unique: true,
       lowercase: true,
       trim: true,
-      index: true,
     },
     password: { type: String, required: true, select: false },
     role: {

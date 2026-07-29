@@ -6,6 +6,7 @@ import { loginLimiter, registerLimiter } from "../../middlewares/rateLimit.js";
 import {
   registerSchema,
   loginSchema,
+  twoFactorSetupSchema,
   twoFactorCodeSchema,
 } from "../../validators/authValidator.js";
 import {
@@ -27,7 +28,13 @@ authRouter.get("/me", protect, me);
 
 // Admin-only 2FA management. Admin routes are not rate-limited (auth + role is
 // the barrier). restrictTo always runs after protect.
-authRouter.post("/2fa/setup", protect, restrictTo(UserRole.ADMIN), twoFactorSetup);
+authRouter.post(
+  "/2fa/setup",
+  protect,
+  restrictTo(UserRole.ADMIN),
+  validate(twoFactorSetupSchema),
+  twoFactorSetup,
+);
 authRouter.post(
   "/2fa/enable",
   protect,
