@@ -25,6 +25,8 @@ interface StubEventPayload {
   orderId: string;
   paymentId: string;
   amount?: number;
+  /** Decline reason, so a `failed` event can be simulated end to end without Stripe. */
+  reason?: string;
 }
 
 const STUB_EVENT_MAP: Record<string, ProviderEventType> = {
@@ -83,6 +85,7 @@ const createStubPaymentProvider = (): PaymentProvider => {
       paymentId: payload.paymentId,
       orderId: payload.orderId,
       ...(payload.amount !== undefined ? { amount: payload.amount } : {}),
+      ...(payload.reason ? { reason: payload.reason } : {}),
       raw: payload,
     };
   };

@@ -60,21 +60,30 @@ interface EventObjectRef {
   metadata?: Record<string, string>;
   amount?: number;
   status?: string;
+  /** Decline reason on a PaymentIntent event. */
+  last_payment_error?: { message?: string } | null;
+  /** Same thing on a Charge event — Stripe does NOT mirror it into the field above. */
+  failure_message?: string | null;
 }
 
 /** Pulls the payment intent id and our own orderId (from metadata, if present) out of any event shape. */
 const extractRefs = (
   event: Stripe.Event,
-): { paymentId?: string; orderId?: string; amount?: number } => {
+): { paymentId?: string; orderId?: string; amount?: number; reason?: string } => {
   const obj = event.data.object as unknown as EventObjectRef;
   const paymentIntentRef = obj.payment_intent;
   const paymentId =
     (typeof paymentIntentRef === "string" ? paymentIntentRef : paymentIntentRef?.id) ?? obj.id;
   const orderId = obj.metadata?.orderId;
+  // Both shapes are read because the two event families carry the decline text in
+  // different fields. Dropping this is what left `order.payment.lastError` empty
+  // and the team's "pago rechazado" alert with nothing actionable in it.
+  const reason = obj.last_payment_error?.message ?? obj.failure_message ?? undefined;
   return {
     ...(paymentId ? { paymentId } : {}),
     ...(orderId ? { orderId } : {}),
     ...(obj.amount !== undefined ? { amount: obj.amount } : {}),
+    ...(reason ? { reason } : {}),
   };
 };
 

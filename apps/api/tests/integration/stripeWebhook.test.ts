@@ -290,6 +290,9 @@ describe("Stripe webhook · payment_intent.payment_failed / .canceled", () => {
     const updated = await Order.findById(order._id).lean();
     expect(updated?.status).toBe(OrderStatus.PENDING_PAYMENT);
     expect(updated?.payment.status).toBe(PaymentStatus.FAILED);
+    // El motivo de Stripe debe llegar hasta la orden: es lo que el panel muestra
+    // y lo que lleva el aviso de Telegram. Sin esto el admin ve "falló" y nada más.
+    expect(updated?.payment.lastError).toBe("Tarjeta rechazada");
 
     const variant = await Variant.findById(variantId).lean();
     expect(variant?.reserved).toBe(qty);
