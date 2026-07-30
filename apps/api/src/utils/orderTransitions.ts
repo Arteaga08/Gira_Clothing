@@ -1,4 +1,4 @@
-import { OrderStatus } from "@gira/shared";
+import { OrderStatus, ORDER_STATUS_LABELS as LABELS } from "@gira/shared";
 import { AppError } from "./AppError.js";
 
 /**
@@ -35,18 +35,6 @@ const ADMIN_ALLOWED: ReadonlySet<string> = new Set([
   `${OrderStatus.PENDING_PAYMENT}->${OrderStatus.CANCELLED}`,
 ]);
 
-const LABELS: Readonly<Record<OrderStatus, string>> = Object.freeze({
-  [OrderStatus.PENDING_PAYMENT]: "pendiente de pago",
-  [OrderStatus.PAID]: "pagada",
-  [OrderStatus.PROCESSING]: "en preparación",
-  [OrderStatus.SHIPPED]: "enviada",
-  [OrderStatus.DELIVERED]: "entregada",
-  [OrderStatus.CANCELLED]: "cancelada",
-  [OrderStatus.EXPIRED]: "expirada",
-  [OrderStatus.REFUNDED]: "reembolsada",
-  [OrderStatus.DISPUTED]: "en disputa",
-});
-
 const canTransition = (from: OrderStatus, to: OrderStatus): boolean =>
   TRANSITIONS[from].includes(to);
 
@@ -66,4 +54,4 @@ const assertAdminTransition = (from: OrderStatus, to: OrderStatus): void => {
   }
 };
 
-export { TRANSITIONS, LABELS, canTransition, assertTransition, assertAdminTransition };
+export { TRANSITIONS, LABELS, ADMIN_ALLOWED, canTransition, assertTransition, assertAdminTransition };

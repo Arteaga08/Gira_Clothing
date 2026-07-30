@@ -1,9 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { OrderStatus } from "@gira/shared";
+import { OrderStatus, ORDER_STATUS_LABELS } from "@gira/shared";
 import {
   canTransition,
   assertTransition,
   assertAdminTransition,
+  LABELS,
 } from "../../src/utils/orderTransitions.js";
 
 describe("canTransition", () => {
@@ -76,5 +77,8 @@ describe("assertAdminTransition", () => {
         expect.objectContaining({ statusCode: 403 }),
       );
     }
+  });
+  it("LABELS de @gira/shared coincide con el mapa re-exportado", () => {
+    expect(LABELS).toBe(ORDER_STATUS_LABELS);
   });
 });

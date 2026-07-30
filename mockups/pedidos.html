@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Pedidos · Panel Gira</title>
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="mockup.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#contenido">Saltar al contenido</a>
+
+    <div class="shell">
+      <!-- ══ SIDEBAR ══════════════════════════════════════════════════════ -->
+      <aside class="sidebar" id="sidebar" data-open="false" aria-label="Navegación principal">
+        <div class="sidebar-head">
+          <span class="brand"><span class="brand-mark">G</span>Gira</span>
+          <button class="icon-button hamburger" type="button" aria-label="Cerrar navegación">
+            <svg><use href="icons.svg#ph-x" /></svg>
+          </button>
+        </div>
+
+        <nav class="sidebar-nav">
+          <div class="nav-group">
+            <p class="nav-group-label" id="g-op">Operación</p>
+            <div role="group" aria-labelledby="g-op">
+              <a class="nav-item" href="resumen-a.html">
+                <svg class="nav-icon"><use href="icons.svg#ph-squares-four" /></svg> Resumen
+              </a>
+              <a class="nav-item" href="pedidos.html" aria-current="page">
+                <svg class="nav-icon"><use href="icons.svg#ph-shopping-bag-open" /></svg> Pedidos
+                <span class="nav-count">6</span>
+              </a>
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-truck" /></svg> Envíos
+                <span class="nav-count">15</span>
+              </a>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <p class="nav-group-label" id="g-cat">Catálogo</p>
+            <div role="group" aria-labelledby="g-cat">
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-t-shirt" /></svg> Productos
+              </a>
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-paint-brush" /></svg> Estampas
+              </a>
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-folders" /></svg> Familias
+              </a>
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-tag" /></svg> Categorías
+              </a>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <p class="nav-group-label" id="g-inv">Inventario</p>
+            <div role="group" aria-labelledby="g-inv">
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-package" /></svg> Variantes
+                <span class="nav-count">8</span>
+              </a>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <p class="nav-group-label" id="g-sys">Sistema</p>
+            <div role="group" aria-labelledby="g-sys">
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-users" /></svg> Clientes
+              </a>
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-sliders-horizontal" /></svg> Ajustes
+              </a>
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-clipboard-text" /></svg> Auditoría
+              </a>
+            </div>
+          </div>
+        </nav>
+
+        <div class="sidebar-foot">
+          <button class="user-chip" type="button">
+            <span class="user-avatar">MA</span>
+            <span class="user-meta">
+              <span class="user-name">Manuel A.</span><br />
+              <span class="user-role">Administrador · 2FA activo</span>
+            </span>
+          </button>
+        </div>
+      </aside>
+
+      <!-- ══ MAIN ═════════════════════════════════════════════════════════ -->
+      <div class="main">
+        <header class="topbar">
+          <button
+            class="icon-button hamburger"
+            type="button"
+            aria-label="Abrir navegación"
+            aria-controls="sidebar"
+            aria-expanded="false"
+          >
+            <svg><use href="icons.svg#ph-list" /></svg>
+          </button>
+
+          <div class="topbar-title">
+            <strong>Pedidos</strong>
+            <span>miércoles, 29 de julio de 2026</span>
+          </div>
+
+          <div class="topbar-actions">
+            <button class="icon-button" type="button" aria-label="Actualizar datos">
+              <svg><use href="icons.svg#ph-arrow-clockwise" /></svg>
+            </button>
+            <button class="icon-button bell" type="button" aria-label="Notificaciones: 4 pendientes">
+              <svg><use href="icons.svg#ph-bell" /></svg>
+              <span class="bell-dot" aria-hidden="true">4</span>
+            </button>
+          </div>
+        </header>
+
+        <nav class="breadcrumbs" aria-label="Ruta">
+          <a href="resumen-a.html">Panel</a>
+          <span aria-hidden="true">/</span>
+          <span aria-current="page">Pedidos</span>
+        </nav>
+
+        <main class="content" id="contenido">
+          <div class="page-header">
+            <div class="page-header-text">
+              <h1 class="page-title">Pedidos</h1>
+              <p class="page-subtitle">
+                47 pedidos en los últimos 30 días. Los importes están en la moneda con la que se
+                cobró cada uno.
+              </p>
+            </div>
+            <div class="page-actions">
+              <button class="btn" type="button">
+                <svg><use href="icons.svg#ph-arrow-square-out" /></svg> Exportar
+              </button>
+            </div>
+          </div>
+
+          <!-- ── Tabs ── mapean a ?status= (OrderStatus) ─────────────────── -->
+          <div class="tabs" role="tablist" aria-label="Filtrar por estado">
+            <button class="tab" role="tab" aria-selected="true">
+              Todas <span class="tab-count">47</span>
+            </button>
+            <button class="tab" role="tab" aria-selected="false">
+              Pendientes de pago <span class="tab-count">5</span>
+            </button>
+            <button class="tab" role="tab" aria-selected="false">
+              Pagadas <span class="tab-count">8</span>
+            </button>
+            <button class="tab" role="tab" aria-selected="false">
+              En preparación <span class="tab-count">6</span>
+            </button>
+            <button class="tab" role="tab" aria-selected="false">
+              Enviadas <span class="tab-count">14</span>
+            </button>
+            <button class="tab" role="tab" aria-selected="false">
+              Entregadas <span class="tab-count">11</span>
+            </button>
+            <button class="tab" role="tab" aria-selected="false">
+              Canceladas <span class="tab-count">2</span>
+            </button>
+            <button class="tab" role="tab" aria-selected="false">
+              Reembolsadas <span class="tab-count">1</span>
+            </button>
+            <button class="tab" role="tab" aria-selected="false">
+              En disputa <span class="tab-count">0</span>
+            </button>
+          </div>
+
+          <!-- ── Filters ── ?search= solo matchea customer.email y publicId ─ -->
+          <div class="filters">
+            <label class="field field-grow">
+              <svg><use href="icons.svg#ph-magnifying-glass" /></svg>
+              <span class="sr-only-label">Buscar</span>
+              <input type="search" placeholder="Buscar por correo o folio público" />
+            </label>
+            <label class="field">
+              <svg><use href="icons.svg#ph-funnel" /></svg>
+              <select aria-label="Ordenar por">
+                <option>Más recientes primero</option>
+                <option>Más antiguos primero</option>
+                <option>Importe mayor primero</option>
+                <option>Importe menor primero</option>
+                <option>Por estado</option>
+              </select>
+            </label>
+            <button class="btn" type="button">
+              <svg><use href="icons.svg#ph-arrow-clockwise" /></svg> Actualizar
+            </button>
+          </div>
+
+          <!-- ── Desktop: table ── GET /admin/orders ─────────────────────── -->
+          <section class="nb-card panel">
+            <div class="table-wrap">
+              <table class="table">
+                <caption class="sr-only-label">Pedidos, página 1 de 3</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Folio</th>
+                    <th scope="col">Fecha</th>
+                    <th scope="col">Cliente</th>
+                    <th scope="col">Estado</th>
+                    <th scope="col" style="text-align: right">Total</th>
+                    <th scope="col" style="text-align: right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span class="id-mono">Kq7mZ2vN…</span></td>
+                    <td>
+                      <p class="cell-strong">29 jul</p>
+                      <p class="cell-sub mono">18:42</p>
+                    </td>
+                    <td>
+                      <p class="cell-strong">Ana Sofía Ruiz</p>
+                      <p class="cell-sub">ana.ruiz@example.mx</p>
+                    </td>
+                    <td><span class="chip" data-status="pending_payment">pendiente de pago</span></td>
+                    <td class="num">$1,120.00<br /><span class="cell-sub">MXN</span></td>
+                    <td class="actions">
+                      <a class="btn btn-sm" href="pedido-detalle.html">Ver</a>
+                      <button class="btn btn-sm btn-danger" type="button">Cancelar</button>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td><span class="id-mono">P3nX8dLq…</span></td>
+                    <td>
+                      <p class="cell-strong">29 jul</p>
+                      <p class="cell-sub mono">16:05</p>
+                    </td>
+                    <td>
+                      <p class="cell-strong">Diego Fernández</p>
+                      <p class="cell-sub">diego.fdz@example.com</p>
+                    </td>
+                    <td><span class="chip" data-status="paid">pagada</span></td>
+                    <td class="num">$915.00<br /><span class="cell-sub">MXN</span></td>
+                    <td class="actions">
+                      <a class="btn btn-sm" href="pedido-detalle.html">Ver</a>
+                      <button class="btn btn-sm btn-primary" type="button">Preparar</button>
+                    </td>
+                  </tr>
+
+                  <tr data-busy="true">
+                    <td><span class="id-mono">Zt5kR9wB…</span></td>
+                    <td>
+                      <p class="cell-strong">29 jul</p>
+                      <p class="cell-sub mono">11:23</p>
+                    </td>
+                    <td>
+                      <p class="cell-strong">Mariana Cortés</p>
+                      <p class="cell-sub">mariana.cortes@example.mx</p>
+                    </td>
+                    <td><span class="chip" data-status="processing">en preparación</span></td>
+                    <td class="num">$1,845.00<br /><span class="cell-sub">MXN</span></td>
+                    <td class="actions">
+                      <a class="btn btn-sm" href="pedido-detalle.html">Ver</a>
+                      <button class="btn btn-sm" type="button" disabled>Enviando…</button>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td><span class="id-mono">H8vC1mYq…</span></td>
+                    <td>
+                      <p class="cell-strong">28 jul</p>
+                      <p class="cell-sub mono">09:14</p>
+                    </td>
+                    <td>
+                      <p class="cell-strong">Luis Ángel Bravo</p>
+                      <p class="cell-sub">la.bravo@example.com</p>
+                    </td>
+                    <td><span class="chip" data-status="shipped">enviada</span></td>
+                    <td class="num">$690.00<br /><span class="cell-sub">MXN</span></td>
+                    <td class="actions">
+                      <a class="btn btn-sm" href="pedido-detalle.html">Ver</a>
+                      <button class="btn btn-sm" type="button">Entregada</button>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td><span class="id-mono">Nb4jT7sD…</span></td>
+                    <td>
+                      <p class="cell-strong">27 jul</p>
+                      <p class="cell-sub mono">20:51</p>
+                    </td>
+                    <td>
+                      <p class="cell-strong">Renata Ibarra</p>
+                      <p class="cell-sub">renata.ibarra@example.mx</p>
+                    </td>
+                    <td><span class="chip" data-status="delivered">entregada</span></td>
+                    <td class="num">$1,380.00<br /><span class="cell-sub">MXN</span></td>
+                    <td class="actions"><a class="btn btn-sm" href="pedido-detalle.html">Ver</a></td>
+                  </tr>
+
+                  <tr>
+                    <td><span class="id-mono">Wr2yF6hK…</span></td>
+                    <td>
+                      <p class="cell-strong">27 jul</p>
+                      <p class="cell-sub mono">13:07</p>
+                    </td>
+                    <td>
+                      <p class="cell-strong">Paola Zamudio</p>
+                      <p class="cell-sub">paola.z@example.com</p>
+                    </td>
+                    <td><span class="chip" data-status="paid">pagada</span></td>
+                    <td class="num">$138.00<br /><span class="cell-sub">USD</span></td>
+                    <td class="actions">
+                      <a class="btn btn-sm" href="pedido-detalle.html">Ver</a>
+                      <button class="btn btn-sm btn-primary" type="button">Preparar</button>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td><span class="id-mono">Ge6bV2xM…</span></td>
+                    <td>
+                      <p class="cell-strong">26 jul</p>
+                      <p class="cell-sub mono">17:33</p>
+                    </td>
+                    <td>
+                      <p class="cell-strong">Sofía Lerma</p>
+                      <p class="cell-sub">sofia.lerma@example.mx</p>
+                    </td>
+                    <td><span class="chip" data-status="cancelled">cancelada</span></td>
+                    <td class="num">$450.00<br /><span class="cell-sub">MXN</span></td>
+                    <td class="actions"><a class="btn btn-sm" href="pedido-detalle.html">Ver</a></td>
+                  </tr>
+
+                  <tr>
+                    <td><span class="id-mono">Jd9pQ4nT…</span></td>
+                    <td>
+                      <p class="cell-strong">25 jul</p>
+                      <p class="cell-sub mono">08:02</p>
+                    </td>
+                    <td>
+                      <p class="cell-strong">Emilio Vargas</p>
+                      <p class="cell-sub">emilio.vargas@example.com</p>
+                    </td>
+                    <td><span class="chip" data-status="refunded">reembolsada</span></td>
+                    <td class="num">$2,260.00<br /><span class="cell-sub">MXN</span></td>
+                    <td class="actions"><a class="btn btn-sm" href="pedido-detalle.html">Ver</a></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- ── Mobile: same rows as cards, no horizontal scroll ─────── -->
+            <div class="card-list" style="padding: var(--space-3)">
+              <article class="nb-card order-card">
+                <div class="order-card-top">
+                  <span class="id-mono">Kq7mZ2vN…</span>
+                  <span class="chip" data-status="pending_payment">pendiente de pago</span>
+                </div>
+                <div class="order-card-body">
+                  <p class="cell-strong">Ana Sofía Ruiz</p>
+                  <p class="cell-sub">ana.ruiz@example.mx · 29 jul, 18:42</p>
+                </div>
+                <div class="order-card-foot">
+                  <span class="order-card-total">$1,120.00 <span class="cell-sub">MXN</span></span>
+                  <span style="display: flex; gap: var(--space-2)">
+                    <a class="btn btn-sm" href="pedido-detalle.html">Ver</a>
+                    <button class="btn btn-sm btn-danger" type="button">Cancelar</button>
+                  </span>
+                </div>
+              </article>
+
+              <article class="nb-card order-card">
+                <div class="order-card-top">
+                  <span class="id-mono">P3nX8dLq…</span>
+                  <span class="chip" data-status="paid">pagada</span>
+                </div>
+                <div class="order-card-body">
+                  <p class="cell-strong">Diego Fernández</p>
+                  <p class="cell-sub">diego.fdz@example.com · 29 jul, 16:05</p>
+                </div>
+                <div class="order-card-foot">
+                  <span class="order-card-total">$915.00 <span class="cell-sub">MXN</span></span>
+                  <span style="display: flex; gap: var(--space-2)">
+                    <a class="btn btn-sm" href="pedido-detalle.html">Ver</a>
+                    <button class="btn btn-sm btn-primary" type="button">Preparar</button>
+                  </span>
+                </div>
+              </article>
+
+              <article class="nb-card order-card">
+                <div class="order-card-top">
+                  <span class="id-mono">Zt5kR9wB…</span>
+                  <span class="chip" data-status="processing">en preparación</span>
+                </div>
+                <div class="order-card-body">
+                  <p class="cell-strong">Mariana Cortés</p>
+                  <p class="cell-sub">mariana.cortes@example.mx · 29 jul, 11:23</p>
+                </div>
+                <div class="order-card-foot">
+                  <span class="order-card-total">$1,845.00 <span class="cell-sub">MXN</span></span>
+                  <span style="display: flex; gap: var(--space-2)">
+                    <a class="btn btn-sm" href="pedido-detalle.html">Ver</a>
+                    <button class="btn btn-sm" type="button">Enviar</button>
+                  </span>
+                </div>
+              </article>
+
+              <article class="nb-card order-card">
+                <div class="order-card-top">
+                  <span class="id-mono">H8vC1mYq…</span>
+                  <span class="chip" data-status="shipped">enviada</span>
+                </div>
+                <div class="order-card-body">
+                  <p class="cell-strong">Luis Ángel Bravo</p>
+                  <p class="cell-sub">la.bravo@example.com · 28 jul, 09:14</p>
+                </div>
+                <div class="order-card-foot">
+                  <span class="order-card-total">$690.00 <span class="cell-sub">MXN</span></span>
+                  <span style="display: flex; gap: var(--space-2)">
+                    <a class="btn btn-sm" href="pedido-detalle.html">Ver</a>
+                    <button class="btn btn-sm" type="button">Entregada</button>
+                  </span>
+                </div>
+              </article>
+
+              <article class="nb-card order-card">
+                <div class="order-card-top">
+                  <span class="id-mono">Wr2yF6hK…</span>
+                  <span class="chip" data-status="paid">pagada</span>
+                </div>
+                <div class="order-card-body">
+                  <p class="cell-strong">Paola Zamudio</p>
+                  <p class="cell-sub">paola.z@example.com · 27 jul, 13:07</p>
+                </div>
+                <div class="order-card-foot">
+                  <span class="order-card-total">$138.00 <span class="cell-sub">USD</span></span>
+                  <span style="display: flex; gap: var(--space-2)">
+                    <a class="btn btn-sm" href="pedido-detalle.html">Ver</a>
+                    <button class="btn btn-sm btn-primary" type="button">Preparar</button>
+                  </span>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <!-- ── Pagination ── desde meta {total, page, pages, limit} ────── -->
+          <nav class="pagination" aria-label="Paginación">
+            <p class="pagination-info">
+              Mostrando <strong>1–20</strong> de <strong>47</strong> · página 1 de 3
+            </p>
+            <div class="pagination-controls">
+              <button class="btn btn-sm" type="button" disabled aria-label="Página anterior">
+                <svg><use href="icons.svg#ph-caret-left" /></svg> Anterior
+              </button>
+              <button class="btn btn-sm" type="button" aria-label="Página siguiente">
+                Siguiente <svg><use href="icons.svg#ph-caret-right" /></svg>
+              </button>
+            </div>
+          </nav>
+
+          <!-- ── Los otros dos estados que la plantilla debe cubrir ──────── -->
+          <div class="panel-grid panel-grid-halves" style="margin-top: var(--space-6)">
+            <section class="nb-card panel">
+              <div class="panel-head">
+                <h2 class="panel-title">Estado vacío</h2>
+                <span class="panel-hint">Pestaña sin resultados</span>
+              </div>
+              <div class="empty">
+                <span class="empty-icon"><svg><use href="icons.svg#ph-tray" /></svg></span>
+                <p class="empty-title">Sin pedidos en disputa</p>
+                <p class="empty-text">
+                  Cuando una disputa entre por el webhook de pago aparecerá aquí. No hay nada que
+                  hacer por ahora.
+                </p>
+              </div>
+            </section>
+
+            <section class="nb-card panel">
+              <div class="panel-head">
+                <h2 class="panel-title">Estado de carga</h2>
+                <span class="panel-hint">El skeleton reserva la altura exacta de la fila</span>
+              </div>
+              <div style="padding: 0">
+                <div class="skel-row">
+                  <span class="skel" style="width: 5rem"></span>
+                  <span class="skel" style="width: 3rem"></span>
+                  <span class="skel" style="flex: 1"></span>
+                  <span class="skel" style="width: 6rem"></span>
+                </div>
+                <div class="skel-row">
+                  <span class="skel" style="width: 5rem"></span>
+                  <span class="skel" style="width: 3rem"></span>
+                  <span class="skel" style="flex: 1"></span>
+                  <span class="skel" style="width: 6rem"></span>
+                </div>
+                <div class="skel-row">
+                  <span class="skel" style="width: 5rem"></span>
+                  <span class="skel" style="width: 3rem"></span>
+                  <span class="skel" style="flex: 1"></span>
+                  <span class="skel" style="width: 6rem"></span>
+                </div>
+                <div class="skel-row">
+                  <span class="skel" style="width: 5rem"></span>
+                  <span class="skel" style="width: 3rem"></span>
+                  <span class="skel" style="flex: 1"></span>
+                  <span class="skel" style="width: 6rem"></span>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <p class="mock-note">
+            <strong>Plantilla de lista.</strong> Este molde se repite en Envíos, Inventario y las
+            cuatro pantallas de Catálogo: encabezado, pestañas, filtros, tabla en escritorio y
+            tarjetas en móvil, tres estados y paginación. La fila
+            <span class="mono">Zt5kR9wB…</span> está a media acción a propósito: atenuada e inerte
+            hasta que responda el API. Sigue a
+            <a href="pedido-detalle.html"><strong>Detalle de pedido</strong></a>.
+          </p>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

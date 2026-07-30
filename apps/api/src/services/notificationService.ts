@@ -6,6 +6,7 @@ import {
   NotificationStatus,
   NotificationType,
 } from "@gira/shared";
+import type { OutboxHealth, FailedNotificationSample } from "@gira/shared";
 import { Notification, PURGE_AFTER_DAYS, type NotificationDocument } from "../models/Notification.js";
 import { recordAudit } from "./auditService.js";
 import { logger } from "../config/logger.js";
@@ -140,5 +141,74 @@ const markFailed = async (doc: NotificationDocument, error: string): Promise<voi
   }
 };
 
+const FAILED_SAMPLE_SIZE = 5;
+const LAST_ERROR_MAX_LENGTH = 200;
+
+interface StatusCountRow {
+  _id: NotificationStatus;
+  count: number;
+}
+
+interface FailedSampleLean {
+  _id: unknown;
+  channel: FailedNotificationSample["channel"];
+  type: FailedNotificationSample["type"];
+  attempts: number;
+  lastError?: string;
+  updatedAt: Date;
+}
+
+/**
+ * Read-only outbox health for the dashboard's notification card. Deliberately
+ * omits `to` (a customer's email) and `payload` (name + email) from the
+ * failed sample — this is an operational health check, not a place a
+ * customer's PII should surface. `lastError` is provider text and gets
+ * truncated so a provider echoing the recipient back can't leak it whole.
+ */
+const getOutboxHealth = async (): Promise<OutboxHealth> => {
+  const [statusRows, oldestPending, failedDocs] = await Promise.all([
+    Notification.aggregate<StatusCountRow>([{ $group: { _id: "$status", count: { $sum: 1 } } }]),
+    Notification.findOne({ status: NotificationStatus.PENDING })
+      .sort({ nextAttemptAt: 1 })
+      .select("nextAttemptAt")
+      .lean(),
+    Notification.find({ status: NotificationStatus.FAILED })
+      .sort({ updatedAt: -1 })
+      .limit(FAILED_SAMPLE_SIZE)
+      .select("channel type attempts lastError updatedAt")
+      .lean(),
+  ]);
+
+  const countOf = (status: NotificationStatus): number =>
+    statusRows.find((r) => r._id === status)?.count ?? 0;
+
+  return {
+    pending: countOf(NotificationStatus.PENDING),
+    sending: countOf(NotificationStatus.SENDING),
+    failed: countOf(NotificationStatus.FAILED),
+    sent: countOf(NotificationStatus.SENT),
+    // Reserved: no distinct STALE status exists. A SENDING doc past
+    // STALE_SENDING_MS is transient and reclaimed by the next dispatcher
+    // run, not a separate queryable state — see Pendientes conocidos.
+    stale: 0,
+    oldestPendingAt: (oldestPending as { nextAttemptAt?: Date } | null)?.nextAttemptAt ?? null,
+    failedSample: (failedDocs as unknown as FailedSampleLean[]).map((doc) => ({
+      id: String(doc._id),
+      channel: doc.channel,
+      type: doc.type,
+      attempts: doc.attempts,
+      ...(doc.lastError ? { lastError: doc.lastError.slice(0, LAST_ERROR_MAX_LENGTH) } : {}),
+      updatedAt: doc.updatedAt,
+    })),
+  };
+};
+
 export type { EnqueueInput };
-export { enqueueNotification, claimNextBatch, markSent, markFailed, MAX_ATTEMPTS };
+export {
+  enqueueNotification,
+  claimNextBatch,
+  markSent,
+  markFailed,
+  MAX_ATTEMPTS,
+  getOutboxHealth,
+};

@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Detalle de pedido · Panel Gira</title>
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="mockup.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <!-- ══ SIDEBAR ══════════════════════════════════════════════════════ -->
+      <aside class="sidebar" aria-label="Navegación principal">
+        <div class="sidebar-head">
+          <span class="brand"><span class="brand-mark">G</span>Gira</span>
+        </div>
+
+        <nav class="sidebar-nav">
+          <div class="nav-group">
+            <p class="nav-group-label" id="g-op">Operación</p>
+            <div role="group" aria-labelledby="g-op">
+              <a class="nav-item" href="resumen-a.html">
+                <svg class="nav-icon"><use href="icons.svg#ph-squares-four" /></svg> Resumen
+              </a>
+              <a class="nav-item" href="pedidos.html" aria-current="page">
+                <svg class="nav-icon"><use href="icons.svg#ph-shopping-bag-open" /></svg> Pedidos
+                <span class="nav-count">6</span>
+              </a>
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-truck" /></svg> Envíos
+                <span class="nav-count">15</span>
+              </a>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <p class="nav-group-label" id="g-cat">Catálogo</p>
+            <div role="group" aria-labelledby="g-cat">
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-t-shirt" /></svg> Productos
+              </a>
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-paint-brush" /></svg> Estampas
+              </a>
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-folders" /></svg> Familias
+              </a>
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-tag" /></svg> Categorías
+              </a>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <p class="nav-group-label" id="g-inv">Inventario</p>
+            <div role="group" aria-labelledby="g-inv">
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-package" /></svg> Variantes
+                <span class="nav-count">8</span>
+              </a>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <p class="nav-group-label" id="g-sys">Sistema</p>
+            <div role="group" aria-labelledby="g-sys">
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-users" /></svg> Clientes
+              </a>
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-sliders-horizontal" /></svg> Ajustes
+              </a>
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-clipboard-text" /></svg> Auditoría
+              </a>
+            </div>
+          </div>
+        </nav>
+
+        <div class="sidebar-foot">
+          <button class="user-chip" type="button">
+            <span class="user-avatar">MA</span>
+            <span class="user-meta">
+              <span class="user-name">Manuel A.</span><br />
+              <span class="user-role">Administrador · 2FA activo</span>
+            </span>
+          </button>
+        </div>
+      </aside>
+
+      <!-- ══ MAIN (la lista queda detrás del panel) ═══════════════════════ -->
+      <div class="main">
+        <header class="topbar">
+          <button class="icon-button hamburger" type="button" aria-label="Abrir navegación">
+            <svg><use href="icons.svg#ph-list" /></svg>
+          </button>
+          <div class="topbar-title">
+            <strong>Pedidos</strong>
+            <span>miércoles, 29 de julio de 2026</span>
+          </div>
+          <div class="topbar-actions">
+            <button class="icon-button bell" type="button" aria-label="Notificaciones: 4 pendientes">
+              <svg><use href="icons.svg#ph-bell" /></svg>
+              <span class="bell-dot" aria-hidden="true">4</span>
+            </button>
+          </div>
+        </header>
+
+        <nav class="breadcrumbs" aria-label="Ruta">
+          <a href="resumen-a.html">Panel</a>
+          <span aria-hidden="true">/</span>
+          <a href="pedidos.html">Pedidos</a>
+          <span aria-hidden="true">/</span>
+          <span aria-current="page">P3nX8dLq…</span>
+        </nav>
+
+        <main class="content">
+          <div class="page-header">
+            <div class="page-header-text">
+              <h1 class="page-title">Pedidos</h1>
+              <p class="page-subtitle">
+                El detalle abre en panel lateral, sin perder la lista ni los filtros de atrás.
+              </p>
+            </div>
+          </div>
+
+          <section class="nb-card panel">
+            <div class="table-wrap">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th scope="col">Folio</th>
+                    <th scope="col">Fecha</th>
+                    <th scope="col">Cliente</th>
+                    <th scope="col">Estado</th>
+                    <th scope="col" style="text-align: right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span class="id-mono">Kq7mZ2vN…</span></td>
+                    <td><p class="cell-strong">29 jul</p></td>
+                    <td><p class="cell-strong">Ana Sofía Ruiz</p></td>
+                    <td><span class="chip" data-status="pending_payment">pendiente de pago</span></td>
+                    <td class="num">$1,120.00</td>
+                  </tr>
+                  <tr style="background: var(--color-brand-soft)">
+                    <td><span class="id-mono">P3nX8dLq…</span></td>
+                    <td><p class="cell-strong">29 jul</p></td>
+                    <td><p class="cell-strong">Diego Fernández</p></td>
+                    <td><span class="chip" data-status="paid">pagada</span></td>
+                    <td class="num">$915.00</td>
+                  </tr>
+                  <tr>
+                    <td><span class="id-mono">Zt5kR9wB…</span></td>
+                    <td><p class="cell-strong">29 jul</p></td>
+                    <td><p class="cell-strong">Mariana Cortés</p></td>
+                    <td><span class="chip" data-status="processing">en preparación</span></td>
+                    <td class="num">$1,845.00</td>
+                  </tr>
+                  <tr>
+                    <td><span class="id-mono">H8vC1mYq…</span></td>
+                    <td><p class="cell-strong">28 jul</p></td>
+                    <td><p class="cell-strong">Luis Ángel Bravo</p></td>
+                    <td><span class="chip" data-status="shipped">enviada</span></td>
+                    <td class="num">$690.00</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="card-list" style="padding: var(--space-3)">
+              <article class="nb-card order-card">
+                <div class="order-card-top">
+                  <span class="id-mono">P3nX8dLq…</span>
+                  <span class="chip" data-status="paid">pagada</span>
+                </div>
+                <div class="order-card-body">
+                  <p class="cell-strong">Diego Fernández</p>
+                  <p class="cell-sub">diego.fdz@example.com · 29 jul, 16:05</p>
+                </div>
+              </article>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <!-- ══ SLIDE-OVER ── GET /admin/orders/:id ════════════════════════════ -->
+    <div class="slideover-scrim"></div>
+
+    <aside
+      class="slideover"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="so-title"
+      aria-describedby="so-sub"
+    >
+      <div class="slideover-head">
+        <div style="flex: 1; min-width: 0">
+          <p class="section-label" id="so-sub">Pedido · pagada · 29 jul 2026, 16:05</p>
+          <h2 class="panel-title" id="so-title" style="font-size: var(--text-lg)">
+            <span class="mono">P3nX8dLq…</span>
+          </h2>
+          <p class="dlist-sub" style="margin-top: 2px">Diego Fernández · diego.fdz@example.com</p>
+        </div>
+        <a class="icon-button" href="pedidos.html" aria-label="Cerrar detalle">
+          <svg><use href="icons.svg#ph-x" /></svg>
+        </a>
+      </div>
+
+      <div class="slideover-body">
+        <!-- ── Artículos ── lines[] del snapshot inmutable ──────────────── -->
+        <section>
+          <h3 class="section-label">Artículos</h3>
+          <div class="line-item">
+            <span class="line-thumb">sin<br />imagen</span>
+            <div class="dlist-main">
+              <p class="dlist-title">Playera oversize · Cempasúchil</p>
+              <p class="dlist-sub mono">PLY-CEMP-M · $450.00 c/u</p>
+            </div>
+            <span class="line-qty">×1</span>
+            <span class="dlist-value">$450.00</span>
+          </div>
+          <div class="line-item">
+            <span class="line-thumb">sin<br />imagen</span>
+            <div class="dlist-main">
+              <p class="dlist-title">Tote bag de lona · Ola Grande</p>
+              <p class="dlist-sub mono">TOT-OLAG-U · $310.00 c/u</p>
+            </div>
+            <span class="line-qty">×1</span>
+            <span class="dlist-value">$310.00</span>
+          </div>
+        </section>
+
+        <!-- ── Totales ── todo en centavos en el API ────────────────────── -->
+        <section class="totals">
+          <dl class="kv">
+            <div class="kv-row"><dt>Subtotal</dt><dd>$760.00</dd></div>
+            <div class="kv-row"><dt>Envío nacional</dt><dd>$150.00</dd></div>
+            <div class="kv-row"><dt>Tipo de cambio</dt><dd>n/a · cobro en MXN</dd></div>
+            <div class="kv-row totals-grand"><dt>Total</dt><dd>$915.00 MXN</dd></div>
+          </dl>
+        </section>
+
+        <!-- ── Envío ── shipping{} ──────────────────────────────────────── -->
+        <section>
+          <h3 class="section-label">Dirección de envío</h3>
+          <p style="font-size: var(--text-sm); line-height: 1.55">
+            <strong>Diego Fernández</strong><br />
+            Av. Chapultepec 1247, interior 4B<br />
+            Guadalajara, Jalisco, 44160<br />
+            México (MX) · tel. 33 1234 5678
+          </p>
+        </section>
+
+        <!-- ── Pago ── payment{} solo visible para admin ────────────────── -->
+        <section>
+          <h3 class="section-label">Pago</h3>
+          <dl class="kv">
+            <div class="kv-row"><dt>Proveedor</dt><dd>stripe</dd></div>
+            <div class="kv-row"><dt>Estado</dt><dd>succeeded</dd></div>
+            <div class="kv-row">
+              <dt>Intent</dt>
+              <dd class="mono" style="font-size: var(--text-xs)">pi_3Qk…8Xa</dd>
+            </div>
+            <div class="kv-row"><dt>Pagado el</dt><dd>29 jul 2026, 16:06</dd></div>
+          </dl>
+        </section>
+
+        <!-- ── Guía ── POST /admin/orders/:id/shipment ──────────────────── -->
+        <section>
+          <h3 class="section-label">Guía de envío</h3>
+          <div class="notice" style="background: var(--status-processing)">
+            <svg><use href="icons.svg#ph-truck" /></svg>
+            <span>
+              <strong>Sin guía todavía</strong>
+              Al capturar paquetería y número de rastreo el pedido pasa a
+              <em>enviada</em> y se encola el correo de seguimiento al cliente.
+            </span>
+          </div>
+          <div class="filters" style="margin: var(--space-3) 0 0">
+            <label class="field field-grow">
+              <span class="sr-only-label">Paquetería</span>
+              <select aria-label="Paquetería">
+                <option>Elegir paquetería…</option>
+                <option>DHL</option>
+                <option>FedEx</option>
+                <option>Estafeta</option>
+              </select>
+            </label>
+            <label class="field field-grow">
+              <span class="sr-only-label">Número de rastreo</span>
+              <input type="text" placeholder="Número de rastreo" />
+            </label>
+          </div>
+        </section>
+
+        <!-- ── Historial ── statusHistory[] ─────────────────────────────── -->
+        <section>
+          <h3 class="section-label">Historial de estados</h3>
+          <div class="timeline">
+            <div class="timeline-item">
+              <span class="timeline-marker"><span class="timeline-dot"></span></span>
+              <div class="timeline-body">
+                <p class="dlist-title">Pendiente de pago</p>
+                <p class="timeline-when">29 jul 2026, 16:05</p>
+                <p class="timeline-note">Orden creada · stock reservado 30 min</p>
+              </div>
+            </div>
+            <div class="timeline-item">
+              <span class="timeline-marker"><span class="timeline-dot"></span></span>
+              <div class="timeline-body">
+                <p class="dlist-title">Pagada</p>
+                <p class="timeline-when">29 jul 2026, 16:06</p>
+                <p class="timeline-note">
+                  Webhook <code class="mono">payment_intent.succeeded</code> · reserva confirmada
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ── Acciones ── solo las 4 transiciones que un humano puede hacer ─ -->
+      <!-- ADMIN_ALLOWED en apps/api/src/utils/orderTransitions.ts:31
+           paid→processing · processing→shipped · shipped→delivered
+           pending_payment→cancelled
+           Esta orden está en `paid`, así que el único botón de avance legal es
+           "Marcar en preparación". Cualquier otro no se renderiza: si el API
+           contesta 403 o 409, es un bug, no un camino de la interfaz. -->
+      <div class="slideover-foot">
+        <button class="btn btn-primary" type="button">
+          <svg><use href="icons.svg#ph-check" /></svg> Marcar en preparación
+        </button>
+        <button class="btn btn-danger" type="button">Solicitar reembolso</button>
+        <a class="btn btn-ghost" href="pedidos.html">Cerrar</a>
+      </div>
+    </aside>
+
+    <p class="mock-note" style="position: fixed; bottom: 0; left: 0; right: 0; margin: 0; border-radius: 0">
+      <strong>Detalle de pedido.</strong> Panel lateral de 34rem que en móvil ocupa el 100 %.
+      “Solicitar reembolso” solo pide el reembolso al proveedor: el estado
+      <em>reembolsada</em> lo decide el webhook, y el copy del diálogo tiene que decirlo.
+    </p>
+  </body>
+</html>

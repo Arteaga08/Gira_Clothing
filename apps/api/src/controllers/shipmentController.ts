@@ -7,6 +7,7 @@ import {
   createShipment,
   addShipmentEvent,
   getAdminShipment,
+  listAdminShipments,
 } from "../services/shipmentService.js";
 
 /** Nested under /admin/orders/:id — the order id arrives via mergeParams. */
@@ -34,4 +35,10 @@ const detail = asyncHandler(async (req: Request, res: Response) => {
   sendResponse(res, 200, "Envío obtenido correctamente.", { shipment });
 });
 
-export { create, addEvent, detail };
+/** GET /admin/shipments — global list, unrelated to the order-nested routes above. */
+const list = asyncHandler(async (req: Request, res: Response) => {
+  const { items, meta } = await listAdminShipments(req.query);
+  sendResponse(res, 200, "Envíos obtenidos correctamente.", { shipments: items }, meta);
+});
+
+export { create, addEvent, detail, list };

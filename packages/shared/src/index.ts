@@ -25,3 +25,96 @@ export {
   NotificationType,
   NotificationStatus,
 };
+
+// ── M5: dashboard DTOs + shared labels (Wire<T>-mapped by the HTTP client) ──
+import type { Wire } from "./types/wire.js";
+import type {
+  OrderCustomer,
+  ShippingAddress,
+  ImageAttrs,
+  OrderLine,
+  PublicOrder,
+  StatusHistoryEntry,
+  OrderPayment,
+  AdminOrder,
+} from "./types/order.js";
+import type {
+  PrintFamily,
+  ProductCategory,
+  Print,
+  Measurements,
+  Product,
+  Variant,
+} from "./types/catalog.js";
+import type { PublicUser, AdminUser } from "./types/user.js";
+import type {
+  ShipmentEvent,
+  PublicTracking,
+  AdminShipment,
+  AdminShipmentListItem,
+} from "./types/shipment.js";
+import type {
+  ShippingSettings,
+  CurrencySettings,
+  ReservationSettings,
+  InventorySettings,
+  Settings,
+} from "./types/settings.js";
+import type {
+  RevenueEntry,
+  TopProduct,
+  OrderStatsAlerts,
+  OrderStats,
+  LowStockItem,
+  InventoryStats,
+  Overview,
+  TimeseriesPoint,
+  TimeseriesStats,
+  FailedNotificationSample,
+  OutboxHealth,
+} from "./types/stats.js";
+import type { AuditLogEntry } from "./types/audit.js";
+import { ORDER_STATUS_LABELS } from "./labels/orderStatus.js";
+import { SHIPMENT_STATUS_LABELS } from "./labels/shipmentStatus.js";
+
+export type {
+  Wire,
+  OrderCustomer,
+  ShippingAddress,
+  ImageAttrs,
+  OrderLine,
+  PublicOrder,
+  StatusHistoryEntry,
+  OrderPayment,
+  AdminOrder,
+  PrintFamily,
+  ProductCategory,
+  Print,
+  Measurements,
+  Product,
+  Variant,
+  PublicUser,
+  AdminUser,
+  ShipmentEvent,
+  PublicTracking,
+  AdminShipment,
+  AdminShipmentListItem,
+  ShippingSettings,
+  CurrencySettings,
+  ReservationSettings,
+  InventorySettings,
+  Settings,
+  RevenueEntry,
+  TopProduct,
+  OrderStatsAlerts,
+  OrderStats,
+  LowStockItem,
+  InventoryStats,
+  Overview,
+  TimeseriesPoint,
+  TimeseriesStats,
+  FailedNotificationSample,
+  OutboxHealth,
+  AuditLogEntry,
+};
+export { ORDER_STATUS_LABELS, SHIPMENT_STATUS_LABELS };

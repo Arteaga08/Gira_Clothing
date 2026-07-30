@@ -1,5 +1,6 @@
 import Joi from "joi";
 import { ShipmentStatus } from "@gira/shared";
+import { listQueryBase } from "./listQueryValidator.js";
 
 const createShipmentSchema = Joi.object({
   carrier: Joi.string().trim().min(2).max(60).required().messages({
@@ -24,4 +25,9 @@ const addShipmentEventSchema = Joi.object({
   note: Joi.string().trim().max(200),
 });
 
-export { createShipmentSchema, addShipmentEventSchema };
+const shipmentListQuerySchema = listQueryBase.keys({
+  status: Joi.string().valid(...Object.values(ShipmentStatus)),
+  carrier: Joi.string().trim().max(60),
+});
+
+export { createShipmentSchema, addShipmentEventSchema, shipmentListQuerySchema };

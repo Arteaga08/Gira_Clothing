@@ -180,6 +180,8 @@ orderSchema.index({ user: 1, createdAt: -1 });
 orderSchema.index({ status: 1, createdAt: 1 });
 // Admin search by customer.
 orderSchema.index({ "customer.email": 1, createdAt: -1 });
+// Timeseries aggregation scans the whole range by createdAt regardless of status.
+orderSchema.index({ createdAt: -1 });
 
 const Order = model<OrderAttrs, OrderModel>("Order", orderSchema);
 

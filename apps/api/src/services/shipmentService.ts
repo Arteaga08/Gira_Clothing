@@ -6,7 +6,8 @@ import {
   OrderStatus,
   ShipmentStatus,
 } from "@gira/shared";
-import { Shipment, type ShipmentDocument } from "../models/Shipment.js";
+import type { ApiMeta, AdminShipmentListItem } from "@gira/shared";
+import { Shipment, type ShipmentDocument, type ShipmentAttrs } from "../models/Shipment.js";
 import { Order, type OrderDocument } from "../models/Order.js";
 import { AppError } from "../utils/AppError.js";
 import { assertAdminTransition } from "../utils/orderTransitions.js";
@@ -14,6 +15,12 @@ import { assertShipmentTransition } from "../utils/shipmentTransitions.js";
 import { enqueueNotification } from "./notificationService.js";
 import { recordAudit } from "./auditService.js";
 import type { RequestContext } from "../utils/requestContext.js";
+import {
+  parseListQuery,
+  buildMeta,
+  type ListQueryConfig,
+  type RawListQuery,
+} from "../utils/parseListQuery.js";
 
 /**
  * Manual shipping. Capturing the guide is ONE operation, not two: it creates the
@@ -229,5 +236,58 @@ const getPublicTracking = async (orderPublicId: string): Promise<PublicTracking>
   return toPublicTracking(shipment);
 };
 
+const LIST_CONFIG: ListQueryConfig = {
+  sortable: ["createdAt", "updatedAt", "status"],
+  searchable: ["trackingNumber", "orderPublicId", "carrier"],
+  defaultSort: "-updatedAt",
+};
+
+interface ShipmentListQuery extends RawListQuery {
+  status?: ShipmentStatus;
+  carrier?: string;
+}
+
+// Structural read-model over a .lean() doc — events[] is unbounded, so the
+// list projects it away and keeps only the timestamp of the latest one.
+// Kept separate from AdminShipment/toAdminShipment on purpose: that DTO has
+// no id/order (the order-nested endpoint never needed them), and a list row
+// does.
+interface ShipmentListLean extends Omit<ShipmentAttrs, "events"> {
+  _id: unknown;
+  events: { at: Date }[];
+}
+
+const toShipmentListItem = (doc: ShipmentListLean): AdminShipmentListItem => ({
+  id: String(doc._id),
+  order: String(doc.order),
+  orderPublicId: doc.orderPublicId,
+  carrier: doc.carrier,
+  trackingNumber: doc.trackingNumber,
+  ...(doc.trackingUrl ? { trackingUrl: doc.trackingUrl } : {}),
+  status: doc.status,
+  lastEventAt: doc.events.at(-1)?.at ?? doc.updatedAt,
+  createdAt: doc.createdAt,
+  updatedAt: doc.updatedAt,
+});
+
+const listAdminShipments = async (
+  query: ShipmentListQuery,
+): Promise<{ items: AdminShipmentListItem[]; meta: ApiMeta }> => {
+  const filters: Record<string, unknown> = {};
+  if (query.status) filters.status = query.status;
+  if (query.carrier) filters.carrier = query.carrier;
+
+  const { filter, sort, skip, limit, page } = parseListQuery(query, LIST_CONFIG, filters);
+  const [docs, total] = await Promise.all([
+    Shipment.find(filter).sort(sort).skip(skip).limit(limit).lean(),
+    Shipment.countDocuments(filter),
+  ]);
+
+  return {
+    items: (docs as unknown as ShipmentListLean[]).map(toShipmentListItem),
+    meta: buildMeta(total, { page, limit }),
+  };
+};
+
 export type { CreateShipmentInput, PublicTracking, AdminShipment };
-export { createShipment, addShipmentEvent, getAdminShipment, getPublicTracking };
+export { createShipment, addShipmentEvent, getAdminShipment, getPublicTracking, listAdminShipments };

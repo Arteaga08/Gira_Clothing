@@ -82,6 +82,9 @@ userSchema.methods.comparePassword = function comparePassword(
   return bcrypt.compare(candidate, this.password);
 };
 
+// Admin listing's default sort (-createdAt) and the role filter both need this.
+userSchema.index({ role: 1, createdAt: -1 });
+
 const User = model<UserAttrs, UserModel>("User", userSchema);
 
 export type { UserAttrs, UserDocument, TwoFactor };
