@@ -1,4 +1,4 @@
-import { ShipmentStatus } from "@gira/shared";
+import { ShipmentStatus, SHIPMENT_STATUS_LABELS as LABELS } from "@gira/shared";
 import { AppError } from "./AppError.js";
 
 /**
@@ -26,14 +26,6 @@ const TRANSITIONS: Readonly<Record<ShipmentStatus, readonly ShipmentStatus[]>> =
   [ShipmentStatus.DELIVERED]: [],
   [ShipmentStatus.RETURNED]: [],
   [ShipmentStatus.LOST]: [],
-});
-
-const LABELS: Readonly<Record<ShipmentStatus, string>> = Object.freeze({
-  [ShipmentStatus.IN_TRANSIT]: "en tránsito",
-  [ShipmentStatus.OUT_FOR_DELIVERY]: "en reparto",
-  [ShipmentStatus.DELIVERED]: "entregado",
-  [ShipmentStatus.RETURNED]: "devuelto",
-  [ShipmentStatus.LOST]: "extraviado",
 });
 
 const canTransitionShipment = (from: ShipmentStatus, to: ShipmentStatus): boolean =>

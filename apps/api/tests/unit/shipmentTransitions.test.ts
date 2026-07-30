@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { ShipmentStatus } from "@gira/shared";
+import { ShipmentStatus, SHIPMENT_STATUS_LABELS } from "@gira/shared";
 import {
   canTransitionShipment,
   assertShipmentTransition,
+  LABELS,
 } from "../../src/utils/shipmentTransitions.js";
 
 describe("canTransitionShipment", () => {
@@ -44,5 +45,8 @@ describe("assertShipmentTransition", () => {
     expect(() =>
       assertShipmentTransition(ShipmentStatus.IN_TRANSIT, ShipmentStatus.DELIVERED),
     ).not.toThrow();
+  });
+  it("LABELS de @gira/shared coincide con el mapa re-exportado", () => {
+    expect(LABELS).toBe(SHIPMENT_STATUS_LABELS);
   });
 });

@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Resumen · Dirección B (Operación) · Panel Gira</title>
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="mockup.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#contenido">Saltar al contenido</a>
+
+    <div class="shell">
+      <!-- ══ SIDEBAR ══════════════════════════════════════════════════════ -->
+      <aside class="sidebar" id="sidebar" data-open="false" aria-label="Navegación principal">
+        <div class="sidebar-head">
+          <span class="brand"><span class="brand-mark">G</span>Gira</span>
+          <button class="icon-button hamburger" type="button" aria-label="Cerrar navegación">
+            <svg><use href="icons.svg#ph-x" /></svg>
+          </button>
+        </div>
+
+        <nav class="sidebar-nav">
+          <div class="nav-group">
+            <p class="nav-group-label" id="g-op">Operación</p>
+            <div role="group" aria-labelledby="g-op">
+              <a class="nav-item" href="resumen-b.html" aria-current="page">
+                <svg class="nav-icon"><use href="icons.svg#ph-squares-four" /></svg> Resumen
+              </a>
+              <a class="nav-item" href="pedidos.html">
+                <svg class="nav-icon"><use href="icons.svg#ph-shopping-bag-open" /></svg> Pedidos
+                <span class="nav-count">6</span>
+              </a>
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-truck" /></svg> Envíos
+                <span class="nav-count">15</span>
+              </a>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <p class="nav-group-label" id="g-cat">Catálogo</p>
+            <div role="group" aria-labelledby="g-cat">
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-t-shirt" /></svg> Productos
+              </a>
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-paint-brush" /></svg> Estampas
+              </a>
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-folders" /></svg> Familias
+              </a>
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-tag" /></svg> Categorías
+              </a>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <p class="nav-group-label" id="g-inv">Inventario</p>
+            <div role="group" aria-labelledby="g-inv">
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-package" /></svg> Variantes
+                <span class="nav-count">8</span>
+              </a>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <p class="nav-group-label" id="g-sys">Sistema</p>
+            <div role="group" aria-labelledby="g-sys">
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-users" /></svg> Clientes
+              </a>
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-sliders-horizontal" /></svg> Ajustes
+              </a>
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-clipboard-text" /></svg> Auditoría
+              </a>
+            </div>
+          </div>
+        </nav>
+
+        <div class="sidebar-foot">
+          <button class="user-chip" type="button">
+            <span class="user-avatar">MA</span>
+            <span class="user-meta">
+              <span class="user-name">Manuel A.</span><br />
+              <span class="user-role">Administrador · 2FA activo</span>
+            </span>
+          </button>
+        </div>
+      </aside>
+
+      <!-- ══ MAIN ═════════════════════════════════════════════════════════ -->
+      <div class="main">
+        <header class="topbar">
+          <button
+            class="icon-button hamburger"
+            type="button"
+            aria-label="Abrir navegación"
+            aria-controls="sidebar"
+            aria-expanded="false"
+          >
+            <svg><use href="icons.svg#ph-list" /></svg>
+          </button>
+
+          <div class="topbar-title">
+            <strong>Buenas tardes, Manuel</strong>
+            <span>miércoles, 29 de julio de 2026</span>
+          </div>
+
+          <div class="topbar-actions">
+            <button class="icon-button" type="button" aria-label="Actualizar datos">
+              <svg><use href="icons.svg#ph-arrow-clockwise" /></svg>
+            </button>
+            <button class="icon-button bell" type="button" aria-label="Notificaciones: 4 pendientes">
+              <svg><use href="icons.svg#ph-bell" /></svg>
+              <span class="bell-dot" aria-hidden="true">4</span>
+            </button>
+          </div>
+        </header>
+
+        <nav class="breadcrumbs" aria-label="Ruta">
+          <a href="#">Panel</a>
+          <span aria-hidden="true">/</span>
+          <span aria-current="page">Resumen</span>
+        </nav>
+
+        <main class="content" id="contenido">
+          <div class="page-header">
+            <div class="page-header-text">
+              <h1 class="page-title">Resumen</h1>
+              <p class="page-subtitle">
+                Primero lo que necesita trabajo, después cómo va el periodo.
+              </p>
+            </div>
+            <div class="page-actions">
+              <div class="segmented" role="group" aria-label="Rango del periodo">
+                <button type="button" aria-pressed="false">7 d</button>
+                <button type="button" aria-pressed="true">30 d</button>
+                <button type="button" aria-pressed="false">90 d</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── HERO: alerts band ── data.orders.alerts ─────────────────── -->
+          <!-- Deliberately range-independent: un pedido atorado no lo está
+               menos porque estés viendo los números de ayer. -->
+          <section class="nb-card band" aria-labelledby="b-atencion">
+            <div class="band-head">
+              <svg><use href="icons.svg#ph-warning" /></svg>
+              <h2 class="band-title" id="b-atencion">Requiere atención</h2>
+              <span class="band-hint">6 pedidos · ahora mismo, sin importar el rango</span>
+              <span class="band-hint band-hint-right">Actualizado hace 40 s</span>
+            </div>
+            <div class="panel-body">
+              <div class="alert-grid alert-grid-wide">
+                <a class="alert-tile" href="pedidos.html" data-level="warn">
+                  <p class="alert-tile-count">3</p>
+                  <p class="alert-tile-label">Pagadas sin preparar (+24 h)</p>
+                </a>
+                <a class="alert-tile" href="pedidos.html" data-level="danger">
+                  <p class="alert-tile-count">2</p>
+                  <p class="alert-tile-label">Atoradas en preparación (+72 h)</p>
+                </a>
+                <a class="alert-tile" href="pedidos.html" data-level="warn">
+                  <p class="alert-tile-count">1</p>
+                  <p class="alert-tile-label">En tránsito demasiado tiempo (+14 d)</p>
+                </a>
+                <a class="alert-tile" href="pedidos.html" data-level="clear">
+                  <p class="alert-tile-count">0</p>
+                  <p class="alert-tile-label">En disputa</p>
+                </a>
+                <a class="alert-tile" href="pedidos.html" data-level="clear">
+                  <p class="alert-tile-count">5</p>
+                  <p class="alert-tile-label">Pendientes de pago (flujo normal)</p>
+                </a>
+              </div>
+            </div>
+          </section>
+
+          <!-- ── KPI strip ── demoted to one divided card ───────────────── -->
+          <section class="nb-card kpi-strip" aria-label="Indicadores del periodo">
+            <div class="kpi-cell">
+              <p class="kpi-cell-label">
+                <svg><use href="icons.svg#ph-shopping-bag-open" /></svg> Pedidos
+              </p>
+              <p class="kpi-cell-value">47</p>
+              <p class="kpi-cell-foot">39 con pago confirmado</p>
+            </div>
+            <div class="kpi-cell kpi-cell-accent">
+              <p class="kpi-cell-label">
+                <svg><use href="icons.svg#ph-currency-dollar" /></svg> Ingresos MXN
+              </p>
+              <p class="kpi-cell-value">$34,175<small>.00</small></p>
+              <p class="kpi-cell-foot">36 pedidos · ticket $949.31</p>
+            </div>
+            <div class="kpi-cell">
+              <p class="kpi-cell-label">
+                <svg><use href="icons.svg#ph-currency-dollar" /></svg> Ingresos USD
+              </p>
+              <p class="kpi-cell-value">$414<small>.00</small></p>
+              <p class="kpi-cell-foot">3 pedidos · ticket $138.00</p>
+            </div>
+            <div class="kpi-cell">
+              <p class="kpi-cell-label">
+                <svg><use href="icons.svg#ph-package" /></svg> Unidades vendidas
+              </p>
+              <p class="kpi-cell-value">68</p>
+              <p class="kpi-cell-foot">394 disponibles en inventario</p>
+            </div>
+          </section>
+
+          <!-- ── Chart, full width ── GET /admin/stats/timeseries?days=30 ── -->
+          <section class="nb-card panel" aria-labelledby="b-serie" style="margin-bottom: var(--space-4)">
+            <div class="panel-head">
+              <h2 class="panel-title" id="b-serie">Pedidos por día</h2>
+              <span class="panel-hint">30 jun – 29 jul · zona horaria America/Mexico_City</span>
+              <div class="panel-head-actions">
+                <div class="segmented" role="group" aria-label="Serie">
+                  <button type="button" aria-pressed="true">Pedidos</button>
+                  <button type="button" aria-pressed="false">Ingresos</button>
+                  <button type="button" aria-pressed="false">Unidades</button>
+                </div>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div class="chart-scroll">
+                <div
+                  class="chart"
+                  role="img"
+                  aria-label="Pedidos por día del 30 de junio al 29 de julio de 2026. Máximo 5 pedidos el 16 de julio, total 47, seis días sin pedidos."
+                >
+                  <span class="bar" style="height: 40%"></span>
+                  <span class="bar" style="height: 20%"></span>
+                  <span class="bar" data-zero="true" style="height: 6%"></span>
+                  <span class="bar" style="height: 60%"></span>
+                  <span class="bar" style="height: 20%"></span>
+                  <span class="bar" style="height: 40%"></span>
+                  <span class="bar" style="height: 80%"></span>
+                  <span class="bar" style="height: 20%"></span>
+                  <span class="bar" style="height: 40%"></span>
+                  <span class="bar" data-zero="true" style="height: 6%"></span>
+                  <span class="bar" style="height: 20%"></span>
+                  <span class="bar" style="height: 60%"></span>
+                  <span class="bar" style="height: 40%"></span>
+                  <span class="bar" style="height: 20%"></span>
+                  <span class="bar" data-zero="true" style="height: 6%"></span>
+                  <span class="bar" style="height: 40%"></span>
+                  <span class="bar" style="height: 100%"></span>
+                  <span class="bar" style="height: 60%"></span>
+                  <span class="bar" style="height: 20%"></span>
+                  <span class="bar" style="height: 40%"></span>
+                  <span class="bar" data-zero="true" style="height: 6%"></span>
+                  <span class="bar" style="height: 20%"></span>
+                  <span class="bar" style="height: 40%"></span>
+                  <span class="bar" style="height: 60%"></span>
+                  <span class="bar" style="height: 20%"></span>
+                  <span class="bar" data-zero="true" style="height: 6%"></span>
+                  <span class="bar" style="height: 40%"></span>
+                  <span class="bar" style="height: 20%"></span>
+                  <span class="bar" style="height: 20%"></span>
+                  <span class="bar" data-zero="true" style="height: 6%"></span>
+                </div>
+                <div class="chart-axis" aria-hidden="true">
+                  <span>30</span><span></span><span></span><span></span><span></span>
+                  <span>5</span><span></span><span></span><span></span><span></span>
+                  <span>10</span><span></span><span></span><span></span><span></span>
+                  <span>15</span><span></span><span></span><span></span><span></span>
+                  <span>20</span><span></span><span></span><span></span><span></span>
+                  <span>25</span><span></span><span></span><span></span><span>29</span>
+                </div>
+              </div>
+              <div class="chart-legend">
+                <span class="legend-key"><span class="legend-swatch"></span> Pedidos creados</span>
+                <span class="legend-key"
+                  ><span class="legend-swatch legend-swatch-zero"></span> Día sin pedidos</span
+                >
+                <span class="legend-key mono">Total 47 · Máx 5 · Prom 1.6/día</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- ── Working lists ──────────────────────────────────────────── -->
+          <div class="panel-grid panel-grid-halves">
+            <!-- GET /admin/orders?limit=6 -->
+            <section class="nb-card panel" aria-labelledby="b-cola">
+              <div class="panel-head">
+                <h2 class="panel-title" id="b-cola">Cola de trabajo</h2>
+                <span class="panel-hint">Pagadas y en preparación</span>
+                <div class="panel-head-actions">
+                  <a class="btn btn-sm btn-ghost" href="pedidos.html">Ver todos</a>
+                </div>
+              </div>
+              <div class="dlist">
+                <div class="dlist-row">
+                  <div class="dlist-main">
+                    <p class="dlist-title">Diego Fernández · 2 art.</p>
+                    <p class="dlist-sub mono">P3nX8dLq… · pagada hace 31 h</p>
+                  </div>
+                  <button class="btn btn-sm btn-primary" type="button">Preparar</button>
+                </div>
+                <div class="dlist-row">
+                  <div class="dlist-main">
+                    <p class="dlist-title">Paola Zamudio · 1 art.</p>
+                    <p class="dlist-sub mono">Wr2yF6hK… · pagada hace 28 h</p>
+                  </div>
+                  <button class="btn btn-sm btn-primary" type="button">Preparar</button>
+                </div>
+                <div class="dlist-row">
+                  <div class="dlist-main">
+                    <p class="dlist-title">Emilio Vargas · 3 art.</p>
+                    <p class="dlist-sub mono">Jd9pQ4nT… · pagada hace 26 h</p>
+                  </div>
+                  <button class="btn btn-sm btn-primary" type="button">Preparar</button>
+                </div>
+                <div class="dlist-row">
+                  <div class="dlist-main">
+                    <p class="dlist-title">Mariana Cortés · 2 art.</p>
+                    <p class="dlist-sub mono">Zt5kR9wB… · en preparación 4 d</p>
+                  </div>
+                  <button class="btn btn-sm" type="button">Enviar</button>
+                </div>
+                <div class="dlist-row">
+                  <div class="dlist-main">
+                    <p class="dlist-title">Sofía Lerma · 1 art.</p>
+                    <p class="dlist-sub mono">Ge6bV2xM… · en preparación 3 d</p>
+                  </div>
+                  <button class="btn btn-sm" type="button">Enviar</button>
+                </div>
+              </div>
+            </section>
+
+            <div class="stack">
+              <!-- data.inventory.lowStockItems -->
+              <section class="nb-card panel" aria-labelledby="b-stock">
+                <div class="panel-head">
+                  <h2 class="panel-title" id="b-stock">Stock bajo</h2>
+                  <span class="panel-hint">Umbral 3 · 2 agotadas, 6 bajas</span>
+                </div>
+                <div class="dlist">
+                  <div class="dlist-row">
+                    <div class="dlist-main">
+                      <p class="dlist-title mono">PLY-CEMP-XS</p>
+                      <p class="dlist-sub">Agotada</p>
+                    </div>
+                    <span class="chip" data-status="disputed">0</span>
+                  </div>
+                  <div class="dlist-row">
+                    <div class="dlist-main">
+                      <p class="dlist-title mono">SUD-VENA-XL</p>
+                      <p class="dlist-sub">Agotada</p>
+                    </div>
+                    <span class="chip" data-status="disputed">0</span>
+                  </div>
+                  <div class="dlist-row">
+                    <div class="dlist-main">
+                      <p class="dlist-title mono">PLY-BUGA-XS</p>
+                      <p class="dlist-sub">Stock bajo</p>
+                    </div>
+                    <span class="chip" data-status="pending_payment">1</span>
+                  </div>
+                  <div class="dlist-row">
+                    <div class="dlist-main">
+                      <p class="dlist-title mono">GOR-NOPA-U</p>
+                      <p class="dlist-sub">Stock bajo</p>
+                    </div>
+                    <span class="chip" data-status="pending_payment">2</span>
+                  </div>
+                  <div class="dlist-row">
+                    <div class="dlist-main">
+                      <p class="dlist-title mono">TOT-OLAG-U</p>
+                      <p class="dlist-sub">Stock bajo</p>
+                    </div>
+                    <span class="chip" data-status="pending_payment">3</span>
+                  </div>
+                </div>
+              </section>
+
+              <!-- data.orders.period.topProducts -->
+              <section class="nb-card panel" aria-labelledby="b-top">
+                <div class="panel-head">
+                  <h2 class="panel-title" id="b-top">Más vendidos</h2>
+                  <span class="panel-hint">Unidades en el periodo</span>
+                </div>
+                <div class="dlist">
+                  <div class="dlist-row">
+                    <span class="dlist-rank">1</span>
+                    <div class="dlist-main">
+                      <p class="dlist-title">Playera oversize · Cempasúchil</p>
+                      <p class="dlist-sub mono">PLY-CEMP-M</p>
+                    </div>
+                    <span class="dlist-value">14</span>
+                  </div>
+                  <div class="dlist-row">
+                    <span class="dlist-rank">2</span>
+                    <div class="dlist-main">
+                      <p class="dlist-title">Sudadera con capucha · Venado Azul</p>
+                      <p class="dlist-sub mono">SUD-VENA-L</p>
+                    </div>
+                    <span class="dlist-value">11</span>
+                  </div>
+                  <div class="dlist-row">
+                    <span class="dlist-rank">3</span>
+                    <div class="dlist-main">
+                      <p class="dlist-title">Playera oversize · Bugambilia</p>
+                      <p class="dlist-sub mono">PLY-BUGA-S</p>
+                    </div>
+                    <span class="dlist-value">9</span>
+                  </div>
+                  <div class="dlist-row">
+                    <span class="dlist-rank">4</span>
+                    <div class="dlist-main">
+                      <p class="dlist-title">Tote bag de lona · Ola Grande</p>
+                      <p class="dlist-sub mono">TOT-OLAG-U</p>
+                    </div>
+                    <span class="dlist-value">8</span>
+                  </div>
+                  <div class="dlist-row">
+                    <span class="dlist-rank">5</span>
+                    <div class="dlist-main">
+                      <p class="dlist-title">Playera oversize · Nopalera</p>
+                      <p class="dlist-sub mono">PLY-NOPA-L</p>
+                    </div>
+                    <span class="dlist-value">7</span>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+
+          <!-- GET /admin/notifications/health -->
+          <section class="nb-card panel" aria-labelledby="b-outbox" style="margin-top: var(--space-4)">
+            <div class="panel-head">
+              <h2 class="panel-title" id="b-outbox">Salud de notificaciones</h2>
+              <span class="panel-hint">214 enviadas · 3 pendientes · 1 fallida · 0 estancadas</span>
+              <div class="panel-head-actions">
+                <button class="btn btn-sm" type="button">Reintentar fallidas</button>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div class="notice">
+                <svg><use href="icons.svg#ph-warning" /></svg>
+                <span>
+                  <strong>1 notificación fallida tras 5 intentos</strong>
+                  <code class="mono">order_shipped</code> · canal correo · último error: “Recipient
+                  address rejected”. La más antigua en cola espera desde las 17:10.
+                </span>
+              </div>
+            </div>
+          </section>
+
+          <p class="mock-note">
+            <strong>Dirección B · “Operación”.</strong> Invierte la jerarquía de la referencia: la
+            banda de alertas es lo primero y los KPIs bajan a una tira compacta, porque el trabajo
+            del día son los pedidos atorados, no el número bonito. Compárala con
+            <a href="resumen-a.html"><strong>la dirección A</strong></a> y con
+            <a href="pedidos.html"><strong>Pedidos</strong></a>.
+          </p>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

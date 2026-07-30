@@ -154,4 +154,4 @@ const getOrderStats = async (query: StatsRangeQuery): Promise<OrderStats> => {
 };
 
 export type { OrderStats, RevenueEntry, TopProduct };
-export { getOrderStats, DEFAULT_DAYS };
+export { getOrderStats, DEFAULT_DAYS, REVENUE_STATUSES };

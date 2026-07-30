@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mockups · Panel admin Gira Clothing</title>
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="mockup.css" />
+    <style>
+      /* Chrome del visor. Nada de esto viaja a la app real. */
+      .viewer {
+        max-width: 100rem;
+        margin: 0 auto;
+        padding: var(--space-6) var(--space-4) var(--space-12);
+      }
+
+      .viewer-head {
+        margin-bottom: var(--space-6);
+      }
+
+      .viewer-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2);
+        margin-bottom: var(--space-6);
+      }
+
+      .frames {
+        display: grid;
+        gap: var(--space-6);
+        align-items: start;
+      }
+
+      @media (min-width: 1100px) {
+        .frames {
+          grid-template-columns: auto auto 1fr;
+        }
+      }
+
+      .frame {
+        min-width: 0;
+      }
+
+      .frame-label {
+        display: flex;
+        align-items: baseline;
+        gap: var(--space-2);
+        margin-bottom: var(--space-2);
+      }
+
+      .frame-label strong {
+        font-size: var(--text-sm);
+        font-weight: 800;
+      }
+
+      .frame-label span {
+        color: var(--color-text-muted);
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+      }
+
+      /* Cada iframe se renderiza a su ancho real y se reduce con scale, así el
+         layout interno ve el viewport correcto y los breakpoints disparan. */
+      .frame-box {
+        overflow: hidden;
+        border: var(--nb-border-width) solid var(--color-ink);
+        border-radius: var(--nb-radius);
+        box-shadow: var(--nb-shadow);
+        background: var(--color-surface);
+      }
+
+      .frame-box iframe {
+        display: block;
+        border: 0;
+        transform-origin: top left;
+      }
+
+      .f-mobile .frame-box {
+        width: 293px;
+        height: 660px;
+      }
+      .f-mobile iframe {
+        width: 390px;
+        height: 880px;
+        transform: scale(0.75);
+      }
+
+      .f-tablet .frame-box {
+        width: 375px;
+        height: 660px;
+      }
+      .f-tablet iframe {
+        width: 834px;
+        height: 1467px;
+        transform: scale(0.45);
+      }
+
+      .f-desktop .frame-box {
+        width: 100%;
+        max-width: 720px;
+        height: 660px;
+      }
+      .f-desktop iframe {
+        width: 1440px;
+        height: 1320px;
+        transform: scale(0.5);
+      }
+
+      .legend-note {
+        margin-top: var(--space-6);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="viewer">
+      <header class="viewer-head">
+        <h1 class="page-title">Panel admin · mockups</h1>
+        <p class="page-subtitle">
+          Referencia estática del Bloque 2. Neobrutalismo en el tratamiento de tarjetas y
+          componentes, sobre el layout y la jerarquía de la referencia. La paleta y la tipografía son
+          <strong>placeholders</strong>: viven completas en
+          <code class="mono">tokens.css</code>, y cambiarlas no toca ningún componente.
+        </p>
+      </header>
+
+      <nav class="viewer-controls" aria-label="Pantallas">
+        <button class="btn btn-primary" type="button" data-page="resumen-a.html">
+          Resumen · A “Tablero”
+        </button>
+        <button class="btn" type="button" data-page="resumen-b.html">Resumen · B “Operación”</button>
+        <button class="btn" type="button" data-page="pedidos.html">Pedidos</button>
+        <button class="btn" type="button" data-page="pedido-detalle.html">Detalle de pedido</button>
+        <a class="btn btn-ghost" id="open-full" href="resumen-a.html" target="_blank" rel="noopener">
+          <svg><use href="icons.svg#ph-arrow-square-out" /></svg> Abrir a tamaño real
+        </a>
+      </nav>
+
+      <div class="frames">
+        <div class="frame f-mobile">
+          <p class="frame-label"><strong>Móvil</strong> <span>390 px</span></p>
+          <div class="frame-box"><iframe title="Vista móvil" data-frame></iframe></div>
+        </div>
+        <div class="frame f-tablet">
+          <p class="frame-label"><strong>Tableta</strong> <span>834 px</span></p>
+          <div class="frame-box"><iframe title="Vista tableta" data-frame></iframe></div>
+        </div>
+        <div class="frame f-desktop">
+          <p class="frame-label"><strong>Escritorio</strong> <span>1440 px</span></p>
+          <div class="frame-box"><iframe title="Vista escritorio" data-frame></iframe></div>
+        </div>
+      </div>
+
+      <p class="mock-note legend-note">
+        <strong>Qué mirar.</strong> A 390 px la sidebar se vuelve cajón y la tabla se convierte en
+        tarjetas. A 834 px los KPIs van a dos columnas y la gráfica ocupa el ancho completo. A
+        1440 px aparece la sidebar fija y los KPIs se acomodan en cuatro. Los iframes están
+        reducidos con <code class="mono">scale</code>, así que el interior ve su viewport real y los
+        breakpoints disparan de verdad.
+      </p>
+    </div>
+
+    <script>
+      const frames = document.querySelectorAll("[data-frame]");
+      const buttons = document.querySelectorAll("[data-page]");
+      const openFull = document.getElementById("open-full");
+
+      const show = (page) => {
+        frames.forEach((frame) => {
+          frame.src = page;
+        });
+        openFull.href = page;
+        buttons.forEach((button) => {
+          button.classList.toggle("btn-primary", button.dataset.page === page);
+        });
+      };
+
+      buttons.forEach((button) => {
+        button.addEventListener("click", () => show(button.dataset.page));
+      });
+
+      show("resumen-a.html");
+    </script>
+  </body>
+</html>
