@@ -16,11 +16,11 @@ const RootLayout = ({ children }: { children: ReactNode }) => {
       <body>
         <a
           href="#main-content"
-          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:bg-surface focus:border-2 focus:border-ink focus:rounded-nb-sm focus:px-4 focus:py-2 focus:font-bold"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[var(--z-skip-link)] focus:bg-surface focus:border-2 focus:border-ink focus:rounded-nb-sm focus:px-4 focus:py-2 focus:font-bold"
         >
           Saltar al contenido principal
         </a>
-        <div id="main-content">{children}</div>
+        {children}
       </body>
     </html>
   );

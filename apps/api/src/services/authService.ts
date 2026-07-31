@@ -1,5 +1,12 @@
 import { authenticator } from "otplib";
-import { UserRole, AuditAction, AuditModule } from "@gira/shared";
+import {
+  UserRole,
+  AuditAction,
+  AuditModule,
+  TWO_FACTOR_REQUIRED_MESSAGE,
+  TWO_FACTOR_INVALID_MESSAGE,
+  INVALID_CREDENTIALS_MESSAGE,
+} from "@gira/shared";
 import { User, type UserDocument } from "../models/User.js";
 import { AppError } from "../utils/AppError.js";
 import { signAuthToken } from "../utils/token.js";
@@ -37,7 +44,7 @@ interface PublicUser {
   isActive: boolean;
 }
 
-const GENERIC_LOGIN_ERROR = "Correo o contraseña incorrectos.";
+const GENERIC_LOGIN_ERROR = INVALID_CREDENTIALS_MESSAGE;
 
 const toPublicUser = (user: UserDocument): PublicUser => ({
   id: user.id as string,
@@ -100,10 +107,10 @@ const loginUser = async (
     const withSecret = await User.findById(user._id).select("+twoFactor.secret");
     const encrypted = withSecret?.twoFactor.secret;
     if (!input.code) {
-      throw new AppError("Se requiere el código de verificación de dos factores.", 401);
+      throw new AppError(TWO_FACTOR_REQUIRED_MESSAGE, 401);
     }
     if (!encrypted || !verifyTotp(encrypted, input.code)) {
-      throw new AppError("El código de verificación es incorrecto.", 401);
+      throw new AppError(TWO_FACTOR_INVALID_MESSAGE, 401);
     }
   }
 

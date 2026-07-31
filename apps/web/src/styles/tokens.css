@@ -138,4 +138,19 @@
   /* ── LAYOUT ─────────────────────────────────────────────────────────────── */
   --sidebar-width: 248px;
   --topbar-height: 4rem;
+
+  /* ── SCRIM ── the only translucent surface in the project ───────────────── */
+  /* Lives here because it is a colour literal: writing it in a component would
+     fail tests/designTokens.test.ts, which is exactly the point. */
+  --color-scrim: oklch(24% 0.02 var(--brand-hue) / 0.4);
+
+  /* ── LAYERING ── one scale, six steps, no ad-hoc z-index anywhere else ──── */
+  /* Tailwind v4 has no theme namespace for z-index, so components read these as
+     `z-[var(--z-sidebar)]`. Gaps of 10 leave room without renumbering. */
+  --z-topbar: 20;
+  --z-scrim: 30;
+  --z-sidebar: 40;
+  --z-overlay: 50;
+  --z-dialog: 60;
+  --z-skip-link: 100;
 }
