@@ -74,8 +74,14 @@ import type {
   OutboxHealth,
 } from "./types/stats.js";
 import type { AuditLogEntry } from "./types/audit.js";
+import type { LoginRequest, LoginResponse, MeResponse, ApiErrorBody } from "./types/auth.js";
 import { ORDER_STATUS_LABELS } from "./labels/orderStatus.js";
 import { SHIPMENT_STATUS_LABELS } from "./labels/shipmentStatus.js";
+import {
+  TWO_FACTOR_REQUIRED_MESSAGE,
+  TWO_FACTOR_INVALID_MESSAGE,
+  INVALID_CREDENTIALS_MESSAGE,
+} from "./labels/authMessages.js";
 
 export type {
   Wire,
@@ -117,4 +123,6 @@ export type {
   OutboxHealth,
   AuditLogEntry,
 };
+export type { LoginRequest, LoginResponse, MeResponse, ApiErrorBody };
 export { ORDER_STATUS_LABELS, SHIPMENT_STATUS_LABELS };
+export { TWO_FACTOR_REQUIRED_MESSAGE, TWO_FACTOR_INVALID_MESSAGE, INVALID_CREDENTIALS_MESSAGE };

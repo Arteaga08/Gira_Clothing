@@ -60,7 +60,7 @@ const KitContent = () => {
   const [loadingDemo, setLoadingDemo] = useState(false);
 
   return (
-    <main className="mx-auto flex max-w-6xl flex-col gap-10 p-6">
+    <main id="main-content" className="mx-auto flex max-w-6xl flex-col gap-10 p-6">
       <PageHeader
         title="Sistema de diseño"
         subtitle="Kitchen sink de M6 — contrastar contra mockups/ en 390 / 834 / 1440. Se borra en M12."
