@@ -1,0 +1,40 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // La base es NodeNext (backend). Next resuelve con el bundler y necesita DOM + JSX.
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": [
+      "ES2023",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "jsx": "preserve",
+    "noEmit": true,
+    "declaration": false,
+    "sourceMap": false,
+    "allowJs": true,
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    },
+    "isolatedModules": true
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next"
+  ]
+}

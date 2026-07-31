@@ -1,0 +1,141 @@
+/*
+ * Gira Clothing — design tokens
+ * ============================================================================
+ * This file is the ONLY place in the project that holds a colour literal or a
+ * font-family name. Components read tokens, never raw values.
+ *
+ * Ported from mockups/tokens.css (M6). `:root` became `@theme static` so
+ * Tailwind v4 reads this file as its theme and generates utilities from it
+ * (bg-surface, border-ink, shadow-nb, ...). `static` matters: without it
+ * Tailwind may prune tokens no utility name references directly — the
+ * `--status-*`/`--ship-*` entries are only ever read via arbitrary values
+ * (`bg-[var(--status-paid)]`), so pruning would silently blank every chip.
+ *
+ * ┌─ SWAP POINT #1 — PALETTE ────────────────────────────────────────────────┐
+ * │ Every colour below is a PLACEHOLDER. When the official palette arrives,  │
+ * │ edit the BRAND + SURFACES + INK blocks. Nothing else needs to change:    │
+ * │ status chips, borders and shadows all derive from --color-ink and their   │
+ * │ own --status-* entries.                                                  │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * ┌─ SWAP POINT #2 — TYPOGRAPHY ─────────────────────────────────────────────┐
+ * │ --font-sans / --font-mono point at the next/font variables declared in    │
+ * │ src/app/fonts.ts, with a system-stack fallback. A typeface change is one  │
+ * │ edit there; these two lines never need to change.                        │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * Colours are OKLCH. Neutrals are tinted toward the brand hue (chroma 0.003 to
+ * 0.02) so nothing in the UI is a dead grey.
+ */
+
+@theme static {
+  /* ── BRAND ── PLACEHOLDER ────────────────────────────────────────────── */
+  --brand-hue: 162;
+  --color-brand: oklch(46% 0.11 var(--brand-hue));
+  --color-brand-hover: oklch(40% 0.11 var(--brand-hue));
+  --color-brand-soft: oklch(46% 0.11 var(--brand-hue) / 0.1);
+  --color-brand-subtle: oklch(94% 0.03 var(--brand-hue));
+  /* Secondary accent. Restrained: comparison series in charts, nothing else. */
+  --color-accent: oklch(62% 0.16 48);
+  --color-accent-soft: oklch(62% 0.16 48 / 0.14);
+
+  /* ── SURFACES ───────────────────────────────────────────────────────────── */
+  --color-wallpaper: oklch(96.5% 0.006 var(--brand-hue));
+  --color-surface: oklch(99.2% 0.003 var(--brand-hue));
+  --color-surface-raised: oklch(97.6% 0.008 var(--brand-hue));
+  --color-surface-sunken: oklch(93.8% 0.008 var(--brand-hue));
+
+  /* ── INK ── the colour of every border and every hard shadow ────────────── */
+  --color-ink: oklch(24% 0.02 var(--brand-hue));
+
+  /* ── TEXT ───────────────────────────────────────────────────────────────── */
+  --color-text-primary: oklch(24% 0.02 var(--brand-hue));
+  --color-text-secondary: oklch(48% 0.015 var(--brand-hue));
+  --color-text-muted: oklch(60% 0.012 var(--brand-hue));
+  --color-text-inverse: oklch(98% 0.004 var(--brand-hue));
+
+  /* ── BORDERS ────────────────────────────────────────────────────────────── */
+  --color-border: oklch(88% 0.01 var(--brand-hue));
+  --color-border-strong: var(--color-ink);
+  --color-focus: oklch(55% 0.18 250);
+
+  /* ── STATUS ── one entry per enum member ────────────────────────────────── */
+  /* OrderStatus — packages/shared/src/enums/orderStatus.ts                    */
+  /* Flat pastel fills. Nine statuses need nine distinguishable hues, so this  */
+  /* is a wayfinding vocabulary, not a semantic 4-colour set. Every chip also  */
+  /* carries an ink border + dark text, which is what separates a STATUS chip  */
+  /* from a BRAND surface — the distinction is form, not hue.                  */
+  --status-pending_payment: oklch(89% 0.1 85);
+  --status-paid: oklch(90% 0.09 152);
+  --status-processing: oklch(88% 0.09 245);
+  --status-shipped: oklch(88% 0.09 205);
+  --status-delivered: oklch(88% 0.13 122);
+  --status-cancelled: oklch(90% 0.005 var(--brand-hue));
+  --status-expired: oklch(88% 0.02 60);
+  --status-refunded: oklch(88% 0.08 300);
+  --status-disputed: oklch(87% 0.1 25);
+
+  /* ShipmentStatus — packages/shared/src/enums/shipment.ts */
+  --ship-in_transit: oklch(88% 0.09 205);
+  --ship-out_for_delivery: oklch(88% 0.09 270);
+  --ship-delivered: oklch(88% 0.13 122);
+  --ship-returned: oklch(89% 0.1 85);
+  --ship-lost: oklch(87% 0.1 25);
+
+  /* Feedback (toasts, inline alerts) */
+  --color-success: oklch(52% 0.14 150);
+  --color-warning: oklch(68% 0.15 75);
+  --color-danger: oklch(52% 0.19 25);
+  --color-danger-soft: oklch(92% 0.05 25);
+
+  /* ── NEOBRUTALIST PRIMITIVES ────────────────────────────────────────────── */
+  /* Solid borders, hard offset shadows: zero blur, zero alpha. An alpha       */
+  /* shadow turns muddy on a light neutral background.                         */
+  --nb-border-width: 2px;
+  --nb-radius: 12px;
+  --nb-radius-sm: 8px;
+  --nb-radius-pill: 999px;
+  --nb-shadow-sm: 2px 2px 0 0 var(--color-ink);
+  --nb-shadow: 4px 4px 0 0 var(--color-ink);
+  --nb-shadow-lg: 6px 6px 0 0 var(--color-ink);
+  --nb-shadow-pressed: 0 0 0 0 var(--color-ink);
+
+  /* ── SPACING ── 4px scale ───────────────────────────────────────────────── */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  /* ── TYPOGRAPHY ── PLACEHOLDER ──────────────────────────────────────────── */
+  /* Real families are declared in src/app/fonts.ts (SWAP POINT #2). The
+     system stack is the fallback: if the font fails to load, the UI degrades
+     instead of breaking. */
+  --font-sans: var(--font-sans-var), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-mono-var), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Fixed rem scale, ratio ~1.2. Product UI, so no fluid clamp() headings. */
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2.25rem;
+
+  /* ── MOTION ─────────────────────────────────────────────────────────────── */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --duration-state: 150ms;
+  --duration-exit: 200ms;
+  --duration-enter: 250ms;
+  --duration-shimmer: 1.4s;
+
+  /* ── LAYOUT ─────────────────────────────────────────────────────────────── */
+  --sidebar-width: 248px;
+  --topbar-height: 4rem;
+}

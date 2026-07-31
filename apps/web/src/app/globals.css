@@ -1,0 +1,75 @@
+@import "tailwindcss";
+@import "../styles/tokens.css";
+
+/*
+ * Bridge for the token names that do NOT fall inside a Tailwind v4 theme
+ * namespace. `inline` matters here: the generated utility emits
+ * `var(--nb-shadow)`, which itself resolves `var(--color-ink)` live — so a
+ * palette swap moves the shadows too. Names on the left are deliberately
+ * different from the token names on the right: a self-referential entry
+ * (`--color-ink: var(--color-ink)`) is invalid at computed-value time and
+ * would silently blank the token.
+ */
+@theme inline {
+  --shadow-nb-sm: var(--nb-shadow-sm);
+  --shadow-nb: var(--nb-shadow);
+  --shadow-nb-lg: var(--nb-shadow-lg);
+  --shadow-nb-pressed: var(--nb-shadow-pressed);
+  --radius-nb: var(--nb-radius);
+  --radius-nb-sm: var(--nb-radius-sm);
+  --radius-nb-pill: var(--nb-radius-pill);
+  --animate-shimmer: shimmer var(--duration-shimmer) ease-in-out infinite;
+}
+
+/*
+ * The only CSS in this project besides tokens.css, and deliberately so: these
+ * are document defaults, not component styles. There is no @layer components
+ * — the neobrutalist recipe lives in src/components/ui/styles.ts as TS
+ * constants, where a typo fails the build instead of rendering with no
+ * border.
+ */
+@layer base {
+  /* Ported from mockups/mockup.css: minimal reset + the surface's single focus treatment. */
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  body {
+    min-height: 100dvh;
+    margin: 0;
+    background: var(--color-wallpaper);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* The outline sits OUTSIDE the hard shadow; the shadow is never removed on focus. */
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+    border-radius: var(--nb-radius-sm);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* The skeleton shimmer: @keyframes are the one thing no utility can express. */
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
