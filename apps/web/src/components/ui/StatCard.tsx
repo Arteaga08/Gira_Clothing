@@ -23,7 +23,7 @@ const StatCard = ({ label, value, unit, foot, icon, accent = false, className }:
     <div className="flex items-start justify-between gap-2">
       <p className="text-xs font-bold uppercase tracking-wide text-text-secondary">{label}</p>
       {icon ? (
-        <span className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-nb-sm border-[1.5px] border-ink bg-brand-subtle">
+        <span className="grid h-7.5 w-7.5 shrink-0 place-items-center rounded-nb-sm border-[1.5px] border-ink bg-brand-subtle">
           <Icon icon={icon} />
         </span>
       ) : null}

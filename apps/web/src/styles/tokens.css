@@ -153,4 +153,14 @@
   --z-overlay: 50;
   --z-dialog: 60;
   --z-skip-link: 100;
+
+  /* ── PATTERNS ── the only gradient in the project ────────────────────────── */
+  /* A day with zero orders still draws a bar: an empty slot reads as "missing
+     data", a hatched one reads as "no sales". Lives here because it names two
+     colours — written in a component it would fail designTokens.test.ts. */
+  --pattern-zero-bar: repeating-linear-gradient(
+    45deg,
+    var(--color-surface-sunken) 0 4px,
+    var(--color-surface) 4px 8px
+  );
 }

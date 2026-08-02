@@ -5,7 +5,15 @@ import { CommandPaletteProvider, useCommandPalette } from "@/components/shell/Co
 import { MobileNavProvider } from "@/components/shell/MobileNavProvider";
 import { TopBar } from "@/components/shell/TopBar";
 
-vi.mock("next/navigation", () => ({ usePathname: () => "/resumen" }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/resumen",
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
+}));
+
+// The bell polls /admin/notifications/health on mount (Tarea 7) — TopBar's
+// own tests aren't about that data, so it's stubbed to never resolve rather
+// than left to hit the real fetch.
+vi.mock("@/lib/api/outbox", () => ({ fetchOutboxHealth: () => new Promise(() => {}) }));
 
 /** Exposes the shared context state so the test can assert on it directly. */
 const PaletteStateProbe = () => {
