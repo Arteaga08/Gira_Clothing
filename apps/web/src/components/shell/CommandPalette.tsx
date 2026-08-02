@@ -12,10 +12,7 @@ import { useCommandPalette } from "./CommandPaletteProvider";
 
 /** Accent-insensitive comparison: "envios" must find "Envíos". */
 const normalize = (value: string): string =>
-  value
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase();
+  value.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
 const matchesQuery = (item: NavItemConfig, query: string): boolean => {
   if (!query) return true;
@@ -98,7 +95,7 @@ const CommandPalette = () => {
   const activeItem = results[activeIndex];
 
   return createPortal(
-    <div className="fixed inset-0 z-[var(--z-overlay)]">
+    <div className="fixed inset-0 z-(--z-overlay)">
       <div aria-hidden="true" onClick={closePalette} className="fixed inset-0 bg-scrim" />
       <div
         ref={dialogRef}
@@ -106,7 +103,7 @@ const CommandPalette = () => {
         aria-modal="true"
         aria-labelledby={titleId}
         onKeyDown={handleKeyDown}
-        className="relative z-[var(--z-dialog)] mx-auto mt-24 flex w-full max-w-md flex-col gap-3 rounded-nb border-2 border-ink bg-surface p-3 shadow-nb-lg"
+        className="relative z-(--z-dialog) mx-auto mt-24 flex w-full max-w-md flex-col gap-3 rounded-nb border-2 border-ink bg-surface p-3 shadow-nb-lg"
       >
         <h2 id={titleId} className="sr-only">
           Buscar en el panel
@@ -148,7 +145,9 @@ const CommandPalette = () => {
                 <Icon icon={item.icon} className="shrink-0" />
                 {item.label}
                 {item.available ? null : (
-                  <span className="ml-auto text-[10px] font-bold uppercase tracking-wide">Pronto</span>
+                  <span className="ml-auto text-[10px] font-bold uppercase tracking-wide">
+                    Pronto
+                  </span>
                 )}
               </li>
             ))

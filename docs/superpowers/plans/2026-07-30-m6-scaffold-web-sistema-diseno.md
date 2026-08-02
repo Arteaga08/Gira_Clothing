@@ -99,7 +99,7 @@ Ejemplo de la cubeta 3 — el botón, hoy ~40 líneas de CSS:
 import { NB_PRESSABLE } from "./styles";
 
 className={cn(
-  "inline-flex items-center gap-2 px-4 min-h-[38px]",
+  "inline-flex items-center gap-2 px-4 min-h-9.5",
   "border-2 border-ink rounded-nb-sm shadow-nb-sm text-sm font-bold",
   NB_PRESSABLE,
   variant === "primary" && "bg-brand text-text-inverse hover:bg-brand-hover",

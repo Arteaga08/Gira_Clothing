@@ -16,7 +16,15 @@ interface FieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "id"> {
  * `useId` works fine without "use client": it's a universal React hook, not
  * one that needs browser interactivity, so this stays a Server Component.
  */
-const Field = ({ label, error, helper, icon, className, containerClassName, ...rest }: FieldProps) => {
+const Field = ({
+  label,
+  error,
+  helper,
+  icon,
+  className,
+  containerClassName,
+  ...rest
+}: FieldProps) => {
   const inputId = useId();
   const messageId = useId();
   const hasError = Boolean(error);
@@ -24,13 +32,16 @@ const Field = ({ label, error, helper, icon, className, containerClassName, ...r
 
   return (
     <div className={cn("flex flex-col gap-1.5", containerClassName)}>
-      <label htmlFor={inputId} className="text-xs font-bold uppercase tracking-wide text-text-secondary">
+      <label
+        htmlFor={inputId}
+        className="text-xs font-bold uppercase tracking-wide text-text-secondary"
+      >
         {label}
       </label>
       <div
         className={cn(
-          "flex min-h-[38px] items-center gap-2 rounded-nb-sm border-2 bg-surface px-3 shadow-nb-sm",
-          "focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus",
+          "flex min-h-9.5 items-center gap-2 rounded-nb-sm border-2 bg-surface px-3 shadow-nb-sm",
+          "focus-within:outline focus-within:outline-offset-2 focus-within:outline-focus",
           hasError ? "border-danger" : "border-ink",
         )}
       >
@@ -44,7 +55,10 @@ const Field = ({ label, error, helper, icon, className, containerClassName, ...r
         />
       </div>
       {message ? (
-        <p id={messageId} className={cn("text-xs", hasError ? "text-danger" : "text-text-secondary")}>
+        <p
+          id={messageId}
+          className={cn("text-xs", hasError ? "text-danger" : "text-text-secondary")}
+        >
           {message}
         </p>
       ) : null}

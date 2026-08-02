@@ -67,6 +67,11 @@ Manuel decidió que M7 **no** crea una página placeholder. Consecuencia, explí
 
 Si al revisar prefieres cerrar el hueco, es un archivo de diez líneas y esta sección desaparece.
 
+> **Cerrado en M8** (`docs/superpowers/plans/2026-07-31-m8-resumen-dashboard.md`):
+> `src/app/(admin)/resumen/page.tsx` existe, alimentado por `/admin/stats/overview`,
+> `/admin/stats/timeseries` y `/admin/notifications/health`. Confirmado en vivo con `curl` contra el
+> API real: login ya no aterriza en 404.
+
 ---
 
 ## Estructura de archivos
