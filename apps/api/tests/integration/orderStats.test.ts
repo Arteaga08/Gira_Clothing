@@ -21,6 +21,8 @@ interface SeedOrderOptions {
   updatedAt?: Date;
   sku?: string;
   qty?: number;
+  exchangeRate?: number;
+  printName?: string;
 }
 
 /**
@@ -53,7 +55,7 @@ const seedStatsOrder = async (opts: SeedOrderOptions): Promise<mongoose.Types.Ob
         product,
         sku,
         productName: "Tote",
-        printName: "Amapolas",
+        printName: opts.printName ?? "Amapolas",
         qty,
         unitPriceMxn: opts.total,
         unitPrice: opts.total,
@@ -61,7 +63,7 @@ const seedStatsOrder = async (opts: SeedOrderOptions): Promise<mongoose.Types.Ob
       },
     ],
     currency,
-    exchangeRate: 1,
+    exchangeRate: opts.exchangeRate ?? 1,
     rounding: PriceRounding.NONE,
     subtotal: opts.total,
     shippingCost: 0,
@@ -209,6 +211,125 @@ describe("GET /admin/orders/stats · período e ingresos", () => {
     const adminCookie = await loginAsAdmin(app);
     const res = await request(app).get(`${STATS_URL}?days=abc`).set("Cookie", adminCookie);
     expect(res.status).toBe(400);
+  });
+});
+
+describe("GET /admin/orders/stats · equivalente en MXN cruzando moneda", () => {
+  it("combina MXN real + USD convertido con la tasa congelada de cada pedido", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    // MXN order: exchangeRate is a passenger value here, never applied.
+    await seedStatsOrder({
+      status: OrderStatus.PAID,
+      total: 10000,
+      currency: Currency.MXN,
+      exchangeRate: 1800,
+    });
+    // USD order: 5000 cents ($50.00) at 1800 (mxnPerUsdCents) -> 90000 cents ($900.00) MXN-equivalent.
+    await seedStatsOrder({
+      status: OrderStatus.PAID,
+      total: 5000,
+      currency: Currency.USD,
+      exchangeRate: 1800,
+    });
+
+    const res = await request(app).get(`${STATS_URL}?days=30`).set("Cookie", adminCookie);
+
+    expect(res.body.data.period.totalMxnEquivalent).toBe(100000);
+  });
+
+  it("todas las órdenes en MXN: el equivalente es exactamente la suma de revenue MXN, sin aplicar la tasa", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    await seedStatsOrder({ status: OrderStatus.PAID, total: 10000, exchangeRate: 1800 });
+    await seedStatsOrder({ status: OrderStatus.PAID, total: 20000, exchangeRate: 2000 });
+
+    const res = await request(app).get(`${STATS_URL}?days=30`).set("Cookie", adminCookie);
+
+    expect(res.body.data.period.totalMxnEquivalent).toBe(30000);
+    expect(res.body.data.period.revenue[0].revenue).toBe(30000);
+  });
+
+  it("período vacío: totalMxnEquivalent es 0, no null", async () => {
+    const adminCookie = await loginAsAdmin(app);
+
+    const res = await request(app).get(`${STATS_URL}?days=30`).set("Cookie", adminCookie);
+
+    expect(res.body.data.period.totalMxnEquivalent).toBe(0);
+  });
+
+  it("no mezcla el equivalente con revenue: revenue sigue siendo por moneda", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    await seedStatsOrder({ status: OrderStatus.PAID, total: 10000, currency: Currency.MXN });
+    await seedStatsOrder({
+      status: OrderStatus.PAID,
+      total: 5000,
+      currency: Currency.USD,
+      exchangeRate: 1800,
+    });
+
+    const res = await request(app).get(`${STATS_URL}?days=30`).set("Cookie", adminCookie);
+
+    const revenue = res.body.data.period.revenue as { currency: string; revenue: number }[];
+    expect(revenue).toHaveLength(2);
+    expect(revenue.find((r) => r.currency === "USD")?.revenue).toBe(5000);
+    expect(res.body.data.period.totalMxnEquivalent).toBe(100000);
+  });
+});
+
+describe("GET /admin/orders/stats · print más usado", () => {
+  it("suma unidades del mismo print aunque esté en SKUs distintos", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    await seedStatsOrder({
+      status: OrderStatus.PAID,
+      total: 10000,
+      sku: "PLY-CEMP-M",
+      printName: "Cempasúchil",
+      qty: 3,
+    });
+    await seedStatsOrder({
+      status: OrderStatus.PAID,
+      total: 10000,
+      sku: "SUD-CEMP-L",
+      printName: "Cempasúchil",
+      qty: 2,
+    });
+    await seedStatsOrder({
+      status: OrderStatus.PAID,
+      total: 10000,
+      sku: "PLY-BUGA-S",
+      printName: "Bugambilia",
+      qty: 1,
+    });
+
+    const res = await request(app).get(`${STATS_URL}?days=30`).set("Cookie", adminCookie);
+
+    const prints = res.body.data.period.topPrints as { printName: string; units: number }[];
+    expect(prints[0]).toEqual({ printName: "Cempasúchil", units: 5 });
+    expect(prints[1]).toEqual({ printName: "Bugambilia", units: 1 });
+  });
+
+  it("se topa en 5 prints distintos", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    for (let i = 0; i < 7; i += 1) {
+      await seedStatsOrder({
+        status: OrderStatus.PAID,
+        total: 5000,
+        sku: `SKU-P-${i}`,
+        printName: `Print ${i}`,
+        qty: 1,
+      });
+    }
+
+    const res = await request(app).get(`${STATS_URL}?days=30`).set("Cookie", adminCookie);
+
+    expect(res.body.data.period.topPrints.length).toBeLessThanOrEqual(5);
+  });
+
+  it("período vacío: topPrints es [], no null", async () => {
+    const adminCookie = await loginAsAdmin(app);
+
+    const res = await request(app).get(`${STATS_URL}?days=30`).set("Cookie", adminCookie);
+
+    expect(res.body.data.period.topPrints).toEqual([]);
   });
 });
 

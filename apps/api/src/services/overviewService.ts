@@ -25,7 +25,11 @@ const getOverview = async (query: StatsRangeQuery): Promise<Overview> => {
   return {
     orders: {
       ...orders,
-      period: { ...orders.period, topProducts: orders.period.topProducts.slice(0, OVERVIEW_TOP) },
+      period: {
+        ...orders.period,
+        topProducts: orders.period.topProducts.slice(0, OVERVIEW_TOP),
+        topPrints: orders.period.topPrints.slice(0, OVERVIEW_TOP),
+      },
     },
     inventory: { ...inventory, lowStockItems: inventory.lowStockItems.slice(0, OVERVIEW_TOP) },
   };

@@ -41,7 +41,7 @@ describe("parseDayRange", () => {
   });
 
   it("clampea a MAX_DAYS", () => {
-    const range = parseDayRange({ days: 400 });
+    const range = parseDayRange({ days: MAX_DAYS + 100 });
     expect(range.days).toBe(MAX_DAYS);
     expect(range.dayKeys).toHaveLength(MAX_DAYS);
   });

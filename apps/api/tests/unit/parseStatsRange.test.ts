@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseStatsRange } from "../../src/utils/parseStatsRange.js";
+import { parseStatsRange, MAX_DAYS } from "../../src/utils/parseStatsRange.js";
 
 describe("parseStatsRange", () => {
   it("usa el default del módulo cuando no viene days", () => {
@@ -15,8 +15,8 @@ describe("parseStatsRange", () => {
       expect(parseStatsRange({ days }, 30).days).toBe(30);
     }
   });
-  it("topa el rango en 365 días", () => {
-    expect(parseStatsRange({ days: "5000" }, 30).days).toBe(365);
+  it(`topa el rango en ${MAX_DAYS} días`, () => {
+    expect(parseStatsRange({ days: "5000" }, 30).days).toBe(MAX_DAYS);
   });
   it("la ventana mide exactamente days * 24h", () => {
     const range = parseStatsRange({ days: "2" }, 30);
