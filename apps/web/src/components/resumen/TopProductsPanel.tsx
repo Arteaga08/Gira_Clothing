@@ -6,12 +6,13 @@ import { formatInteger } from "@/lib/format";
 
 interface TopProductsPanelProps {
   products: readonly Wire<TopProduct>[];
+  className?: string | undefined;
 }
 
-const TopProductsPanel = ({ products }: TopProductsPanelProps) => {
+const TopProductsPanel = ({ products, className }: TopProductsPanelProps) => {
   if (products.length === 0) {
     return (
-      <Panel title="Más vendidos">
+      <Panel title="Más vendidos" className={className}>
         <EmptyState
           icon={TrophyIcon}
           title="Aún no hay ventas en este periodo"
@@ -22,7 +23,7 @@ const TopProductsPanel = ({ products }: TopProductsPanelProps) => {
   }
 
   return (
-    <Panel title="Más vendidos" hint="Unidades en el periodo" flush>
+    <Panel title="Más vendidos" hint="Unidades en el periodo" flush className={className}>
       <div>
         {products.map((product, index) => (
           <div

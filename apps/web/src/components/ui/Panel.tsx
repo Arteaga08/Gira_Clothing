@@ -8,13 +8,13 @@ interface PanelProps {
   actions?: ReactNode;
   /** Removes the body padding — used when the content is a table that should bleed to the edges. */
   flush?: boolean;
-  className?: string;
+  className?: string | undefined;
   children: ReactNode;
 }
 
 const Panel = ({ title, hint, actions, flush = false, className, children }: PanelProps) => {
   return (
-    <section className={cn(NB_SURFACE, className)}>
+    <section className={cn(NB_SURFACE, "overflow-hidden", className)}>
       <header className="flex items-center justify-between gap-3 border-b-2 border-ink px-4 py-3">
         <div>
           <h2 className="text-sm font-bold">{title}</h2>

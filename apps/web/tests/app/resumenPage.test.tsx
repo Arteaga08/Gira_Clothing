@@ -29,10 +29,12 @@ const overviewFixture = (overrides?: { empty?: boolean }) => ({
             { currency: Currency.MXN, revenue: 3_417_500, orders: 36, averageTicket: 94_931 },
             { currency: Currency.USD, revenue: 41_400, orders: 3, averageTicket: 13_800 },
           ],
+      totalMxnEquivalent: overrides?.empty ? 0 : 4_162_700,
       unitsSold: overrides?.empty ? 0 : 68,
       topProducts: overrides?.empty
         ? []
         : [{ sku: "PLY-CEMP-M", productName: "Playera oversize", printName: "Cempasúchil", units: 14 }],
+      topPrints: overrides?.empty ? [] : [{ printName: "Cempasúchil", units: 14 }],
     },
     byStatus: overrides?.empty ? {} : { shipped: 14, paid: 8 },
     alerts: {
@@ -55,11 +57,11 @@ const overviewFixture = (overrides?: { empty?: boolean }) => ({
   },
 });
 
-const timeseriesFixture = (days = 3) => ({
+const timeseriesFixture = (days = 3, granularity: "day" | "week" | "month" | "year" = "day") => ({
   range: { from: "2026-07-27T06:00:00.000Z", to: "2026-07-29T23:59:59.000Z", days, timezone: "America/Mexico_City" },
-  granularity: "day" as const,
+  granularity,
   series: Array.from({ length: days }, (_, index) => ({
-    day: `2026-07-2${7 + index}`,
+    periodStart: `2026-07-2${7 + index}`,
     orders: 0,
     unitsSold: 0,
     revenue: [],
@@ -87,7 +89,7 @@ const renderPage = async (searchParams: Record<string, string | string[]> = {}) 
 };
 
 describe("ResumenPage — camino feliz", () => {
-  it("renderiza el h1, las 6 tiles, los 4 KPIs, la gráfica y los cuatro paneles", async () => {
+  it("renderiza el h1, las 6 tiles, los 3 KPIs, la gráfica y los cinco paneles", async () => {
     getOverviewMock.mockResolvedValue(overviewFixture());
     getTimeseriesMock.mockResolvedValue(timeseriesFixture());
     getOutboxHealthMock.mockResolvedValue(healthFixture());
@@ -98,16 +100,17 @@ describe("ResumenPage — camino feliz", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Resumen" })).toBeInTheDocument();
     expect(screen.getByText("Notificaciones fallidas")).toBeInTheDocument();
     expect(screen.getByText("Pedidos", { selector: "p" })).toBeInTheDocument();
-    expect(screen.getByText("Ingresos MXN")).toBeInTheDocument();
+    expect(screen.getByText("Ingresos (equiv. MXN)")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /Pedidos por día/ })).toBeInTheDocument();
     expect(screen.getByText("Distribución por estado")).toBeInTheDocument();
     expect(screen.getByText("Más vendidos")).toBeInTheDocument();
     expect(screen.getByText("Stock bajo")).toBeInTheDocument();
+    expect(screen.getByText("Print más usado")).toBeInTheDocument();
     expect(screen.getByText("Salud de notificaciones")).toBeInTheDocument();
   });
 });
 
-describe("ResumenPage — rango", () => {
+describe("ResumenPage — rango y vista", () => {
   it("?dias=7 pasa 7 a los fetches y marca el enlace activo", async () => {
     getOverviewMock.mockResolvedValue(overviewFixture());
     getTimeseriesMock.mockResolvedValue(timeseriesFixture());
@@ -117,7 +120,7 @@ describe("ResumenPage — rango", () => {
     await renderPage({ dias: "7" });
 
     expect(getOverviewMock).toHaveBeenCalledWith(7);
-    expect(getTimeseriesMock).toHaveBeenCalledWith(7);
+    expect(getTimeseriesMock).toHaveBeenCalledWith(7, "day");
     expect(screen.getByRole("link", { name: "7 d" })).toHaveAttribute("aria-current", "page");
   });
 
@@ -130,7 +133,31 @@ describe("ResumenPage — rango", () => {
     await renderPage({ dias: "abc" });
 
     expect(getOverviewMock).toHaveBeenCalledWith(30);
-    expect(getTimeseriesMock).toHaveBeenCalledWith(30);
+    expect(getTimeseriesMock).toHaveBeenCalledWith(30, "day");
+  });
+
+  it("?vista=week resuelve la granularidad, marca el enlace activo y usa la whitelist de semana para dias", async () => {
+    getOverviewMock.mockResolvedValue(overviewFixture());
+    getTimeseriesMock.mockResolvedValue(timeseriesFixture(180, "week"));
+    getOutboxHealthMock.mockResolvedValue(healthFixture());
+    loadSessionMock.mockResolvedValue(adminSession);
+
+    await renderPage({ dias: "180", vista: "week" });
+
+    expect(getTimeseriesMock).toHaveBeenCalledWith(180, "week");
+    expect(screen.getByRole("link", { name: "Semana" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "180 d" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("?vista=abc cae al default (day) sin lanzar", async () => {
+    getOverviewMock.mockResolvedValue(overviewFixture());
+    getTimeseriesMock.mockResolvedValue(timeseriesFixture());
+    getOutboxHealthMock.mockResolvedValue(healthFixture());
+    loadSessionMock.mockResolvedValue(adminSession);
+
+    await renderPage({ vista: "abc" });
+
+    expect(getTimeseriesMock).toHaveBeenCalledWith(30, "day");
   });
 });
 
@@ -144,7 +171,7 @@ describe("ResumenPage — fallos aislados por sección", () => {
     await renderPage({ dias: "30" });
 
     expect(screen.queryByRole("img", { name: /Pedidos por día/ })).not.toBeInTheDocument();
-    expect(screen.getByText("Ingresos MXN")).toBeInTheDocument();
+    expect(screen.getByText("Ingresos (equiv. MXN)")).toBeInTheDocument();
   });
 
   it("falla health: la banda muestra 5 tiles y el panel de salud es SectionError", async () => {
@@ -160,7 +187,7 @@ describe("ResumenPage — fallos aislados por sección", () => {
     expect(screen.queryByText("Salud de notificaciones")).not.toBeInTheDocument();
   });
 
-  it("falla overview: KPIs, banda, distribución y las dos listas son SectionError; la gráfica sigue", async () => {
+  it("falla overview: KPIs, banda, distribución y las tres listas son SectionError; la gráfica sigue", async () => {
     getOverviewMock.mockRejectedValue(new Error("overview caído"));
     getTimeseriesMock.mockResolvedValue(timeseriesFixture());
     getOutboxHealthMock.mockResolvedValue(healthFixture());
@@ -173,12 +200,13 @@ describe("ResumenPage — fallos aislados por sección", () => {
     expect(screen.queryByText("Distribución por estado")).not.toBeInTheDocument();
     expect(screen.queryByText("Más vendidos")).not.toBeInTheDocument();
     expect(screen.queryByText("Stock bajo")).not.toBeInTheDocument();
-    expect(screen.getAllByText("No se pudo cargar esta sección").length).toBeGreaterThanOrEqual(4);
+    expect(screen.queryByText("Print más usado")).not.toBeInTheDocument();
+    expect(screen.getAllByText("No se pudo cargar esta sección").length).toBeGreaterThanOrEqual(5);
   });
 });
 
 describe("ResumenPage — base vacía", () => {
-  it("ceros en los KPIs y EmptyState en los cuatro paneles, sin NaN en el DOM", async () => {
+  it("ceros en los KPIs y EmptyState en los cinco paneles, sin NaN en el DOM", async () => {
     getOverviewMock.mockResolvedValue(overviewFixture({ empty: true }));
     getTimeseriesMock.mockResolvedValue(timeseriesFixture());
     getOutboxHealthMock.mockResolvedValue({
@@ -197,6 +225,7 @@ describe("ResumenPage — base vacía", () => {
     expect(within(document.body).queryByText(/NaN/)).not.toBeInTheDocument();
     expect(screen.getByText("Sin pedidos en el periodo")).toBeInTheDocument();
     expect(screen.getByText("Aún no hay ventas en este periodo")).toBeInTheDocument();
+    expect(screen.getByText("Aún no hay prints vendidos en este periodo")).toBeInTheDocument();
     expect(screen.getByText("Todo el stock está por encima del umbral")).toBeInTheDocument();
   });
 });

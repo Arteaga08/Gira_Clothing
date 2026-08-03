@@ -9,7 +9,7 @@ import { Currency, type TimeseriesPoint, type Wire } from "@gira/shared";
 type ChartSeriesKind = "orders" | "revenue" | "units";
 
 interface ChartBar {
-  day: string;
+  periodStart: string;
   value: number;
   heightPercent: number;
   isZero: boolean;
@@ -45,7 +45,7 @@ const toChartBars = (
     const isZero = value === 0;
     const heightPercent =
       max > 0 ? Math.max(Math.round((value / max) * 100), ZERO_BAR_PERCENT) : ZERO_BAR_PERCENT;
-    return { day: point.day, value, heightPercent, isZero };
+    return { periodStart: point.periodStart, value, heightPercent, isZero };
   });
 
   const average = series.length > 0 ? Math.round((total / series.length) * 10) / 10 : 0;

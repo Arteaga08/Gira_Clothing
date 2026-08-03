@@ -1,4 +1,5 @@
 import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { Icon } from "./Icon";
 import { NB_SURFACE } from "./styles";
@@ -7,7 +8,9 @@ interface StatCardProps {
   label: string;
   value: string | number;
   unit?: string;
-  foot?: string;
+  /** Usually a string; a combined KPI (e.g. Resumen's "Ingresos") may pass a
+   *  short fragment with a secondary line for the per-currency breakdown. */
+  foot?: ReactNode;
   icon?: PhosphorIcon;
   /**
    * Highlights this card with the single brand accent. The design spec (§4)

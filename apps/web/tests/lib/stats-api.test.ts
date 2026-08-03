@@ -82,7 +82,7 @@ describe("getOverview (servidor)", () => {
 });
 
 describe("getTimeseries (servidor)", () => {
-  it("pega a /admin/stats/timeseries con ?days=", async () => {
+  it("sin granularity, pega a /admin/stats/timeseries con ?days=&granularity=day", async () => {
     withCookie();
     const fetchMock = stubFetch();
     fetchMock.mockResolvedValueOnce(
@@ -96,7 +96,24 @@ describe("getTimeseries (servidor)", () => {
     await getTimeseries(90);
 
     const [url] = fetchMock.mock.calls[0] as [string];
-    expect(url).toBe("http://api.test/api/v1/admin/stats/timeseries?days=90");
+    expect(url).toBe("http://api.test/api/v1/admin/stats/timeseries?days=90&granularity=day");
+  });
+
+  it("con granularity explícita, la refleja en la URL", async () => {
+    withCookie();
+    const fetchMock = stubFetch();
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, {
+        status: "success",
+        message: "ok",
+        data: { range: {}, granularity: "week", series: [] },
+      }),
+    );
+
+    await getTimeseries(180, "week");
+
+    const [url] = fetchMock.mock.calls[0] as [string];
+    expect(url).toBe("http://api.test/api/v1/admin/stats/timeseries?days=180&granularity=week");
   });
 });
 

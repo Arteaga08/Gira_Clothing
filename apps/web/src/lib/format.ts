@@ -1,4 +1,4 @@
-import type { Currency } from "@gira/shared";
+import type { Currency, StatsGranularity } from "@gira/shared";
 
 /**
  * Every formatter here pins `locale` and `timeZone` explicitly. A date
@@ -54,13 +54,51 @@ const formatLongDate = (instant: Date): string =>
 
 /**
  * Day-of-month label for the chart axis, from a "YYYY-MM-DD" key as returned
- * by `TimeseriesPoint.day`. Parsed as three numbers by hand — `new
+ * by `TimeseriesPoint.periodStart` under `day` granularity. Parsed as three
+ * numbers by hand — `new
  * Date("2026-07-01")` parses as UTC midnight, which reads as June 30th in
  * any zone west of UTC, off by exactly one day.
  */
 const formatShortDay = (dayKey: string): string => {
   const [, , day] = dayKey.split("-");
   return String(Number(day));
+};
+
+/**
+ * `TimeseriesPoint.periodStart` is a "YYYY-MM-DD" key already resolved to the
+ * right local calendar bucket by the API (see statsBucketing.ts) — parsed as
+ * UTC-anchored components here only to feed `Intl` a `Date` for month-name
+ * lookup, never to re-derive the bucket itself. Using `timeZone: "UTC"`
+ * keeps that anchor from shifting by a day in either direction.
+ */
+const parsePeriodStartAsUtcDate = (periodStart: string): Date => {
+  const [year, month, day] = periodStart.split("-").map(Number) as [number, number, number];
+  return new Date(Date.UTC(year, month - 1, day));
+};
+
+const shortWeekFormatter = new Intl.DateTimeFormat(LOCALE, {
+  timeZone: "UTC",
+  day: "numeric",
+  month: "short",
+});
+const shortMonthFormatter = new Intl.DateTimeFormat(LOCALE, {
+  timeZone: "UTC",
+  month: "short",
+  year: "numeric",
+});
+const shortYearFormatter = new Intl.DateTimeFormat(LOCALE, { timeZone: "UTC", year: "numeric" });
+
+/** Chart-axis label for a `TimeseriesPoint.periodStart`, granularity-aware:
+ *  day-of-month for `day`, "13 jul" for `week`, "jul 2026" for `month`, plain
+ *  year for `year`. A bare day number would repeat "1" on every bar of a
+ *  month/year series, which is exactly the bug this function exists to
+ *  avoid. */
+const formatPeriodLabel = (periodStart: string, granularity: StatsGranularity): string => {
+  if (granularity === "day") return formatShortDay(periodStart);
+  const instant = parsePeriodStartAsUtcDate(periodStart);
+  if (granularity === "week") return shortWeekFormatter.format(instant);
+  if (granularity === "month") return shortMonthFormatter.format(instant);
+  return shortYearFormatter.format(instant);
 };
 
 const morningFormatter = new Intl.DateTimeFormat("en-US", {
@@ -91,6 +129,7 @@ export {
   formatInteger,
   formatLongDate,
   formatShortDay,
+  formatPeriodLabel,
   formatShortTime,
   greetingFor,
 };

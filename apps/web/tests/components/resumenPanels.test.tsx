@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { DistributionPanel } from "@/components/resumen/DistributionPanel";
 import { LowStockPanel } from "@/components/resumen/LowStockPanel";
 import { OutboxHealthPanel } from "@/components/resumen/OutboxHealthPanel";
+import { TopPrintsPanel } from "@/components/resumen/TopPrintsPanel";
 import { TopProductsPanel } from "@/components/resumen/TopProductsPanel";
 
 describe("DistributionPanel", () => {
@@ -40,6 +41,20 @@ describe("TopProductsPanel", () => {
     render(<TopProductsPanel products={[]} />);
     expect(screen.getByText("Aún no hay ventas en este periodo")).toBeInTheDocument();
     expect(screen.queryByText(/PLY-/)).not.toBeInTheDocument();
+  });
+});
+
+describe("TopPrintsPanel", () => {
+  it("con datos, lista con rango numerado por print (sin SKU)", () => {
+    render(<TopPrintsPanel prints={[{ printName: "Cempasúchil", units: 76 }]} />);
+    expect(screen.getByText("Cempasúchil")).toBeInTheDocument();
+    expect(screen.getByText("76")).toBeInTheDocument();
+  });
+
+  it("con arreglo vacío, EmptyState y ninguna fila", () => {
+    render(<TopPrintsPanel prints={[]} />);
+    expect(screen.getByText(/Aún no hay prints/)).toBeInTheDocument();
+    expect(screen.queryByText("Cempasúchil")).not.toBeInTheDocument();
   });
 });
 

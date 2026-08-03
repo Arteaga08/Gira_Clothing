@@ -10,6 +10,7 @@ interface LowStockPanelProps {
   lowStockThreshold: number;
   outOfStock: number;
   lowStock: number;
+  className?: string | undefined;
 }
 
 /**
@@ -17,10 +18,16 @@ interface LowStockPanelProps {
  * returns `{ id, sku, available }` (inventoryStatsService.ts) — inventing one
  * would be worse than showing the SKU alone.
  */
-const LowStockPanel = ({ items, lowStockThreshold, outOfStock, lowStock }: LowStockPanelProps) => {
+const LowStockPanel = ({
+  items,
+  lowStockThreshold,
+  outOfStock,
+  lowStock,
+  className,
+}: LowStockPanelProps) => {
   if (items.length === 0) {
     return (
-      <Panel title="Stock bajo">
+      <Panel title="Stock bajo" className={className}>
         <EmptyState
           icon={PackageIcon}
           title="Todo el stock está por encima del umbral"
@@ -35,6 +42,7 @@ const LowStockPanel = ({ items, lowStockThreshold, outOfStock, lowStock }: LowSt
       title="Stock bajo"
       hint={`Umbral: ${lowStockThreshold} · ${formatInteger(outOfStock)} agotadas, ${formatInteger(lowStock)} bajas`}
       flush
+      className={className}
     >
       <div>
         {items.map((item) => {

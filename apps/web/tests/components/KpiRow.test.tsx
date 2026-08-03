@@ -10,36 +10,48 @@ const baseOrders = {
     { currency: Currency.MXN, revenue: 3_417_500, orders: 36, averageTicket: 94_931 },
     { currency: Currency.USD, revenue: 41_400, orders: 3, averageTicket: 13_800 },
   ],
+  totalMxnEquivalent: 4_162_700,
   unitsSold: 68,
 };
 
 const baseInventory = { unitsAvailable: 394 };
 
 describe("KpiRow", () => {
-  it("renderiza los cuatro KPIs con sus valores", () => {
+  it("renderiza los tres KPIs, con Ingresos combinado en una sola tarjeta", () => {
     render(<KpiRow orders={baseOrders} inventory={baseInventory} />);
     expect(screen.getByText("Pedidos")).toBeInTheDocument();
     expect(screen.getByText("47")).toBeInTheDocument();
-    expect(screen.getByText("Ingresos MXN")).toBeInTheDocument();
-    expect(screen.getByText("Ingresos USD")).toBeInTheDocument();
+    expect(screen.getByText("Ingresos (equiv. MXN)")).toBeInTheDocument();
+    expect(screen.queryByText("Ingresos MXN")).not.toBeInTheDocument();
+    expect(screen.queryByText("Ingresos USD")).not.toBeInTheDocument();
     expect(screen.getByText("Unidades vendidas")).toBeInTheDocument();
     expect(screen.getByText("68")).toBeInTheDocument();
   });
 
-  it("una moneda ausente en revenue[] se renderiza en cero, no se oculta", () => {
+  it("el valor acentuado es el equivalente en MXN, no solo el real", () => {
+    render(<KpiRow orders={baseOrders} inventory={baseInventory} />);
+    // 4,162,700 centavos -> $41,627
+    expect(screen.getByText("$41,627")).toBeInTheDocument();
+  });
+
+  it("el renglón secundario de USD solo aparece si hay pedidos en USD", () => {
+    render(<KpiRow orders={baseOrders} inventory={baseInventory} />);
+    expect(screen.getByText(/USD/)).toBeInTheDocument();
+    expect(screen.getByText(/3 pedidos/)).toBeInTheDocument();
+  });
+
+  it("sin pedidos en USD, no muestra el renglón secundario", () => {
     render(
       <KpiRow
-        orders={{ ...baseOrders, revenue: [baseOrders.revenue[0]!] }}
+        orders={{ ...baseOrders, revenue: [baseOrders.revenue[0]!], totalMxnEquivalent: 3_417_500 }}
         inventory={baseInventory}
       />,
     );
-    expect(screen.getByText("Ingresos USD")).toBeInTheDocument();
+    expect(screen.queryByText(/USD/)).not.toBeInTheDocument();
   });
 
-  it("incluye la nota de que MXN y USD nunca se suman", () => {
+  it("incluye la nota de que el equivalente usa la tasa congelada de cada pedido", () => {
     render(<KpiRow orders={baseOrders} inventory={baseInventory} />);
-    expect(
-      screen.getByText(/MXN y USD nunca se suman/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/tasa de cambio/)).toBeInTheDocument();
   });
 });
