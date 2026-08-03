@@ -16,6 +16,7 @@ const LOW_STOCK_SAMPLE = 20;
 interface LowStockItem {
   id: string;
   sku: string;
+  productName: string;
   available: number;
 }
 
@@ -66,7 +67,9 @@ const getInventoryStats = async (): Promise<InventoryStats> => {
     { $match: { available: { $lte: threshold } } },
     { $sort: { available: 1 } },
     { $limit: LOW_STOCK_SAMPLE },
-    { $project: { sku: 1, available: 1 } },
+    { $lookup: { from: "products", localField: "product", foreignField: "_id", as: "productDoc" } },
+    { $unwind: "$productDoc" },
+    { $project: { sku: 1, available: 1, productName: "$productDoc.name" } },
   ]);
 
   const base = totals ?? {
@@ -90,6 +93,7 @@ const getInventoryStats = async (): Promise<InventoryStats> => {
     lowStockItems: lowStockItems.map((item) => ({
       id: String(item._id),
       sku: item.sku,
+      productName: item.productName,
       available: item.available,
     })),
   };

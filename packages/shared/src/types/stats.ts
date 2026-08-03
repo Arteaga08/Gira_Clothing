@@ -1,7 +1,7 @@
 import type { Currency } from "../enums/money.js";
 import type { OrderStatus } from "../enums/orderStatus.js";
 import type { NotificationChannelKind, NotificationType } from "../enums/notification.js";
-import type { StatsGranularity } from "../constants/stats.js";
+import type { PeriodPreset, StatsGranularity } from "../constants/stats.js";
 
 interface RevenueEntry {
   currency: Currency;
@@ -21,6 +21,18 @@ interface TopProduct {
 interface TopPrint {
   printName: string;
   units: number;
+}
+
+/**
+ * Response of `GET /admin/stats/top-products` — a calendar-anchored "current
+ * period" window (today/this week/this month so far, or one specific day),
+ * independent of the rolling `?dias=`/`?vista=` range the rest of Resumen
+ * uses. `range` echoes back the resolved window so the UI can show it.
+ */
+interface TopProductsPeriod {
+  period: PeriodPreset;
+  range: { from: Date; to: Date };
+  products: TopProduct[];
 }
 
 interface OrderStatsAlerts {
@@ -55,6 +67,7 @@ interface OrderStats {
 interface LowStockItem {
   id: string;
   sku: string;
+  productName: string;
   available: number;
 }
 
@@ -117,6 +130,7 @@ export type {
   RevenueEntry,
   TopProduct,
   TopPrint,
+  TopProductsPeriod,
   OrderStatsAlerts,
   OrderStats,
   LowStockItem,

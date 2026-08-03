@@ -81,4 +81,4 @@ const parseDayRange = (query: DayRangeQuery): DayRange => {
 };
 
 export type { DayRange, DayRangeQuery };
-export { parseDayRange, TIMEZONE, DEFAULT_DAYS, MAX_DAYS };
+export { parseDayRange, localDayKey, localMidnightUtc, TIMEZONE, DEFAULT_DAYS, MAX_DAYS };

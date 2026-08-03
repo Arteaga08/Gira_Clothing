@@ -80,4 +80,4 @@ const parseGranularity = (raw: unknown): StatsGranularity =>
     ? (raw as StatsGranularity)
     : "day";
 
-export { bucketKeyFor, enumerateBucketKeys, bucketExpr, parseGranularity };
+export { pad2, bucketKeyFor, enumerateBucketKeys, bucketExpr, parseGranularity };

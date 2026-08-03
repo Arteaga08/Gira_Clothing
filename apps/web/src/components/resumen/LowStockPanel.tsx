@@ -13,11 +13,6 @@ interface LowStockPanelProps {
   className?: string | undefined;
 }
 
-/**
- * No product name here on purpose: `InventoryStats.lowStockItems` only ever
- * returns `{ id, sku, available }` (inventoryStatsService.ts) — inventing one
- * would be worse than showing the SKU alone.
- */
 const LowStockPanel = ({
   items,
   lowStockThreshold,
@@ -53,7 +48,8 @@ const LowStockPanel = ({
               className="flex items-center gap-3 border-t border-border px-4 py-3 first:border-t-0"
             >
               <div className="min-w-0 flex-1">
-                <p className="truncate font-mono text-sm font-semibold">{item.sku}</p>
+                <p className="truncate text-sm font-semibold">{item.productName}</p>
+                <p className="truncate font-mono text-xs text-text-muted">{item.sku}</p>
                 <p className="text-xs text-text-muted">{isOut ? "Agotada" : "Stock bajo"}</p>
               </div>
               <span

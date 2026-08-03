@@ -17,5 +17,17 @@ type StatsGranularity = (typeof STATS_GRANULARITIES)[number];
  */
 const MAX_STATS_DAYS = 730;
 
-export type { StatsGranularity };
-export { STATS_GRANULARITIES, MAX_STATS_DAYS };
+/**
+ * Calendar-anchored "current period" presets for the top-products-by-period
+ * widget — deliberately separate from `StatsGranularity`: that one buckets a
+ * rolling range into many points for a trend chart, this one resolves to a
+ * SINGLE window ("this week so far", "this specific day"). Shared so the
+ * frontend's `?period=` query param and the backend's response field agree
+ * on the same four strings.
+ */
+const PERIOD_PRESETS = ["today", "week", "month", "custom"] as const;
+
+type PeriodPreset = (typeof PERIOD_PRESETS)[number];
+
+export type { StatsGranularity, PeriodPreset };
+export { STATS_GRANULARITIES, MAX_STATS_DAYS, PERIOD_PRESETS };

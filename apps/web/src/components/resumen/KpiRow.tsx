@@ -8,8 +8,9 @@ interface KpiRowOrders {
   paidOrders: number;
   revenue: Wire<RevenueEntry>[];
   /** Every order's `total` converted to MXN with ITS OWN frozen exchange
-   *  rate, MXN orders passed through unchanged — the dashboard's headline
-   *  figure. `revenue` above stays the untouched, per-currency breakdown. */
+   *  rate, MXN orders passed through unchanged — the dashboard's ONLY
+   *  revenue figure. `revenue` keeps the untouched per-currency breakdown
+   *  for other consumers, but this card never names a second currency. */
   totalMxnEquivalent: number;
   unitsSold: number;
 }
@@ -19,24 +20,13 @@ interface KpiRowProps {
   inventory: { unitsAvailable: number };
 }
 
-const revenueFor = (
-  revenue: KpiRowOrders["revenue"],
-  currency: Currency,
-): { revenue: number; orders: number } => {
-  const entry = revenue.find((item) => item.currency === currency);
-  return { revenue: entry?.revenue ?? 0, orders: entry?.orders ?? 0 };
-};
+/** Total orders that contributed revenue in the period, across every
+ *  currency — a single count, never broken out by currency on this card. */
+const revenueOrderCount = (revenue: KpiRowOrders["revenue"]): number =>
+  revenue.reduce((sum, entry) => sum + entry.orders, 0);
 
 const KpiRow = ({ orders, inventory }: KpiRowProps) => {
-  const mxn = revenueFor(orders.revenue, Currency.MXN);
-  const usd = revenueFor(orders.revenue, Currency.USD);
   const equivalentParts = formatMoneyParts(orders.totalMxnEquivalent, Currency.MXN);
-  const mxnParts = formatMoneyParts(mxn.revenue, Currency.MXN);
-  // Never re-derived from a rate here: the API already did the conversion
-  // per order, so the USD-equivalent shown is just what's left after
-  // subtracting the real MXN portion from the already-computed total.
-  const usdEquivalentParts = formatMoneyParts(orders.totalMxnEquivalent - mxn.revenue, Currency.MXN);
-  const usdParts = formatMoneyParts(usd.revenue, Currency.USD);
 
   return (
     <section aria-label="Indicadores del periodo">
@@ -48,26 +38,10 @@ const KpiRow = ({ orders, inventory }: KpiRowProps) => {
           icon={ShoppingBagOpenIcon}
         />
         <StatCard
-          label="Ingresos (equiv. MXN)"
+          label="Ingresos"
           value={equivalentParts.amount}
           unit={equivalentParts.fraction}
-          foot={
-            <>
-              {mxnParts.amount}
-              {mxnParts.fraction} MXN reales · {formatInteger(mxn.orders)} pedidos
-              {usd.orders > 0 ? (
-                <>
-                  <br />
-                  <span className="opacity-80">
-                    + USD {usdParts.amount}
-                    {usdParts.fraction} · {formatInteger(usd.orders)} pedidos (equiv.{" "}
-                    {usdEquivalentParts.amount}
-                    {usdEquivalentParts.fraction} MXN)
-                  </span>
-                </>
-              ) : null}
-            </>
-          }
+          foot={`${formatInteger(revenueOrderCount(orders.revenue))} pedidos`}
           icon={CurrencyDollarIcon}
           accent
         />
@@ -79,8 +53,8 @@ const KpiRow = ({ orders, inventory }: KpiRowProps) => {
         />
       </div>
       <p className="mt-3 text-xs text-text-muted">
-        El equivalente en MXN usa la tasa de cambio congelada de cada pedido, nunca la actual; el
-        desglose real por moneda va en la tarjeta.
+        El monto se muestra en pesos; una compra en otra moneda se convierte con la tasa vigente al
+        momento del pedido.
       </p>
     </section>
   );

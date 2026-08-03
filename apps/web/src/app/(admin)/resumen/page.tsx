@@ -9,11 +9,12 @@ import { RangeSelector } from "@/components/resumen/RangeSelector";
 import { SectionError } from "@/components/resumen/SectionError";
 import { TimeseriesChart } from "@/components/resumen/TimeseriesChart";
 import { TopPrintsPanel } from "@/components/resumen/TopPrintsPanel";
-import { TopProductsPanel } from "@/components/resumen/TopProductsPanel";
+import { TopProductsSection } from "@/components/resumen/TopProductsSection";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { isApiError } from "@/lib/api/ApiError";
 import { loadSession } from "@/lib/api/session";
 import { getOutboxHealth, getOverview, getTimeseries } from "@/lib/api/stats";
+import { getTopProductsForPeriod } from "@/lib/api/topProductsServer";
 import { formatLongDate, greetingFor } from "@/lib/format";
 import { attentionTilesFrom } from "@/lib/stats/attention";
 import { parseGranularity, parseRangeDays } from "@/lib/stats/range";
@@ -21,6 +22,10 @@ import { parseGranularity, parseRangeDays } from "@/lib/stats/range";
 const metadata: Metadata = { title: "Resumen" };
 
 const GENERIC_SECTION_ERROR = "No se pudo conectar con el servidor. Intenta de nuevo.";
+
+/** "Más vendidos" opens on "this week so far" — a calendar-anchored period
+ *  independent of the `?dias=`/`?vista=` range the rest of the page uses. */
+const DEFAULT_TOP_PRODUCTS_PERIOD = "week" as const;
 
 /** Turns a settled rejection into the Spanish message SectionError shows — the API's own message when it's an ApiError, a generic fallback otherwise. */
 const messageOf = (reason: unknown): string => (isApiError(reason) ? reason.message : GENERIC_SECTION_ERROR);
@@ -42,16 +47,19 @@ const ResumenPage = async ({ searchParams }: ResumenPageProps) => {
   const granularity = parseGranularity(vista);
   const days = parseRangeDays(dias, granularity);
 
-  const [overviewOutcome, timeseriesOutcome, healthOutcome, sessionOutcome] = await Promise.allSettled([
-    getOverview(days),
-    getTimeseries(days, granularity),
-    getOutboxHealth(),
-    loadSession(),
-  ]);
+  const [overviewOutcome, timeseriesOutcome, healthOutcome, sessionOutcome, topProductsOutcome] =
+    await Promise.allSettled([
+      getOverview(days),
+      getTimeseries(days, granularity),
+      getOutboxHealth(),
+      loadSession(),
+      getTopProductsForPeriod(DEFAULT_TOP_PRODUCTS_PERIOD),
+    ]);
 
   const overview = overviewOutcome.status === "fulfilled" ? overviewOutcome.value : undefined;
   const timeseries = timeseriesOutcome.status === "fulfilled" ? timeseriesOutcome.value : undefined;
   const health = healthOutcome.status === "fulfilled" ? healthOutcome.value : undefined;
+  const topProductsPeriod = topProductsOutcome.status === "fulfilled" ? topProductsOutcome.value : undefined;
 
   const adminName =
     sessionOutcome.status === "fulfilled" && sessionOutcome.value.kind === "authenticated"
@@ -111,10 +119,17 @@ const ResumenPage = async ({ searchParams }: ResumenPageProps) => {
           />
         )}
 
-        {overview ? (
-          <TopProductsPanel products={overview.orders.period.topProducts} />
+        {topProductsPeriod ? (
+          <TopProductsSection
+            initialProducts={topProductsPeriod.products}
+            initialPeriod={DEFAULT_TOP_PRODUCTS_PERIOD}
+          />
         ) : (
-          <SectionError message={GENERIC_SECTION_ERROR} />
+          <SectionError
+            message={messageOf(
+              topProductsOutcome.status === "rejected" ? topProductsOutcome.reason : undefined,
+            )}
+          />
         )}
 
         {overview ? (

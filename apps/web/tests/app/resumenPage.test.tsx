@@ -3,11 +3,18 @@ import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import ResumenPage from "@/app/(admin)/resumen/page";
 
-const { getOverviewMock, getTimeseriesMock, getOutboxHealthMock, loadSessionMock } = vi.hoisted(() => ({
+const {
+  getOverviewMock,
+  getTimeseriesMock,
+  getOutboxHealthMock,
+  loadSessionMock,
+  getTopProductsForPeriodMock,
+} = vi.hoisted(() => ({
   getOverviewMock: vi.fn(),
   getTimeseriesMock: vi.fn(),
   getOutboxHealthMock: vi.fn(),
   loadSessionMock: vi.fn(),
+  getTopProductsForPeriodMock: vi.fn(),
 }));
 
 vi.mock("@/lib/api/stats", () => ({
@@ -16,6 +23,7 @@ vi.mock("@/lib/api/stats", () => ({
   getOutboxHealth: getOutboxHealthMock,
 }));
 vi.mock("@/lib/api/session", () => ({ loadSession: loadSessionMock }));
+vi.mock("@/lib/api/topProductsServer", () => ({ getTopProductsForPeriod: getTopProductsForPeriodMock }));
 
 const overviewFixture = (overrides?: { empty?: boolean }) => ({
   orders: {
@@ -53,7 +61,9 @@ const overviewFixture = (overrides?: { empty?: boolean }) => ({
     unitsOnHand: 400,
     unitsReserved: 6,
     unitsAvailable: 394,
-    lowStockItems: overrides?.empty ? [] : [{ id: "1", sku: "PLY-CEMP-XS", available: 0 }],
+    lowStockItems: overrides?.empty
+      ? []
+      : [{ id: "1", sku: "PLY-CEMP-XS", productName: "Playera oversize", available: 0 }],
   },
 });
 
@@ -66,6 +76,14 @@ const timeseriesFixture = (days = 3, granularity: "day" | "week" | "month" | "ye
     unitsSold: 0,
     revenue: [],
   })),
+});
+
+const topProductsFixture = (overrides?: { empty?: boolean }) => ({
+  period: "week" as const,
+  range: { from: "2026-07-27T06:00:00.000Z", to: "2026-08-03T00:00:00.000Z" },
+  products: overrides?.empty
+    ? []
+    : [{ sku: "PLY-CEMP-M", productName: "Playera oversize", printName: "Cempasúchil", units: 14 }],
 });
 
 const healthFixture = () => ({
@@ -93,6 +111,7 @@ describe("ResumenPage — camino feliz", () => {
     getOverviewMock.mockResolvedValue(overviewFixture());
     getTimeseriesMock.mockResolvedValue(timeseriesFixture());
     getOutboxHealthMock.mockResolvedValue(healthFixture());
+    getTopProductsForPeriodMock.mockResolvedValue(topProductsFixture());
     loadSessionMock.mockResolvedValue(adminSession);
 
     await renderPage({ dias: "30" });
@@ -100,7 +119,7 @@ describe("ResumenPage — camino feliz", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Resumen" })).toBeInTheDocument();
     expect(screen.getByText("Notificaciones fallidas")).toBeInTheDocument();
     expect(screen.getByText("Pedidos", { selector: "p" })).toBeInTheDocument();
-    expect(screen.getByText("Ingresos (equiv. MXN)")).toBeInTheDocument();
+    expect(screen.getByText("Ingresos", { selector: "p" })).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /Pedidos por día/ })).toBeInTheDocument();
     expect(screen.getByText("Distribución por estado")).toBeInTheDocument();
     expect(screen.getByText("Más vendidos")).toBeInTheDocument();
@@ -115,6 +134,7 @@ describe("ResumenPage — rango y vista", () => {
     getOverviewMock.mockResolvedValue(overviewFixture());
     getTimeseriesMock.mockResolvedValue(timeseriesFixture());
     getOutboxHealthMock.mockResolvedValue(healthFixture());
+    getTopProductsForPeriodMock.mockResolvedValue(topProductsFixture());
     loadSessionMock.mockResolvedValue(adminSession);
 
     await renderPage({ dias: "7" });
@@ -128,6 +148,7 @@ describe("ResumenPage — rango y vista", () => {
     getOverviewMock.mockResolvedValue(overviewFixture());
     getTimeseriesMock.mockResolvedValue(timeseriesFixture());
     getOutboxHealthMock.mockResolvedValue(healthFixture());
+    getTopProductsForPeriodMock.mockResolvedValue(topProductsFixture());
     loadSessionMock.mockResolvedValue(adminSession);
 
     await renderPage({ dias: "abc" });
@@ -140,6 +161,7 @@ describe("ResumenPage — rango y vista", () => {
     getOverviewMock.mockResolvedValue(overviewFixture());
     getTimeseriesMock.mockResolvedValue(timeseriesFixture(180, "week"));
     getOutboxHealthMock.mockResolvedValue(healthFixture());
+    getTopProductsForPeriodMock.mockResolvedValue(topProductsFixture());
     loadSessionMock.mockResolvedValue(adminSession);
 
     await renderPage({ dias: "180", vista: "week" });
@@ -153,6 +175,7 @@ describe("ResumenPage — rango y vista", () => {
     getOverviewMock.mockResolvedValue(overviewFixture());
     getTimeseriesMock.mockResolvedValue(timeseriesFixture());
     getOutboxHealthMock.mockResolvedValue(healthFixture());
+    getTopProductsForPeriodMock.mockResolvedValue(topProductsFixture());
     loadSessionMock.mockResolvedValue(adminSession);
 
     await renderPage({ vista: "abc" });
@@ -166,18 +189,20 @@ describe("ResumenPage — fallos aislados por sección", () => {
     getOverviewMock.mockResolvedValue(overviewFixture());
     getTimeseriesMock.mockRejectedValue(new Error("timeseries caído"));
     getOutboxHealthMock.mockResolvedValue(healthFixture());
+    getTopProductsForPeriodMock.mockResolvedValue(topProductsFixture());
     loadSessionMock.mockResolvedValue(adminSession);
 
     await renderPage({ dias: "30" });
 
     expect(screen.queryByRole("img", { name: /Pedidos por día/ })).not.toBeInTheDocument();
-    expect(screen.getByText("Ingresos (equiv. MXN)")).toBeInTheDocument();
+    expect(screen.getByText("Ingresos")).toBeInTheDocument();
   });
 
   it("falla health: la banda muestra 5 tiles y el panel de salud es SectionError", async () => {
     getOverviewMock.mockResolvedValue(overviewFixture());
     getTimeseriesMock.mockResolvedValue(timeseriesFixture());
     getOutboxHealthMock.mockRejectedValue(new Error("health caído"));
+    getTopProductsForPeriodMock.mockResolvedValue(topProductsFixture());
     loadSessionMock.mockResolvedValue(adminSession);
 
     await renderPage({ dias: "30" });
@@ -187,10 +212,11 @@ describe("ResumenPage — fallos aislados por sección", () => {
     expect(screen.queryByText("Salud de notificaciones")).not.toBeInTheDocument();
   });
 
-  it("falla overview: KPIs, banda, distribución y las tres listas son SectionError; la gráfica sigue", async () => {
+  it("falla overview: KPIs, banda, distribución y las otras dos listas son SectionError; la gráfica y Más vendidos siguen (fetch independiente)", async () => {
     getOverviewMock.mockRejectedValue(new Error("overview caído"));
     getTimeseriesMock.mockResolvedValue(timeseriesFixture());
     getOutboxHealthMock.mockResolvedValue(healthFixture());
+    getTopProductsForPeriodMock.mockResolvedValue(topProductsFixture());
     loadSessionMock.mockResolvedValue(adminSession);
 
     await renderPage({ dias: "30" });
@@ -198,10 +224,26 @@ describe("ResumenPage — fallos aislados por sección", () => {
     expect(screen.queryByText("Pedidos", { selector: "p" })).not.toBeInTheDocument();
     expect(screen.getByRole("img", { name: /Pedidos por día/ })).toBeInTheDocument();
     expect(screen.queryByText("Distribución por estado")).not.toBeInTheDocument();
-    expect(screen.queryByText("Más vendidos")).not.toBeInTheDocument();
+    // "Más vendidos" is fed by its own independent fetch (getTopProductsForPeriod),
+    // not by `overview` — it must survive an overview failure.
+    expect(screen.getByText("Más vendidos")).toBeInTheDocument();
     expect(screen.queryByText("Stock bajo")).not.toBeInTheDocument();
     expect(screen.queryByText("Print más usado")).not.toBeInTheDocument();
-    expect(screen.getAllByText("No se pudo cargar esta sección").length).toBeGreaterThanOrEqual(5);
+    expect(screen.getAllByText("No se pudo cargar esta sección").length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("falla el fetch inicial de top-products: 'Más vendidos' es SectionError, el resto sigue", async () => {
+    getOverviewMock.mockResolvedValue(overviewFixture());
+    getTimeseriesMock.mockResolvedValue(timeseriesFixture());
+    getOutboxHealthMock.mockResolvedValue(healthFixture());
+    getTopProductsForPeriodMock.mockRejectedValue(new Error("top-products caído"));
+    loadSessionMock.mockResolvedValue(adminSession);
+
+    await renderPage({ dias: "30" });
+
+    expect(screen.queryByText("Más vendidos")).not.toBeInTheDocument();
+    expect(screen.getByText("Ingresos", { selector: "p" })).toBeInTheDocument();
+    expect(screen.getByText("Distribución por estado")).toBeInTheDocument();
   });
 });
 
@@ -218,13 +260,14 @@ describe("ResumenPage — base vacía", () => {
       oldestPendingAt: null,
       failedSample: [],
     });
+    getTopProductsForPeriodMock.mockResolvedValue(topProductsFixture({ empty: true }));
     loadSessionMock.mockResolvedValue(adminSession);
 
     await renderPage({ dias: "30" });
 
     expect(within(document.body).queryByText(/NaN/)).not.toBeInTheDocument();
     expect(screen.getByText("Sin pedidos en el periodo")).toBeInTheDocument();
-    expect(screen.getByText("Aún no hay ventas en este periodo")).toBeInTheDocument();
+    expect(screen.getByText("Sin ventas en este periodo")).toBeInTheDocument();
     expect(screen.getByText("Aún no hay prints vendidos en este periodo")).toBeInTheDocument();
     expect(screen.getByText("Todo el stock está por encima del umbral")).toBeInTheDocument();
   });
