@@ -1,0 +1,169 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-02T00:00:00.000Z",
+  "title": "Design System: Gira Clothing — Admin Dashboard",
+  "extensions": {
+    "colorMeta": {
+      "brand": {
+        "role": "primary",
+        "displayName": "Deep Forest Ink",
+        "canonical": "oklch(46% 0.11 162)",
+        "tonalRamp": [
+          "oklch(15% 0.06 162)",
+          "oklch(25% 0.08 162)",
+          "oklch(35% 0.1 162)",
+          "oklch(46% 0.11 162)",
+          "oklch(55% 0.1 162)",
+          "oklch(65% 0.08 162)",
+          "oklch(80% 0.05 162)",
+          "oklch(94% 0.03 162)"
+        ]
+      },
+      "accent": {
+        "role": "secondary",
+        "displayName": "Warm Rust",
+        "canonical": "oklch(62% 0.16 48)",
+        "tonalRamp": [
+          "oklch(15% 0.08 48)",
+          "oklch(25% 0.1 48)",
+          "oklch(35% 0.12 48)",
+          "oklch(45% 0.14 48)",
+          "oklch(55% 0.15 48)",
+          "oklch(62% 0.16 48)",
+          "oklch(75% 0.1 48)",
+          "oklch(90% 0.05 48)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "oklch(24% 0.02 162)",
+        "tonalRamp": [
+          "oklch(15% 0.015 162)",
+          "oklch(24% 0.02 162)",
+          "oklch(35% 0.018 162)",
+          "oklch(48% 0.015 162)",
+          "oklch(60% 0.012 162)",
+          "oklch(75% 0.01 162)",
+          "oklch(88% 0.01 162)",
+          "oklch(96.5% 0.006 162)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Surface",
+        "canonical": "oklch(99.2% 0.003 162)",
+        "tonalRamp": [
+          "oklch(15% 0.01 162)",
+          "oklch(30% 0.01 162)",
+          "oklch(45% 0.01 162)",
+          "oklch(60% 0.008 162)",
+          "oklch(75% 0.008 162)",
+          "oklch(93.8% 0.008 162)",
+          "oklch(97.6% 0.008 162)",
+          "oklch(99.2% 0.003 162)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Page-level h1 titles only." },
+      "title": { "displayName": "Title", "purpose": "Panel and card section headers." },
+      "body": { "displayName": "Body", "purpose": "Prose, labels, table cells." },
+      "label": { "displayName": "Label", "purpose": "Stat-card labels, chip text, form labels, uppercase." },
+      "mono": { "displayName": "Mono", "purpose": "Money, unit counts, SKUs — anything reconciled against a receipt." }
+    },
+    "shadows": [
+      { "name": "nb-shadow-sm", "value": "2px 2px 0 0 var(--color-ink)", "purpose": "Small controls, chips, ghost-button hover." },
+      { "name": "nb-shadow", "value": "4px 4px 0 0 var(--color-ink)", "purpose": "Default card/panel shadow at rest." },
+      { "name": "nb-shadow-lg", "value": "6px 6px 0 0 var(--color-ink)", "purpose": "The single most important surface per screen; pressable-card hover." },
+      { "name": "nb-shadow-pressed", "value": "0 0 0 0 var(--color-ink)", "purpose": "Active/pressed state — shadow collapses to zero." }
+    ],
+    "motion": [
+      { "name": "ease-out-expo", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Default easing for press/hover state transitions." },
+      { "name": "ease-drawer", "value": "cubic-bezier(0.32, 0.72, 0, 1)", "purpose": "Mobile sidebar drawer slide-in/out." }
+    ],
+    "breakpoints": [
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main call-to-action button, brand fill.",
+      "html": "<button class=\"ds-btn-primary\">Guardar</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; border-radius: 8px; border: 2px solid var(--color-ink); font-weight: 700; font-size: 0.875rem; padding: 8px 16px; min-height: 38px; background: var(--color-brand); color: var(--color-text-inverse); box-shadow: 2px 2px 0 0 var(--color-ink); transition: transform 0.15s cubic-bezier(0.16,1,0.3,1), box-shadow 0.15s cubic-bezier(0.16,1,0.3,1); } .ds-btn-primary:hover { background: var(--color-brand-hover); transform: translate(-1px, -1px); box-shadow: 6px 6px 0 0 var(--color-ink); } .ds-btn-primary:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; } .ds-btn-primary:active { transform: translate(2px, 2px); box-shadow: 0 0 0 0 var(--color-ink); }"
+    },
+    {
+      "name": "Stat Card",
+      "kind": "card",
+      "refersTo": "stat-card",
+      "description": "KPI tile: uppercase label, mono value, optional icon and footnote.",
+      "html": "<div class=\"ds-stat-card\"><div class=\"ds-stat-card-head\"><p class=\"ds-stat-label\">Pedidos</p></div><p class=\"ds-stat-value\">128</p><p class=\"ds-stat-foot\">96 con pago confirmado</p></div>",
+      "css": ".ds-stat-card { background: var(--color-surface); border: 2px solid var(--color-ink); border-radius: 12px; box-shadow: 4px 4px 0 0 var(--color-ink); padding: 16px; } .ds-stat-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; color: var(--color-text-secondary); margin: 0; } .ds-stat-value { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 1.375rem; font-weight: 700; letter-spacing: -0.01em; margin: 8px 0 0; } .ds-stat-foot { font-size: 0.75rem; color: var(--color-text-secondary); margin: 8px 0 0; }"
+    },
+    {
+      "name": "Stat Card — Accented",
+      "kind": "card",
+      "refersTo": "stat-card-accent",
+      "description": "The single highlighted KPI per screen; same shape as Stat Card with brand-subtle fill.",
+      "html": "<div class=\"ds-stat-card-accent\"><p class=\"ds-stat-label\">Ingresos MXN</p><p class=\"ds-stat-value\">$34,175<small>.00</small></p></div>",
+      "css": ".ds-stat-card-accent { background: var(--color-brand-subtle); border: 2px solid var(--color-ink); border-radius: 12px; box-shadow: 4px 4px 0 0 var(--color-ink); padding: 16px; } .ds-stat-card-accent .ds-stat-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; color: var(--color-text-secondary); margin: 0; } .ds-stat-card-accent .ds-stat-value { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 1.375rem; font-weight: 700; margin: 8px 0 0; } .ds-stat-card-accent .ds-stat-value small { font-size: 0.75rem; font-weight: 600; color: var(--color-text-muted); margin-left: 4px; }"
+    },
+    {
+      "name": "Status Chip",
+      "kind": "chip",
+      "refersTo": "status-chip",
+      "description": "Order-status indicator: flat pastel fill, ink border, dark text — never white text on saturated fill.",
+      "html": "<span class=\"ds-chip\">Enviado</span>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; padding: 2px 10px; font-size: 0.75rem; font-weight: 700; border-radius: 999px; border: 1.5px solid var(--color-ink); background: var(--status-shipped); color: var(--color-text-primary); }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Standard text field: ink border, no inset shadow, focus shifts border to the focus blue.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Buscar SKU\" />",
+      "css": ".ds-input { display: block; width: 100%; border: 2px solid var(--color-ink); border-radius: 8px; background: var(--color-surface); padding: 8px 12px; font-size: 0.9375rem; color: var(--color-text-primary); } .ds-input::placeholder { color: var(--color-text-muted); } .ds-input:focus-visible { outline: none; border-color: var(--color-focus); }"
+    },
+    {
+      "name": "Nav Item",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Sidebar navigation link; active state uses brand-subtle fill and bold weight, never an underline or stripe.",
+      "html": "<a class=\"ds-nav-item ds-nav-item-active\" href=\"#\">Resumen</a>",
+      "css": ".ds-nav-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; font-size: 0.875rem; font-weight: 500; color: var(--color-text-secondary); text-decoration: none; } .ds-nav-item:hover { background: var(--color-surface-raised); color: var(--color-text-primary); } .ds-nav-item-active { background: var(--color-brand-subtle); color: var(--color-text-primary); font-weight: 700; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Field Console",
+    "overview": "This is not a marketing surface, it is the instrument panel an operations team stares at during a shift: order queues, stock levels, notification failures. Every choice serves speed of reading over decoration. The system borrows its vocabulary from neobrutalism on purpose, not as a trend but as a literal metaphor: solid ink borders and hard offset shadows read like a printed control panel, something built rather than styled, exactly right for a store that sells physical printed apparel. It explicitly rejects the generic SaaS-dashboard look: no glassmorphism, no purple-to-blue gradients, no hairline 1px borders that vanish at a glance, no gradient-text hero metrics. Neutrals are never truly grey; every surface is tinted toward the brand hue (chroma 0.003–0.02) so the whole UI reads as one material, not a stack of disconnected panels.",
+    "keyCharacteristics": [
+      "Hard 2px ink borders and flat offset shadows instead of blur/opacity for depth.",
+      "One accent color used sparingly, reserved for exactly one KPI per screen.",
+      "Status conveyed by a wide, deliberately non-semantic palette of nine order-status hues, always paired with an ink border and dark text.",
+      "Zero decorative motion; state feedback only, translated into shadow offset, not scale or blur."
+    ],
+    "rules": [
+      { "name": "The One Accent Rule", "body": "--color-brand appears on at most one stat card and interactive primary actions per screen. A second highlighted tile on the same screen is always a bug, not a design choice.", "section": "colors" },
+      { "name": "The Nine-Hue Status Rule", "body": "Order and shipment statuses each get their own hue from a wayfinding palette, always with an ink border and dark text. A status is never conveyed by fill color alone.", "section": "colors" },
+      { "name": "The Numbers-Are-Mono Rule", "body": "Any value the user might reconcile against a receipt or a shipping label renders in the mono font. Everything else is sans.", "section": "typography" },
+      { "name": "The Press-Into-Shadow Rule", "body": "Interactive elements never scale on press. They translate a couple of pixels toward their own shadow, which shrinks to zero at active. motion-reduce disables the translate but the shadow itself never disappears.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep every color literal inside tokens.css; components read tokens, never inline hex or oklch values.",
+      "Do use the largest shadow for at most one surface per screen, the thing that most needs to interrupt the reader.",
+      "Do render money and unit counts in the mono font, always.",
+      "Do draw every state explicitly (empty, error, zero), never leave a silent gap where data should be."
+    ],
+    "donts": [
+      "Don't use glassmorphism, blur, or translucency anywhere except the scrim behind a mobile drawer.",
+      "Don't use gradients anywhere except the zero-value chart-bar hatch pattern, which is a texture, not a decoration.",
+      "Don't use border-left/border-right as a colored accent stripe on a card or list row.",
+      "Don't accent more than one stat card per screen.",
+      "Don't nest a card inside another card."
+    ]
+  }
+}

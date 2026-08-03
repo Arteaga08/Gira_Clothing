@@ -8,14 +8,15 @@ import { distributionFrom } from "@/lib/stats/distribution";
 
 interface DistributionPanelProps {
   byStatus: Partial<Record<OrderStatus, number>>;
+  className?: string | undefined;
 }
 
-const DistributionPanel = ({ byStatus }: DistributionPanelProps) => {
+const DistributionPanel = ({ byStatus, className }: DistributionPanelProps) => {
   const { segments, total } = distributionFrom(byStatus);
 
   if (segments.length === 0) {
     return (
-      <Panel title="Distribución por estado">
+      <Panel title="Distribución por estado" className={className}>
         <EmptyState
           icon={ChartBarIcon}
           title="Sin pedidos en el periodo"
@@ -28,7 +29,11 @@ const DistributionPanel = ({ byStatus }: DistributionPanelProps) => {
   const ariaLabel = segments.map((segment) => `${segment.count} ${segment.label}`).join(", ");
 
   return (
-    <Panel title="Distribución por estado" hint={`${formatInteger(total)} pedidos en el periodo`}>
+    <Panel
+      title="Distribución por estado"
+      hint={`${formatInteger(total)} pedidos en el periodo`}
+      className={className}
+    >
       <div
         role="img"
         aria-label={ariaLabel}

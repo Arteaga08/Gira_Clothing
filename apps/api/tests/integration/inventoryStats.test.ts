@@ -158,6 +158,19 @@ describe("GET /admin/variants/stats · conteos", () => {
     expect(items[0]).toHaveProperty("sku");
   });
 
+  it("lowStockItems trae el nombre del producto, no solo el SKU", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    await setLowStockThreshold(adminCookie, 5);
+    await seedVariant(adminCookie, "I9", { onHand: 1 });
+
+    const res = await request(app).get(STATS_URL).set("Cookie", adminCookie);
+
+    const items = res.body.data.lowStockItems as { sku: string; productName: string }[];
+    const match = items.find((item) => item.productName === "Producto I9");
+    expect(match).toBeDefined();
+    expect(match?.sku).toEqual(expect.any(String));
+  });
+
   it("sin variantes, responde todo en cero y arreglo vacío", async () => {
     const adminCookie = await loginAsAdmin(app);
 

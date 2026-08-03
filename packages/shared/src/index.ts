@@ -63,6 +63,8 @@ import type {
 import type {
   RevenueEntry,
   TopProduct,
+  TopPrint,
+  TopProductsPeriod,
   OrderStatsAlerts,
   OrderStats,
   LowStockItem,
@@ -73,6 +75,8 @@ import type {
   FailedNotificationSample,
   OutboxHealth,
 } from "./types/stats.js";
+import type { PeriodPreset, StatsGranularity } from "./constants/stats.js";
+import { PERIOD_PRESETS, STATS_GRANULARITIES, MAX_STATS_DAYS } from "./constants/stats.js";
 import type { AuditLogEntry } from "./types/audit.js";
 import type { LoginRequest, LoginResponse, MeResponse, ApiErrorBody } from "./types/auth.js";
 import { ORDER_STATUS_LABELS } from "./labels/orderStatus.js";
@@ -112,6 +116,8 @@ export type {
   Settings,
   RevenueEntry,
   TopProduct,
+  TopPrint,
+  TopProductsPeriod,
   OrderStatsAlerts,
   OrderStats,
   LowStockItem,
@@ -123,6 +129,8 @@ export type {
   OutboxHealth,
   AuditLogEntry,
 };
+export type { StatsGranularity, PeriodPreset };
+export { STATS_GRANULARITIES, MAX_STATS_DAYS, PERIOD_PRESETS };
 export type { LoginRequest, LoginResponse, MeResponse, ApiErrorBody };
 export { ORDER_STATUS_LABELS, SHIPMENT_STATUS_LABELS };
 export { TWO_FACTOR_REQUIRED_MESSAGE, TWO_FACTOR_INVALID_MESSAGE, INVALID_CREDENTIALS_MESSAGE };

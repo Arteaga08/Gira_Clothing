@@ -28,7 +28,12 @@ describe("GET /admin/stats/timeseries", () => {
     expect(res.body.data.granularity).toBe("day");
     for (const point of res.body.data.series) {
       expect(point).toEqual(
-        expect.objectContaining({ day: expect.any(String), orders: 0, unitsSold: 0, revenue: [] }),
+        expect.objectContaining({
+          periodStart: expect.any(String),
+          orders: 0,
+          unitsSold: 0,
+          revenue: [],
+        }),
       );
     }
   });
@@ -87,8 +92,12 @@ describe("GET /admin/stats/timeseries", () => {
     });
 
     const res = await request(app).get(`${URL}?days=365`).set("cookie", cookie);
-    const bucket14 = res.body.data.series.find((p: { day: string }) => p.day === "2026-07-14");
-    const bucket15 = res.body.data.series.find((p: { day: string }) => p.day === "2026-07-15");
+    const bucket14 = res.body.data.series.find(
+      (p: { periodStart: string }) => p.periodStart === "2026-07-14",
+    );
+    const bucket15 = res.body.data.series.find(
+      (p: { periodStart: string }) => p.periodStart === "2026-07-15",
+    );
     expect(bucket14?.orders ?? 0).toBeGreaterThanOrEqual(1);
     // Si el bucketing usara UTC en vez de zona local, este pedido caería en el 15.
     if (bucket15) expect(bucket15.orders).toBe(0);
@@ -123,18 +132,83 @@ describe("GET /admin/stats/timeseries", () => {
     }
   });
 
-  it("default son 30 buckets; el máximo válido (365) devuelve 365 buckets", async () => {
+  it("default son 30 buckets; el máximo válido (730) devuelve 730 buckets", async () => {
     const cookie = await loginAsAdmin(app);
     const resDefault = await request(app).get(URL).set("cookie", cookie);
     expect(resDefault.body.data.series).toHaveLength(30);
 
-    const resMax = await request(app).get(`${URL}?days=365`).set("cookie", cookie);
-    expect(resMax.body.data.series).toHaveLength(365);
+    const resMax = await request(app).get(`${URL}?days=730`).set("cookie", cookie);
+    expect(resMax.body.data.series).toHaveLength(730);
   });
 
-  it("days=400 lo rechaza Joi con 400 (el clamp interno de parseDayRange nunca se alcanza)", async () => {
+  it("days=800 lo rechaza Joi con 400 (el clamp interno de parseDayRange nunca se alcanza)", async () => {
     const cookie = await loginAsAdmin(app);
-    const res = await request(app).get(`${URL}?days=400`).set("cookie", cookie);
+    const res = await request(app).get(`${URL}?days=800`).set("cookie", cookie);
     expect(res.status).toBe(400);
+  });
+});
+
+describe("GET /admin/stats/timeseries · granularidad", () => {
+  it("sin granularity, default es day", async () => {
+    const cookie = await loginAsAdmin(app);
+    const res = await request(app).get(`${URL}?days=7`).set("cookie", cookie);
+    expect(res.body.data.granularity).toBe("day");
+  });
+
+  it("granularity=abc lo rechaza Joi con 400", async () => {
+    const cookie = await loginAsAdmin(app);
+    const res = await request(app).get(`${URL}?days=7&granularity=abc`).set("cookie", cookie);
+    expect(res.status).toBe(400);
+  });
+
+  it("granularity=week: cada periodStart cae en lunes y hay menos buckets que días", async () => {
+    const cookie = await loginAsAdmin(app);
+    const res = await request(app)
+      .get(`${URL}?days=90&granularity=week`)
+      .set("cookie", cookie);
+
+    expect(res.body.data.granularity).toBe("week");
+    expect(res.body.data.series.length).toBeLessThan(90);
+    for (const point of res.body.data.series) {
+      const weekday = new Date(`${point.periodStart}T00:00:00Z`).getUTCDay();
+      expect(weekday).toBe(1);
+    }
+  });
+
+  it("granularity=month: cada periodStart es el día 1 de su mes", async () => {
+    const cookie = await loginAsAdmin(app);
+    const res = await request(app)
+      .get(`${URL}?days=365&granularity=month`)
+      .set("cookie", cookie);
+
+    expect(res.body.data.granularity).toBe("month");
+    for (const point of res.body.data.series) {
+      expect(point.periodStart.endsWith("-01")).toBe(true);
+    }
+  });
+
+  it("granularity=year: un solo bucket para una ventana de 365 días", async () => {
+    const cookie = await loginAsAdmin(app);
+    const res = await request(app)
+      .get(`${URL}?days=365&granularity=year`)
+      .set("cookie", cookie);
+
+    expect(res.body.data.granularity).toBe("year");
+    expect(res.body.data.series.length).toBeLessThanOrEqual(2);
+  });
+
+  it("dos pedidos en la misma semana caen en el mismo bucket con granularity=week", async () => {
+    const cookie = await loginAsAdmin(app);
+    // Miércoles y viernes de la misma semana ISO — ver seedOrder para el
+    // trato de createdAt (columna nativa, sin el immutable de Mongoose).
+    await seedOrder({ status: OrderStatus.PAID, total: 10_000, createdAt: new Date("2026-07-15T18:00:00Z") });
+    await seedOrder({ status: OrderStatus.PAID, total: 10_000, createdAt: new Date("2026-07-17T18:00:00Z") });
+
+    const res = await request(app)
+      .get(`${URL}?days=365&granularity=week`)
+      .set("cookie", cookie);
+
+    const bucket = res.body.data.series.find((p: { periodStart: string }) => p.periodStart === "2026-07-13");
+    expect(bucket?.orders).toBe(2);
   });
 });

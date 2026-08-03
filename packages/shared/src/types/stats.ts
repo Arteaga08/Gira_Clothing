@@ -1,6 +1,7 @@
 import type { Currency } from "../enums/money.js";
 import type { OrderStatus } from "../enums/orderStatus.js";
 import type { NotificationChannelKind, NotificationType } from "../enums/notification.js";
+import type { PeriodPreset, StatsGranularity } from "../constants/stats.js";
 
 interface RevenueEntry {
   currency: Currency;
@@ -14,6 +15,24 @@ interface TopProduct {
   productName: string;
   printName: string;
   units: number;
+}
+
+/** Grouped by print, not by SKU — a print can span several products. */
+interface TopPrint {
+  printName: string;
+  units: number;
+}
+
+/**
+ * Response of `GET /admin/stats/top-products` — a calendar-anchored "current
+ * period" window (today/this week/this month so far, or one specific day),
+ * independent of the rolling `?dias=`/`?vista=` range the rest of Resumen
+ * uses. `range` echoes back the resolved window so the UI can show it.
+ */
+interface TopProductsPeriod {
+  period: PeriodPreset;
+  range: { from: Date; to: Date };
+  products: TopProduct[];
 }
 
 interface OrderStatsAlerts {
@@ -30,8 +49,16 @@ interface OrderStats {
     totalOrders: number;
     paidOrders: number;
     revenue: RevenueEntry[];
+    /**
+     * Sum of every order's `total` converted to MXN using ITS OWN frozen
+     * `exchangeRate`, MXN orders passed through unchanged. A dashboard-only
+     * computed figure — `revenue` above stays the untouched, per-currency
+     * source of truth.
+     */
+    totalMxnEquivalent: number;
     unitsSold: number;
     topProducts: TopProduct[];
+    topPrints: TopPrint[];
   };
   byStatus: Partial<Record<OrderStatus, number>>;
   alerts: OrderStatsAlerts;
@@ -40,6 +67,7 @@ interface OrderStats {
 interface LowStockItem {
   id: string;
   sku: string;
+  productName: string;
   available: number;
 }
 
@@ -60,8 +88,14 @@ interface Overview {
 }
 
 interface TimeseriesPoint {
-  /** "YYYY-MM-DD", local calendar day. */
-  day: string;
+  /**
+   * "YYYY-MM-DD" — local calendar start of the bucket: the day itself for
+   * `day`, the ISO-week Monday for `week`, the 1st for `month`/`year`. NOT
+   * clamped to `range.from` — a monthly bucket can legitimately start before
+   * the requested window; `orders`/`unitsSold`/`revenue` are still correctly
+   * scoped to the window because the query's $match runs before grouping.
+   */
+  periodStart: string;
   orders: number;
   unitsSold: number;
   revenue: RevenueEntry[];
@@ -69,7 +103,7 @@ interface TimeseriesPoint {
 
 interface TimeseriesStats {
   range: { from: Date; to: Date; days: number; timezone: string };
-  granularity: "day";
+  granularity: StatsGranularity;
   series: TimeseriesPoint[];
 }
 
@@ -95,6 +129,8 @@ interface OutboxHealth {
 export type {
   RevenueEntry,
   TopProduct,
+  TopPrint,
+  TopProductsPeriod,
   OrderStatsAlerts,
   OrderStats,
   LowStockItem,

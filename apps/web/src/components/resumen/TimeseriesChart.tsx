@@ -1,16 +1,18 @@
 "use client";
 
-import type { TimeseriesPoint, Wire } from "@gira/shared";
+import type { StatsGranularity, TimeseriesPoint, Wire } from "@gira/shared";
 import { useState } from "react";
 import { Panel } from "@/components/ui/Panel";
 import { cn } from "@/lib/cn";
-import { formatInteger, formatShortDay } from "@/lib/format";
+import { formatInteger, formatPeriodLabel } from "@/lib/format";
 import { type ChartSeriesKind, toChartBars } from "@/lib/stats/chart";
 
 interface TimeseriesChartProps {
   series: readonly Wire<TimeseriesPoint>[];
   rangeDays: number;
   timezone: string;
+  granularity?: StatsGranularity;
+  className?: string | undefined;
 }
 
 const SERIES_LABELS: Record<ChartSeriesKind, string> = {
@@ -19,10 +21,20 @@ const SERIES_LABELS: Record<ChartSeriesKind, string> = {
   units: "Unidades",
 };
 
-const TITLES: Record<ChartSeriesKind, string> = {
-  orders: "Pedidos por día",
-  revenue: "Ingresos por día",
-  units: "Unidades por día",
+/** "por día" / "por semana" / "por mes" / "por año", appended to the active series label. */
+const GRANULARITY_NOUN: Record<StatsGranularity, string> = {
+  day: "día",
+  week: "semana",
+  month: "mes",
+  year: "año",
+};
+
+/** "Día sin pedidos" / "Semana sin pedidos" / … for the zero-bucket legend swatch. */
+const ZERO_LABEL: Record<StatsGranularity, string> = {
+  day: "Día sin pedidos",
+  week: "Semana sin pedidos",
+  month: "Mes sin pedidos",
+  year: "Año sin pedidos",
 };
 
 /** Label every 5th bar plus the last one — matches the mockup's axis density. */
@@ -31,20 +43,29 @@ const AXIS_STEP = 5;
 /**
  * Switching series never refetches: `timeseries` already returns `orders`,
  * `unitsSold` and `revenue[]` per point, so this is pure client state over
- * data the RSC parent already loaded. The range (`?dias=`), by contrast,
- * lives in the URL — that's a different control, `RangeSelector`.
+ * data the RSC parent already loaded. Range (`?dias=`) and view
+ * (`?vista=`), by contrast, live in the URL — those are `RangeSelector` and
+ * `GranularitySelector`.
  */
-const TimeseriesChart = ({ series, rangeDays, timezone }: TimeseriesChartProps) => {
+const TimeseriesChart = ({
+  series,
+  rangeDays,
+  timezone,
+  granularity = "day",
+  className,
+}: TimeseriesChartProps) => {
   const [kind, setKind] = useState<ChartSeriesKind>("orders");
   const { bars, summary } = toChartBars(series, kind);
 
-  const ariaLabel = `${TITLES[kind]}, últimos ${rangeDays} días. Total ${summary.total}, máximo ${summary.max}.`;
+  const title = `${SERIES_LABELS[kind]} por ${GRANULARITY_NOUN[granularity]}`;
+  const ariaLabel = `${title}, últimos ${rangeDays} días. Total ${summary.total}, máximo ${summary.max}.`;
   const seriesLegendLabel = kind === "revenue" ? "Ingresos MXN" : "Pedidos creados";
 
   return (
     <Panel
-      title={TITLES[kind]}
+      title={title}
       hint={`Últimos ${rangeDays} días · zona horaria ${timezone}`}
+      className={className}
       actions={
         <div role="group" aria-label="Serie" className="flex gap-1">
           {(Object.keys(SERIES_LABELS) as ChartSeriesKind[]).map((option) => (
@@ -65,14 +86,10 @@ const TimeseriesChart = ({ series, rangeDays, timezone }: TimeseriesChartProps) 
       }
     >
       <div className="overflow-x-auto">
-        <div
-          role="img"
-          aria-label={ariaLabel}
-          className="flex h-44 min-w-[34rem] items-end gap-[3px] pt-2 lg:h-52 lg:min-w-0"
-        >
+        <div role="img" aria-label={ariaLabel} className="flex h-44 items-end gap-[3px] pt-2 lg:h-52">
           {bars.map((bar) => (
             <span
-              key={bar.day}
+              key={bar.periodStart}
               data-bar
               data-zero={bar.isZero ? "true" : undefined}
               style={{ height: `${bar.heightPercent}%` }}
@@ -86,13 +103,13 @@ const TimeseriesChart = ({ series, rangeDays, timezone }: TimeseriesChartProps) 
         <div
           data-chart-axis
           aria-hidden="true"
-          className="mt-2 flex min-w-[34rem] gap-[3px] font-mono text-[10px] text-text-muted lg:min-w-0"
+          className="mt-2 flex gap-[3px] font-mono text-[10px] text-text-muted"
         >
           {bars.map((bar, index) => {
             const isLabelled = index % AXIS_STEP === 0 || index === bars.length - 1;
             return (
-              <span key={bar.day} className="min-w-[8px] flex-1 text-center">
-                {isLabelled ? formatShortDay(bar.day) : ""}
+              <span key={bar.periodStart} className="min-w-[8px] flex-1 text-center">
+                {isLabelled ? formatPeriodLabel(bar.periodStart, granularity) : ""}
               </span>
             );
           })}
@@ -105,11 +122,11 @@ const TimeseriesChart = ({ series, rangeDays, timezone }: TimeseriesChartProps) 
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="h-3 w-3 rounded-[3px] border-[1.5px] border-ink bg-[image:var(--pattern-zero-bar)]" />
-          Día sin pedidos
+          {ZERO_LABEL[granularity]}
         </span>
         <span className="font-mono">
           Total {formatInteger(summary.total)} · Máx {formatInteger(summary.max)} · Prom{" "}
-          {summary.average}/día
+          {summary.average}/{GRANULARITY_NOUN[granularity]}
         </span>
       </div>
     </Panel>

@@ -7,6 +7,11 @@ interface KpiRowOrders {
   totalOrders: number;
   paidOrders: number;
   revenue: Wire<RevenueEntry>[];
+  /** Every order's `total` converted to MXN with ITS OWN frozen exchange
+   *  rate, MXN orders passed through unchanged — the dashboard's ONLY
+   *  revenue figure. `revenue` keeps the untouched per-currency breakdown
+   *  for other consumers, but this card never names a second currency. */
+  totalMxnEquivalent: number;
   unitsSold: number;
 }
 
@@ -15,28 +20,17 @@ interface KpiRowProps {
   inventory: { unitsAvailable: number };
 }
 
-/**
- * Revenue is grouped by currency and never summed (orderStatsService.ts) —
- * two KPIs, never a total. A currency absent from `revenue[]` still renders
- * a card at zero so the row never changes shape between ranges.
- */
-const revenueFor = (
-  revenue: KpiRowOrders["revenue"],
-  currency: Currency,
-): { revenue: number; orders: number } => {
-  const entry = revenue.find((item) => item.currency === currency);
-  return { revenue: entry?.revenue ?? 0, orders: entry?.orders ?? 0 };
-};
+/** Total orders that contributed revenue in the period, across every
+ *  currency — a single count, never broken out by currency on this card. */
+const revenueOrderCount = (revenue: KpiRowOrders["revenue"]): number =>
+  revenue.reduce((sum, entry) => sum + entry.orders, 0);
 
 const KpiRow = ({ orders, inventory }: KpiRowProps) => {
-  const mxn = revenueFor(orders.revenue, Currency.MXN);
-  const usd = revenueFor(orders.revenue, Currency.USD);
-  const mxnParts = formatMoneyParts(mxn.revenue, Currency.MXN);
-  const usdParts = formatMoneyParts(usd.revenue, Currency.USD);
+  const equivalentParts = formatMoneyParts(orders.totalMxnEquivalent, Currency.MXN);
 
   return (
     <section aria-label="Indicadores del periodo">
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4 xl:gap-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-3 xl:gap-4">
         <StatCard
           label="Pedidos"
           value={formatInteger(orders.totalOrders)}
@@ -44,19 +38,12 @@ const KpiRow = ({ orders, inventory }: KpiRowProps) => {
           icon={ShoppingBagOpenIcon}
         />
         <StatCard
-          label="Ingresos MXN"
-          value={mxnParts.amount}
-          unit={mxnParts.fraction}
-          foot={`${formatInteger(mxn.orders)} pedidos`}
+          label="Ingresos"
+          value={equivalentParts.amount}
+          unit={equivalentParts.fraction}
+          foot={`${formatInteger(revenueOrderCount(orders.revenue))} pedidos`}
           icon={CurrencyDollarIcon}
           accent
-        />
-        <StatCard
-          label="Ingresos USD"
-          value={usdParts.amount}
-          unit={usdParts.fraction}
-          foot={`${formatInteger(usd.orders)} pedidos`}
-          icon={CurrencyDollarIcon}
         />
         <StatCard
           label="Unidades vendidas"
@@ -66,7 +53,8 @@ const KpiRow = ({ orders, inventory }: KpiRowProps) => {
         />
       </div>
       <p className="mt-3 text-xs text-text-muted">
-        Los ingresos se muestran por moneda: MXN y USD nunca se suman.
+        El monto se muestra en pesos; una compra en otra moneda se convierte con la tasa vigente al
+        momento del pedido.
       </p>
     </section>
   );

@@ -1,4 +1,4 @@
-import type { Overview, OutboxHealth, TimeseriesStats, Wire } from "@gira/shared";
+import type { Overview, OutboxHealth, StatsGranularity, TimeseriesStats, Wire } from "@gira/shared";
 import { expectData } from "./request";
 import { serverRequest } from "./server";
 import { OUTBOX_HEALTH_PATH, STATS_OVERVIEW_PATH, STATS_TIMESERIES_PATH } from "./paths";
@@ -17,8 +17,15 @@ import { OUTBOX_HEALTH_PATH, STATS_OVERVIEW_PATH, STATS_TIMESERIES_PATH } from "
 const getOverview = async (days: number): Promise<Wire<Overview>> =>
   expectData(await serverRequest<Overview>(`${STATS_OVERVIEW_PATH}?days=${days}`));
 
-const getTimeseries = async (days: number): Promise<Wire<TimeseriesStats>> =>
-  expectData(await serverRequest<TimeseriesStats>(`${STATS_TIMESERIES_PATH}?days=${days}`));
+const getTimeseries = async (
+  days: number,
+  granularity: StatsGranularity = "day",
+): Promise<Wire<TimeseriesStats>> =>
+  expectData(
+    await serverRequest<TimeseriesStats>(
+      `${STATS_TIMESERIES_PATH}?days=${days}&granularity=${granularity}`,
+    ),
+  );
 
 /** No query params — the endpoint doesn't accept any (see notificationRoutes.ts). */
 const getOutboxHealth = async (): Promise<Wire<OutboxHealth>> =>

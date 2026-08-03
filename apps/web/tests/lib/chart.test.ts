@@ -2,8 +2,8 @@ import { Currency } from "@gira/shared";
 import { describe, expect, it } from "vitest";
 import { toChartBars } from "@/lib/stats/chart";
 
-const point = (day: string, orders: number, unitsSold: number, mxnRevenue?: number) => ({
-  day,
+const point = (periodStart: string, orders: number, unitsSold: number, mxnRevenue?: number) => ({
+  periodStart,
   orders,
   unitsSold,
   revenue: mxnRevenue === undefined ? [] : [{ currency: Currency.MXN, revenue: mxnRevenue, orders, averageTicket: 0 }],
@@ -52,7 +52,7 @@ describe("toChartBars — serie revenue (solo MXN)", () => {
   it("ignora una entrada de revenue que no sea MXN", () => {
     const series = [
       {
-        day: "2026-07-01",
+        periodStart: "2026-07-01",
         orders: 1,
         unitsSold: 0,
         revenue: [{ currency: Currency.USD, revenue: 5000, orders: 1, averageTicket: 5000 }],

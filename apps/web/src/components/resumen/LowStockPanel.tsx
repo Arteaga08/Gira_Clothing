@@ -10,17 +10,19 @@ interface LowStockPanelProps {
   lowStockThreshold: number;
   outOfStock: number;
   lowStock: number;
+  className?: string | undefined;
 }
 
-/**
- * No product name here on purpose: `InventoryStats.lowStockItems` only ever
- * returns `{ id, sku, available }` (inventoryStatsService.ts) — inventing one
- * would be worse than showing the SKU alone.
- */
-const LowStockPanel = ({ items, lowStockThreshold, outOfStock, lowStock }: LowStockPanelProps) => {
+const LowStockPanel = ({
+  items,
+  lowStockThreshold,
+  outOfStock,
+  lowStock,
+  className,
+}: LowStockPanelProps) => {
   if (items.length === 0) {
     return (
-      <Panel title="Stock bajo">
+      <Panel title="Stock bajo" className={className}>
         <EmptyState
           icon={PackageIcon}
           title="Todo el stock está por encima del umbral"
@@ -35,6 +37,7 @@ const LowStockPanel = ({ items, lowStockThreshold, outOfStock, lowStock }: LowSt
       title="Stock bajo"
       hint={`Umbral: ${lowStockThreshold} · ${formatInteger(outOfStock)} agotadas, ${formatInteger(lowStock)} bajas`}
       flush
+      className={className}
     >
       <div>
         {items.map((item) => {
@@ -45,7 +48,8 @@ const LowStockPanel = ({ items, lowStockThreshold, outOfStock, lowStock }: LowSt
               className="flex items-center gap-3 border-t border-border px-4 py-3 first:border-t-0"
             >
               <div className="min-w-0 flex-1">
-                <p className="truncate font-mono text-sm font-semibold">{item.sku}</p>
+                <p className="truncate text-sm font-semibold">{item.productName}</p>
+                <p className="truncate font-mono text-xs text-text-muted">{item.sku}</p>
                 <p className="text-xs text-text-muted">{isOut ? "Agotada" : "Stock bajo"}</p>
               </div>
               <span

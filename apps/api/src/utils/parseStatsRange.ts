@@ -1,3 +1,5 @@
+import { MAX_STATS_DAYS } from "@gira/shared";
+
 /**
  * Resolves a stats window ONCE per request so every aggregation in the same
  * endpoint shares identical bounds (BACKEND_ARCHITECTURE_GUIDELINES, "Endpoints
@@ -8,7 +10,9 @@
  * (orders: 30 days, inventory: not time-based at all).
  */
 
-const MAX_DAYS = 365;
+/** Re-exported so callers (this file, parseDayRange.ts, statsValidator.ts)
+ *  share the one number instead of duplicating the literal. */
+const MAX_DAYS = MAX_STATS_DAYS;
 
 interface StatsRangeQuery {
   days?: unknown;

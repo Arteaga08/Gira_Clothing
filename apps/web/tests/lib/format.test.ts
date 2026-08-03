@@ -4,6 +4,7 @@ import {
   formatInteger,
   formatLongDate,
   formatMoneyParts,
+  formatPeriodLabel,
   formatShortDay,
   greetingFor,
 } from "@/lib/format";
@@ -57,6 +58,28 @@ describe("formatShortDay", () => {
 
   it('"2026-07-29" -> "29"', () => {
     expect(formatShortDay("2026-07-29")).toBe("29");
+  });
+});
+
+describe("formatPeriodLabel", () => {
+  it('granularidad "day": igual que formatShortDay', () => {
+    expect(formatPeriodLabel("2026-07-01", "day")).toBe("1");
+  });
+
+  it('granularidad "week": día y mes abreviado, sin desfase', () => {
+    expect(formatPeriodLabel("2026-07-13", "week")).toBe("13 jul");
+  });
+
+  it('granularidad "month": mes abreviado + año', () => {
+    expect(formatPeriodLabel("2026-07-01", "month")).toBe("jul 2026");
+  });
+
+  it('granularidad "year": solo el año', () => {
+    expect(formatPeriodLabel("2026-01-01", "year")).toBe("2026");
+  });
+
+  it("no se desfasa un día al cruzar de mes (31 -> 1)", () => {
+    expect(formatPeriodLabel("2026-08-01", "week")).toBe("1 ago");
   });
 });
 

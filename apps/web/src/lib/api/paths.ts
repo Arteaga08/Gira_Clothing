@@ -8,6 +8,7 @@
  */
 const STATS_OVERVIEW_PATH = "/admin/stats/overview";
 const STATS_TIMESERIES_PATH = "/admin/stats/timeseries";
+const STATS_TOP_PRODUCTS_PATH = "/admin/stats/top-products";
 const OUTBOX_HEALTH_PATH = "/admin/notifications/health";
 
-export { STATS_OVERVIEW_PATH, STATS_TIMESERIES_PATH, OUTBOX_HEALTH_PATH };
+export { STATS_OVERVIEW_PATH, STATS_TIMESERIES_PATH, STATS_TOP_PRODUCTS_PATH, OUTBOX_HEALTH_PATH };

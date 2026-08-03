@@ -2,18 +2,24 @@ import { Currency } from "@gira/shared";
 import type { TimeseriesStats, TimeseriesPoint, RevenueEntry } from "@gira/shared";
 import { Order } from "../models/Order.js";
 import { parseDayRange, type DayRangeQuery } from "../utils/parseDayRange.js";
+import { bucketExpr, enumerateBucketKeys, parseGranularity } from "../utils/statsBucketing.js";
 import { REVENUE_STATUSES } from "./orderStatsService.js";
 
 /**
- * Daily bucketing for the Resumen chart. Three separate pipelines, not two:
- * summing $total AFTER $unwind (needed for units) would multiply revenue by
- * the number of lines per order. Revenue runs unwind-free so it reconciles
- * exactly with orderStatsService.period.revenue for the same window.
+ * Bucketed series for the Resumen chart — day by default, week/month/year on
+ * request. Three separate pipelines, not two: summing $total AFTER $unwind
+ * (needed for units) would multiply revenue by the number of lines per
+ * order. Revenue runs unwind-free so it reconciles exactly with
+ * orderStatsService.period.revenue for the same window.
  *
- * Missing days are filled with zeros HERE, never on the client — an empty
- * day is `revenue: []`, matching the empty-DB convention the other stats
+ * Missing buckets are filled with zeros HERE, never on the client — an empty
+ * bucket is `revenue: []`, matching the empty-DB convention the other stats
  * endpoints already use.
  */
+
+interface TimeseriesQuery extends DayRangeQuery {
+  granularity?: unknown;
+}
 
 interface OrderCountRow {
   _id: string;
@@ -26,28 +32,27 @@ interface UnitsRow {
 }
 
 interface RevenueRow {
-  _id: { day: string; currency: Currency };
+  _id: { periodStart: string; currency: Currency };
   revenue: number;
   orders: number;
 }
 
-const getTimeseriesStats = async (query: DayRangeQuery): Promise<TimeseriesStats> => {
+const getTimeseriesStats = async (query: TimeseriesQuery): Promise<TimeseriesStats> => {
   const range = parseDayRange(query);
+  const granularity = parseGranularity(query.granularity);
   const inRange = { createdAt: { $gte: range.from, $lte: range.to } };
-  const dayExpr = {
-    $dateToString: { date: "$createdAt", format: "%Y-%m-%d", timezone: range.timezone },
-  };
+  const groupExpr = bucketExpr(granularity, range.timezone);
 
   const [orderRows, unitRows, revenueRows] = await Promise.all([
     Order.aggregate<OrderCountRow>([
       { $match: inRange },
-      { $group: { _id: dayExpr, orders: { $sum: 1 } } },
+      { $group: { _id: groupExpr, orders: { $sum: 1 } } },
     ]),
 
     Order.aggregate<UnitsRow>([
       { $match: { ...inRange, status: { $in: REVENUE_STATUSES } } },
       { $unwind: "$lines" },
-      { $group: { _id: dayExpr, unitsSold: { $sum: "$lines.qty" } } },
+      { $group: { _id: groupExpr, unitsSold: { $sum: "$lines.qty" } } },
     ]),
 
     // No $unwind here — summing $total post-unwind would multiply revenue by
@@ -56,7 +61,7 @@ const getTimeseriesStats = async (query: DayRangeQuery): Promise<TimeseriesStats
       { $match: { ...inRange, status: { $in: REVENUE_STATUSES } } },
       {
         $group: {
-          _id: { day: dayExpr, currency: "$currency" },
+          _id: { periodStart: groupExpr, currency: "$currency" },
           revenue: { $sum: "$total" },
           orders: { $sum: 1 },
         },
@@ -64,30 +69,31 @@ const getTimeseriesStats = async (query: DayRangeQuery): Promise<TimeseriesStats
     ]),
   ]);
 
-  const ordersByDay = new Map(orderRows.map((r) => [r._id, r.orders]));
-  const unitsByDay = new Map(unitRows.map((r) => [r._id, r.unitsSold]));
-  const revenueByDay = new Map<string, RevenueEntry[]>();
+  const ordersByBucket = new Map(orderRows.map((r) => [r._id, r.orders]));
+  const unitsByBucket = new Map(unitRows.map((r) => [r._id, r.unitsSold]));
+  const revenueByBucket = new Map<string, RevenueEntry[]>();
   for (const row of revenueRows) {
-    const list = revenueByDay.get(row._id.day) ?? [];
+    const list = revenueByBucket.get(row._id.periodStart) ?? [];
     list.push({
       currency: row._id.currency,
       revenue: row.revenue,
       orders: row.orders,
       averageTicket: row.orders > 0 ? Math.round(row.revenue / row.orders) : 0,
     });
-    revenueByDay.set(row._id.day, list);
+    revenueByBucket.set(row._id.periodStart, list);
   }
 
-  const series: TimeseriesPoint[] = range.dayKeys.map((day) => ({
-    day,
-    orders: ordersByDay.get(day) ?? 0,
-    unitsSold: unitsByDay.get(day) ?? 0,
-    revenue: revenueByDay.get(day) ?? [],
+  const bucketKeys = enumerateBucketKeys(range.dayKeys, granularity);
+  const series: TimeseriesPoint[] = bucketKeys.map((periodStart) => ({
+    periodStart,
+    orders: ordersByBucket.get(periodStart) ?? 0,
+    unitsSold: unitsByBucket.get(periodStart) ?? 0,
+    revenue: revenueByBucket.get(periodStart) ?? [],
   }));
 
   return {
     range: { from: range.from, to: range.to, days: range.days, timezone: range.timezone },
-    granularity: "day",
+    granularity,
     series,
   };
 };

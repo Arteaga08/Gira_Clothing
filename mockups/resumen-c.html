@@ -1,0 +1,633 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Resumen · Dirección C (ajustes mobile) · Panel Gira</title>
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="mockup.css" />
+    <style>
+      /*
+       * Overrides de esta iteración únicamente — no se toca mockup.css porque
+       * resumen-a/b y pedidos*.html siguen viviendo de él tal cual.
+       */
+
+      /* (a) Fix de scroll: sin min-width forzado. Las barras se comprimen
+         (hasta el piso de 8px por barra que ya trae mockup.css) en vez de
+         forzar el contenedor a 34rem. Si algún día hay tantas barras que ni
+         comprimiéndolas caben, `.chart-scroll` sigue siendo el único que
+         scrollea — nunca el body — porque `.panel` ya tiene overflow:hidden. */
+      .chart,
+      .chart-axis {
+        min-width: 0;
+      }
+
+      /* (c) Rejilla 2×2 con áreas nombradas: el orden visual no depende del
+         orden en el DOM, así que en mobile todo se apila en un orden legible
+         y en desktop cada fila comparte altura (stretch), que es exactamente
+         lo pedido: gráfica↔Más vendidos, Distribución↔Stock bajo. */
+      .resumen-grid {
+        display: grid;
+        gap: var(--space-4);
+        grid-template-areas: "chart" "top" "dist" "stock";
+      }
+      @media (min-width: 1280px) {
+        .resumen-grid {
+          grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+          grid-template-rows: auto auto;
+          grid-template-areas: "chart top" "dist stock";
+          align-items: stretch;
+        }
+      }
+      .area-chart {
+        grid-area: chart;
+      }
+      .area-top {
+        grid-area: top;
+      }
+      .area-dist {
+        grid-area: dist;
+      }
+      .area-stock {
+        grid-area: stock;
+      }
+
+      /* Panel se vuelve columna flex para que su contenido pueda repartirse
+         en toda la altura que el grid le da por stretch. */
+      .resumen-grid .panel {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+      }
+      .resumen-grid .panel-fill {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+      .resumen-grid .panel-fill-center {
+        justify-content: center;
+      }
+
+      /* Dos segmentados en la misma fila de acciones, envolviendo en mobile. */
+      .page-actions-dual {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2);
+      }
+
+      /* Renglón secundario del KPI combinado: mismo tratamiento que
+         .stat-foot pero un pelín más apagado, para separarlo del real. */
+      .stat-foot-secondary {
+        opacity: 0.85;
+      }
+
+      /* Segundo half del bloque final, junto a Salud de notificaciones. */
+      @media (min-width: 768px) {
+        .panel-grid-halves-c {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: var(--space-4);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip-link" href="#contenido">Saltar al contenido</a>
+
+    <div class="shell">
+      <!-- ══ SIDEBAR ══════════════════════════════════════════════════════ -->
+      <aside class="sidebar" id="sidebar" data-open="false" aria-label="Navegación principal">
+        <div class="sidebar-head">
+          <span class="brand"><span class="brand-mark">G</span>Gira</span>
+          <button class="icon-button hamburger" type="button" aria-label="Cerrar navegación">
+            <svg><use href="icons.svg#ph-x" /></svg>
+          </button>
+        </div>
+
+        <nav class="sidebar-nav">
+          <div class="nav-group">
+            <p class="nav-group-label" id="g-op">Operación</p>
+            <div role="group" aria-labelledby="g-op">
+              <a class="nav-item" href="resumen-c.html" aria-current="page">
+                <svg class="nav-icon"><use href="icons.svg#ph-squares-four" /></svg> Resumen
+              </a>
+              <a class="nav-item" href="pedidos.html">
+                <svg class="nav-icon"><use href="icons.svg#ph-shopping-bag-open" /></svg> Pedidos
+                <span class="nav-count">8</span>
+              </a>
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-truck" /></svg> Envíos
+              </a>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <p class="nav-group-label" id="g-cat">Catálogo</p>
+            <div role="group" aria-labelledby="g-cat">
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-t-shirt" /></svg> Productos
+              </a>
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-paint-brush" /></svg> Estampas
+              </a>
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-folders" /></svg> Familias
+              </a>
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-tag" /></svg> Categorías
+              </a>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <p class="nav-group-label" id="g-inv">Inventario</p>
+            <div role="group" aria-labelledby="g-inv">
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-package" /></svg> Variantes
+                <span class="nav-count">6</span>
+              </a>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <p class="nav-group-label" id="g-sys">Sistema</p>
+            <div role="group" aria-labelledby="g-sys">
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-users" /></svg> Clientes
+              </a>
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-sliders-horizontal" /></svg> Ajustes
+              </a>
+              <a class="nav-item" href="#">
+                <svg class="nav-icon"><use href="icons.svg#ph-clipboard-text" /></svg> Auditoría
+              </a>
+            </div>
+          </div>
+        </nav>
+
+        <div class="sidebar-foot">
+          <button class="user-chip" type="button">
+            <span class="user-avatar">MA</span>
+            <span class="user-meta">
+              <span class="user-name">Manuel A.</span><br />
+              <span class="user-role">Administrador · 2FA activo</span>
+            </span>
+          </button>
+        </div>
+      </aside>
+
+      <!-- ══ MAIN ═════════════════════════════════════════════════════════ -->
+      <div class="main">
+        <header class="topbar">
+          <button
+            class="icon-button hamburger"
+            type="button"
+            aria-label="Abrir navegación"
+            aria-controls="sidebar"
+            aria-expanded="false"
+          >
+            <svg><use href="icons.svg#ph-list" /></svg>
+          </button>
+
+          <div class="topbar-title">
+            <strong>Buenas tardes, Manuel</strong>
+            <span>domingo, 2 de agosto de 2026</span>
+          </div>
+
+          <div class="topbar-actions">
+            <button class="icon-button" type="button" aria-label="Actualizar datos">
+              <svg><use href="icons.svg#ph-arrow-clockwise" /></svg>
+            </button>
+            <button class="icon-button bell" type="button" aria-label="Notificaciones: 4 pendientes">
+              <svg><use href="icons.svg#ph-bell" /></svg>
+              <span class="bell-dot" aria-hidden="true">4</span>
+            </button>
+          </div>
+        </header>
+
+        <nav class="breadcrumbs" aria-label="Ruta">
+          <a href="#">Panel</a>
+          <span aria-hidden="true">/</span>
+          <span aria-current="page">Resumen</span>
+        </nav>
+
+        <main class="content" id="contenido">
+          <div class="page-header">
+            <div class="page-header-text">
+              <h1 class="page-title">Resumen</h1>
+              <p class="page-subtitle">
+                El equivalente en MXN usa la tasa de cambio congelada de cada pedido; el desglose
+                real por moneda va debajo, nunca se pierde.
+              </p>
+            </div>
+            <div class="page-actions">
+              <div class="page-actions-dual">
+                <div class="segmented" role="group" aria-label="Vista">
+                  <button type="button" aria-pressed="false">Día</button>
+                  <button type="button" aria-pressed="true">Semana</button>
+                  <button type="button" aria-pressed="false">Mes</button>
+                  <button type="button" aria-pressed="false">Año</button>
+                </div>
+                <div class="segmented" role="group" aria-label="Rango del periodo">
+                  <button type="button" aria-pressed="false">90 d</button>
+                  <button type="button" aria-pressed="true">180 d</button>
+                  <button type="button" aria-pressed="false">365 d</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Banda de atención ── data.orders.alerts + notifications/health, 6 tiles ── -->
+          <section class="nb-card band" aria-labelledby="b-atencion">
+            <div class="band-head">
+              <svg><use href="icons.svg#ph-warning" /></svg>
+              <h2 class="band-title" id="b-atencion">Requiere atención</h2>
+              <span class="band-hint">Ahora mismo, sin importar el rango</span>
+              <span class="band-hint band-hint-right">Actualizado hace 40 s</span>
+            </div>
+            <div class="panel-body">
+              <div class="alert-grid alert-grid-wide">
+                <a class="alert-tile" href="pedidos.html" data-level="warn">
+                  <p class="alert-tile-count">3</p>
+                  <p class="alert-tile-label">Pagadas sin preparar (+24 h)</p>
+                </a>
+                <a class="alert-tile" href="pedidos.html" data-level="danger">
+                  <p class="alert-tile-count">2</p>
+                  <p class="alert-tile-label">Atoradas en preparación (+72 h)</p>
+                </a>
+                <a class="alert-tile" href="pedidos.html" data-level="warn">
+                  <p class="alert-tile-count">1</p>
+                  <p class="alert-tile-label">En tránsito demasiado tiempo (+14 d)</p>
+                </a>
+                <a class="alert-tile" href="pedidos.html" data-level="clear">
+                  <p class="alert-tile-count">0</p>
+                  <p class="alert-tile-label">En disputa</p>
+                </a>
+                <a class="alert-tile" href="pedidos.html" data-level="clear">
+                  <p class="alert-tile-count">5</p>
+                  <p class="alert-tile-label">Pendientes de pago (flujo normal)</p>
+                </a>
+                <a class="alert-tile" href="#p-outbox" data-level="danger">
+                  <p class="alert-tile-count">1</p>
+                  <p class="alert-tile-label">Notificaciones fallidas</p>
+                </a>
+              </div>
+            </div>
+          </section>
+
+          <!-- ── KPI row ── 3 tarjetas: Ingresos ya no se parte por moneda ── -->
+          <section class="kpi-row" aria-label="Indicadores del periodo" style="margin-top: var(--space-4)">
+            <article class="nb-card stat">
+              <div class="stat-head">
+                <p class="stat-label">Pedidos</p>
+                <span class="stat-icon"><svg><use href="icons.svg#ph-shopping-bag-open" /></svg></span>
+              </div>
+              <p class="stat-value">218</p>
+              <p class="stat-foot">181 con pago confirmado</p>
+            </article>
+
+            <article class="nb-card stat stat-accent">
+              <div class="stat-head">
+                <p class="stat-label">Ingresos (equiv. MXN)</p>
+                <span class="stat-icon"><svg><use href="icons.svg#ph-currency-dollar" /></svg></span>
+              </div>
+              <p class="stat-value">$161,627<small>.00</small></p>
+              <p class="stat-foot">$154,175 MXN reales · 166 pedidos</p>
+              <p class="stat-foot stat-foot-secondary">+ USD $414.00 · 3 pedidos (equiv. ≈ $7,452 MXN)</p>
+            </article>
+
+            <article class="nb-card stat">
+              <div class="stat-head">
+                <p class="stat-label">Unidades vendidas</p>
+                <span class="stat-icon"><svg><use href="icons.svg#ph-package" /></svg></span>
+              </div>
+              <p class="stat-value">312</p>
+              <p class="stat-foot">394 disponibles en inventario</p>
+            </article>
+          </section>
+
+          <!-- ── Gráfica (2/3) + riel (1/3), alturas igualadas por fila ─── -->
+          <div class="resumen-grid" style="margin-top: var(--space-4)">
+            <!-- (a) sin scroll forzado: 26 barras semanales caben en 390px comprimidas -->
+            <section class="nb-card panel area-chart" aria-labelledby="p-serie">
+              <div class="panel-head">
+                <h2 class="panel-title" id="p-serie">Pedidos por semana</h2>
+                <div class="panel-head-actions">
+                  <div class="segmented" role="group" aria-label="Serie">
+                    <button type="button" aria-pressed="true">Pedidos</button>
+                    <button type="button" aria-pressed="false">Ingresos</button>
+                    <button type="button" aria-pressed="false">Unidades</button>
+                  </div>
+                </div>
+              </div>
+              <div class="panel-body panel-fill">
+                <div class="chart-scroll">
+                  <div
+                    class="chart"
+                    role="img"
+                    aria-label="Pedidos por semana del 5 de febrero al 3 de agosto de 2026. Máximo 14 pedidos la semana del 13 de julio, total 218."
+                  >
+                    <span class="bar" style="height: 30%"></span>
+                    <span class="bar" style="height: 45%"></span>
+                    <span class="bar" style="height: 20%"></span>
+                    <span class="bar" data-zero="true" style="height: 6%"></span>
+                    <span class="bar" style="height: 55%"></span>
+                    <span class="bar" style="height: 40%"></span>
+                    <span class="bar" style="height: 65%"></span>
+                    <span class="bar" style="height: 35%"></span>
+                    <span class="bar" style="height: 50%"></span>
+                    <span class="bar" style="height: 25%"></span>
+                    <span class="bar" style="height: 60%"></span>
+                    <span class="bar" style="height: 45%"></span>
+                    <span class="bar" style="height: 70%"></span>
+                    <span class="bar" style="height: 40%"></span>
+                    <span class="bar" style="height: 85%"></span>
+                    <span class="bar" style="height: 55%"></span>
+                    <span class="bar" style="height: 100%"></span>
+                    <span class="bar" style="height: 60%"></span>
+                    <span class="bar" style="height: 45%"></span>
+                    <span class="bar" style="height: 30%"></span>
+                    <span class="bar" data-zero="true" style="height: 6%"></span>
+                    <span class="bar" style="height: 50%"></span>
+                    <span class="bar" style="height: 65%"></span>
+                    <span class="bar" style="height: 40%"></span>
+                    <span class="bar" style="height: 55%"></span>
+                    <span class="bar" style="height: 35%"></span>
+                  </div>
+                  <div class="chart-axis" aria-hidden="true">
+                    <span>5 feb</span><span></span><span></span><span></span><span></span>
+                    <span>12 mar</span><span></span><span></span><span></span><span></span>
+                    <span>16 abr</span><span></span><span></span><span></span><span></span>
+                    <span>21 may</span><span></span><span></span><span></span><span></span>
+                    <span>25 jun</span><span></span><span></span><span></span><span></span>
+                    <span>30 jul</span><span></span><span></span><span>3 ago</span><span></span>
+                  </div>
+                </div>
+                <div class="chart-legend">
+                  <span class="legend-key"><span class="legend-swatch"></span> Pedidos creados</span>
+                  <span class="legend-key"
+                    ><span class="legend-swatch legend-swatch-zero"></span> Semana sin pedidos</span
+                  >
+                  <span class="legend-key mono">Total 218 · Máx 14 · Prom 8.4/semana</span>
+                </div>
+              </div>
+            </section>
+
+            <!-- (b) Más vendidos ARRIBA de Stock bajo, misma altura que su par izquierdo -->
+            <section class="nb-card panel area-top" aria-labelledby="p-top">
+              <div class="panel-head">
+                <h2 class="panel-title" id="p-top">Más vendidos</h2>
+                <span class="panel-hint">Unidades en el periodo</span>
+              </div>
+              <div class="dlist panel-fill">
+                <div class="dlist-row">
+                  <span class="dlist-rank">1</span>
+                  <div class="dlist-main">
+                    <p class="dlist-title">Playera oversize · Cempasúchil</p>
+                    <p class="dlist-sub mono">PLY-CEMP-M</p>
+                  </div>
+                  <span class="dlist-value">54</span>
+                </div>
+                <div class="dlist-row">
+                  <span class="dlist-rank">2</span>
+                  <div class="dlist-main">
+                    <p class="dlist-title">Sudadera con capucha · Venado Azul</p>
+                    <p class="dlist-sub mono">SUD-VENA-L</p>
+                  </div>
+                  <span class="dlist-value">41</span>
+                </div>
+                <div class="dlist-row">
+                  <span class="dlist-rank">3</span>
+                  <div class="dlist-main">
+                    <p class="dlist-title">Playera oversize · Bugambilia</p>
+                    <p class="dlist-sub mono">PLY-BUGA-S</p>
+                  </div>
+                  <span class="dlist-value">33</span>
+                </div>
+                <div class="dlist-row">
+                  <span class="dlist-rank">4</span>
+                  <div class="dlist-main">
+                    <p class="dlist-title">Tote bag de lona · Ola Grande</p>
+                    <p class="dlist-sub mono">TOT-OLAG-U</p>
+                  </div>
+                  <span class="dlist-value">28</span>
+                </div>
+                <div class="dlist-row">
+                  <span class="dlist-rank">5</span>
+                  <div class="dlist-main">
+                    <p class="dlist-title">Playera oversize · Nopalera</p>
+                    <p class="dlist-sub mono">PLY-NOPA-L</p>
+                  </div>
+                  <span class="dlist-value">24</span>
+                </div>
+              </div>
+            </section>
+
+            <!-- data.orders.byStatus, sin cambios de fondo, solo se mueve dentro del grid nuevo -->
+            <section class="nb-card panel area-dist" aria-labelledby="p-dist">
+              <div class="panel-head">
+                <h2 class="panel-title" id="p-dist">Distribución por estado</h2>
+                <span class="panel-hint">218 pedidos en el periodo</span>
+              </div>
+              <div class="panel-body panel-fill">
+                <div
+                  class="dist"
+                  role="img"
+                  aria-label="61 enviadas, 51 entregadas, 38 pagadas, 27 en preparación, 24 pendientes de pago, 11 canceladas, 6 reembolsadas."
+                >
+                  <span class="dist-seg" style="width: 27.98%; background: var(--status-shipped)"></span>
+                  <span class="dist-seg" style="width: 23.39%; background: var(--status-delivered)"></span>
+                  <span class="dist-seg" style="width: 17.43%; background: var(--status-paid)"></span>
+                  <span class="dist-seg" style="width: 12.39%; background: var(--status-processing)"></span>
+                  <span class="dist-seg" style="width: 11.01%; background: var(--status-pending_payment)"></span>
+                  <span class="dist-seg" style="width: 5.05%; background: var(--status-cancelled)"></span>
+                  <span class="dist-seg" style="width: 2.75%; background: var(--status-refunded)"></span>
+                </div>
+                <div class="dist-legend">
+                  <span class="dist-legend-row">
+                    <span class="legend-swatch" style="background: var(--status-shipped)"></span>
+                    <span>Enviadas</span><span class="dist-legend-count">61</span>
+                  </span>
+                  <span class="dist-legend-row">
+                    <span class="legend-swatch" style="background: var(--status-delivered)"></span>
+                    <span>Entregadas</span><span class="dist-legend-count">51</span>
+                  </span>
+                  <span class="dist-legend-row">
+                    <span class="legend-swatch" style="background: var(--status-paid)"></span>
+                    <span>Pagadas</span><span class="dist-legend-count">38</span>
+                  </span>
+                  <span class="dist-legend-row">
+                    <span class="legend-swatch" style="background: var(--status-processing)"></span>
+                    <span>En preparación</span><span class="dist-legend-count">27</span>
+                  </span>
+                  <span class="dist-legend-row">
+                    <span class="legend-swatch" style="background: var(--status-pending_payment)"></span>
+                    <span>Pendientes de pago</span><span class="dist-legend-count">24</span>
+                  </span>
+                  <span class="dist-legend-row">
+                    <span class="legend-swatch" style="background: var(--status-cancelled)"></span>
+                    <span>Canceladas</span><span class="dist-legend-count">11</span>
+                  </span>
+                  <span class="dist-legend-row">
+                    <span class="legend-swatch" style="background: var(--status-refunded)"></span>
+                    <span>Reembolsadas</span><span class="dist-legend-count">6</span>
+                  </span>
+                </div>
+              </div>
+            </section>
+
+            <!-- Stock bajo ABAJO de Más vendidos, misma altura que Distribución -->
+            <section class="nb-card panel area-stock" aria-labelledby="p-stock">
+              <div class="panel-head">
+                <h2 class="panel-title" id="p-stock">Stock bajo</h2>
+                <span class="panel-hint">Umbral: 3 · 2 agotadas, 6 bajas</span>
+              </div>
+              <div class="dlist panel-fill">
+                <div class="dlist-row">
+                  <div class="dlist-main">
+                    <p class="dlist-title mono">PLY-CEMP-XS</p>
+                    <p class="dlist-sub">Agotada</p>
+                  </div>
+                  <span class="chip" data-status="disputed">0</span>
+                </div>
+                <div class="dlist-row">
+                  <div class="dlist-main">
+                    <p class="dlist-title mono">SUD-VENA-XL</p>
+                    <p class="dlist-sub">Agotada</p>
+                  </div>
+                  <span class="chip" data-status="disputed">0</span>
+                </div>
+                <div class="dlist-row">
+                  <div class="dlist-main">
+                    <p class="dlist-title mono">PLY-BUGA-XS</p>
+                    <p class="dlist-sub">Stock bajo</p>
+                  </div>
+                  <span class="chip" data-status="pending_payment">1</span>
+                </div>
+                <div class="dlist-row">
+                  <div class="dlist-main">
+                    <p class="dlist-title mono">GOR-NOPA-U</p>
+                    <p class="dlist-sub">Stock bajo</p>
+                  </div>
+                  <span class="chip" data-status="pending_payment">2</span>
+                </div>
+                <div class="dlist-row">
+                  <div class="dlist-main">
+                    <p class="dlist-title mono">TOT-OLAG-U</p>
+                    <p class="dlist-sub">Stock bajo</p>
+                  </div>
+                  <span class="chip" data-status="pending_payment">3</span>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <!-- ── Print más usado (nuevo) + Salud de notificaciones ───────── -->
+          <div class="panel-grid-halves-c" style="margin-top: var(--space-4); display: grid; gap: var(--space-4)">
+            <!-- Nuevo: agregación por lines.printName en TODOS los pedidos, no solo el top-5 de productos -->
+            <section class="nb-card panel" aria-labelledby="p-prints">
+              <div class="panel-head">
+                <h2 class="panel-title" id="p-prints">Print más usado</h2>
+                <span class="panel-hint">Unidades en el periodo, todos los productos</span>
+              </div>
+              <div class="dlist">
+                <div class="dlist-row">
+                  <span class="dlist-rank">1</span>
+                  <div class="dlist-main">
+                    <p class="dlist-title">Cempasúchil</p>
+                  </div>
+                  <span class="dlist-value">76</span>
+                </div>
+                <div class="dlist-row">
+                  <span class="dlist-rank">2</span>
+                  <div class="dlist-main">
+                    <p class="dlist-title">Venado Azul</p>
+                  </div>
+                  <span class="dlist-value">58</span>
+                </div>
+                <div class="dlist-row">
+                  <span class="dlist-rank">3</span>
+                  <div class="dlist-main">
+                    <p class="dlist-title">Bugambilia</p>
+                  </div>
+                  <span class="dlist-value">45</span>
+                </div>
+                <div class="dlist-row">
+                  <span class="dlist-rank">4</span>
+                  <div class="dlist-main">
+                    <p class="dlist-title">Ola Grande</p>
+                  </div>
+                  <span class="dlist-value">31</span>
+                </div>
+                <div class="dlist-row">
+                  <span class="dlist-rank">5</span>
+                  <div class="dlist-main">
+                    <p class="dlist-title">Nopalera</p>
+                  </div>
+                  <span class="dlist-value">24</span>
+                </div>
+              </div>
+              <div class="panel-body" style="border-top: 1px solid var(--color-border)">
+                <p class="dlist-sub">
+                  Un print puede repetirse en varios productos/SKUs, así que esta cuenta es
+                  independiente de <strong>Más vendidos</strong>: aquí "Cempasúchil" suma sus
+                  unidades sin importar en cuántos productos distintos se vendió.
+                </p>
+              </div>
+            </section>
+
+            <!-- GET /admin/notifications/health, sin cambios de fondo -->
+            <section class="nb-card panel" aria-labelledby="p-outbox">
+              <div class="panel-head">
+                <h2 class="panel-title" id="p-outbox">Salud de notificaciones</h2>
+                <span class="panel-hint">Cola transaccional (correo y equipo)</span>
+              </div>
+              <div class="panel-body">
+                <div class="alert-grid">
+                  <div class="alert-tile" data-level="clear">
+                    <p class="alert-tile-count">214</p>
+                    <p class="alert-tile-label">Enviadas</p>
+                  </div>
+                  <div class="alert-tile" data-level="warn">
+                    <p class="alert-tile-count">3</p>
+                    <p class="alert-tile-label">Pendientes</p>
+                  </div>
+                  <div class="alert-tile" data-level="danger">
+                    <p class="alert-tile-count">1</p>
+                    <p class="alert-tile-label">Fallidas</p>
+                  </div>
+                </div>
+                <div class="notice" style="margin-top: var(--space-4)">
+                  <svg><use href="icons.svg#ph-warning" /></svg>
+                  <span>
+                    <strong>1 notificación fallida tras 5 intentos</strong>
+                    <code class="mono">order_shipped</code> · canal correo · último error:
+                    "Recipient address rejected". La más antigua en cola espera desde las 17:10.
+                  </span>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <p class="mock-note">
+            <strong>Dirección C · ajustes post-revisión mobile.</strong> Seis cambios sobre la
+            pantalla ya implementada: (1) gráfica sin <code class="mono">min-width</code> forzado
+            — comprime en vez de forzar scroll del body en 390px; (2) una sola tarjeta de
+            "Ingresos" con el equivalente en MXN arriba y el desglose real por moneda debajo; (3)
+            riel derecho reordenado (Más vendidos → Stock bajo) e igualado en altura a su columna
+            izquierda vía <code class="mono">grid-template-areas</code> + stretch; (4) selector
+            doble Vista (Día/Semana/Mes/Año) + Rango, cada combinación con sus propias opciones de
+            días; (5) panel nuevo "Print más usado", agregado sobre
+            <code class="mono">lines.printName</code> en todos los pedidos, no solo el top-5 de
+            productos; (6) construido con <code class="mono">impeccable</code> sobre el sistema de
+            diseño ya existente (<code class="mono">DESIGN.md</code>), sin dirección nueva.
+            Compárala con <a href="resumen-a.html"><strong>la dirección A</strong></a> (la que se
+            implementó primero) achicando la ventana a 390px para ver el fix del punto (1) y (3) en
+            vivo.
+          </p>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

@@ -5,8 +5,8 @@ import { describe, expect, it } from "vitest";
 import { TimeseriesChart } from "@/components/resumen/TimeseriesChart";
 import { stubFetch } from "../helpers/fetchMock";
 
-const point = (day: string, orders: number, unitsSold: number, mxnRevenue = 0) => ({
-  day,
+const point = (periodStart: string, orders: number, unitsSold: number, mxnRevenue = 0) => ({
+  periodStart,
   orders,
   unitsSold,
   revenue: [{ currency: Currency.MXN, revenue: mxnRevenue, orders, averageTicket: 0 }],
@@ -64,5 +64,49 @@ describe("TimeseriesChart", () => {
   it("el eje es aria-hidden", () => {
     render(<TimeseriesChart series={series} rangeDays={3} timezone="America/Mexico_City" />);
     expect(document.querySelector("[data-chart-axis]")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("sin min-width fijo: la fila de barras no fuerza scroll en mobile", () => {
+    render(<TimeseriesChart series={series} rangeDays={3} timezone="America/Mexico_City" />);
+    const bars = document.querySelectorAll("[data-bar]")[0]!.parentElement!;
+    expect(bars.className).not.toMatch(/min-w-\[34rem\]/);
+  });
+
+  it('granularidad "week": el título dice "por semana"', () => {
+    render(
+      <TimeseriesChart
+        series={series}
+        rangeDays={90}
+        timezone="America/Mexico_City"
+        granularity="week"
+      />,
+    );
+    expect(screen.getByText("Pedidos por semana")).toBeInTheDocument();
+  });
+
+  it('granularidad "month": la leyenda de días en cero dice "Mes sin pedidos"', () => {
+    render(
+      <TimeseriesChart
+        series={series}
+        rangeDays={365}
+        timezone="America/Mexico_City"
+        granularity="month"
+      />,
+    );
+    expect(screen.getByText("Mes sin pedidos")).toBeInTheDocument();
+  });
+
+  it('granularidad "year": el eje usa formatPeriodLabel (solo el año, no el día)', () => {
+    const yearly = [point("2025-01-01", 10, 20, 0), point("2026-01-01", 15, 30, 0)];
+    render(
+      <TimeseriesChart
+        series={yearly}
+        rangeDays={730}
+        timezone="America/Mexico_City"
+        granularity="year"
+      />,
+    );
+    expect(document.querySelector("[data-chart-axis]")).toHaveTextContent("2025");
+    expect(document.querySelector("[data-chart-axis]")).toHaveTextContent("2026");
   });
 });

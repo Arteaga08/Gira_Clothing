@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { DistributionPanel } from "@/components/resumen/DistributionPanel";
 import { LowStockPanel } from "@/components/resumen/LowStockPanel";
 import { OutboxHealthPanel } from "@/components/resumen/OutboxHealthPanel";
-import { TopProductsPanel } from "@/components/resumen/TopProductsPanel";
+import { TopPrintsPanel } from "@/components/resumen/TopPrintsPanel";
 
 describe("DistributionPanel", () => {
   it("con datos, dibuja la barra y la leyenda", () => {
@@ -22,46 +22,55 @@ describe("DistributionPanel", () => {
   });
 });
 
-describe("TopProductsPanel", () => {
-  it("con datos, lista con rango numerado", () => {
-    render(
-      <TopProductsPanel
-        products={[
-          { sku: "PLY-CEMP-M", productName: "Playera oversize", printName: "Cempasúchil", units: 14 },
-        ]}
-      />,
-    );
-    expect(screen.getByText("Playera oversize · Cempasúchil")).toBeInTheDocument();
-    expect(screen.getByText("PLY-CEMP-M")).toBeInTheDocument();
-    expect(screen.getByText("14")).toBeInTheDocument();
+describe("TopPrintsPanel", () => {
+  it("con datos, lista con rango numerado por print (sin SKU)", () => {
+    render(<TopPrintsPanel prints={[{ printName: "Cempasúchil", units: 76 }]} />);
+    expect(screen.getByText("Cempasúchil")).toBeInTheDocument();
+    expect(screen.getByText("76")).toBeInTheDocument();
   });
 
   it("con arreglo vacío, EmptyState y ninguna fila", () => {
-    render(<TopProductsPanel products={[]} />);
-    expect(screen.getByText("Aún no hay ventas en este periodo")).toBeInTheDocument();
-    expect(screen.queryByText(/PLY-/)).not.toBeInTheDocument();
+    render(<TopPrintsPanel prints={[]} />);
+    expect(screen.getByText(/Aún no hay prints/)).toBeInTheDocument();
+    expect(screen.queryByText("Cempasúchil")).not.toBeInTheDocument();
   });
 });
 
 describe("LowStockPanel", () => {
-  it("con datos, SKU + subtítulo + chip con el disponible", () => {
+  it("con datos, nombre del producto + SKU + subtítulo + chip con el disponible", () => {
     render(
       <LowStockPanel
-        items={[{ id: "1", sku: "PLY-CEMP-XS", available: 0 }]}
+        items={[{ id: "1", sku: "PLY-CEMP-XS", productName: "Playera oversize", available: 0 }]}
         lowStockThreshold={3}
         outOfStock={1}
         lowStock={0}
       />,
     );
+    expect(screen.getByText("Playera oversize")).toBeInTheDocument();
     expect(screen.getByText("PLY-CEMP-XS")).toBeInTheDocument();
     expect(screen.getByText("Agotada")).toBeInTheDocument();
     expect(screen.getByText("Umbral: 3 · 1 agotadas, 0 bajas")).toBeInTheDocument();
   });
 
+  it("el nombre del producto es el título; el SKU queda como subtítulo en mono", () => {
+    render(
+      <LowStockPanel
+        items={[{ id: "1", sku: "PLY-CEMP-XS", productName: "Playera oversize", available: 0 }]}
+        lowStockThreshold={3}
+        outOfStock={1}
+        lowStock={0}
+      />,
+    );
+    const title = screen.getByText("Playera oversize");
+    const sku = screen.getByText("PLY-CEMP-XS");
+    expect(title.tagName).toBe("P");
+    expect(sku.nextElementSibling).toHaveTextContent("Agotada");
+  });
+
   it("stock bajo (no agotado) muestra el subtítulo correspondiente", () => {
     render(
       <LowStockPanel
-        items={[{ id: "1", sku: "GOR-NOPA-U", available: 2 }]}
+        items={[{ id: "1", sku: "GOR-NOPA-U", productName: "Gorra bordada", available: 2 }]}
         lowStockThreshold={3}
         outOfStock={0}
         lowStock={1}
