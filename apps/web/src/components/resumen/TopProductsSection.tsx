@@ -4,6 +4,7 @@ import type { PeriodPreset, TopProduct, Wire } from "@gira/shared";
 import { useState } from "react";
 import { TrophyIcon } from "@phosphor-icons/react/dist/ssr";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ListRow } from "@/components/ui/ListRow";
 import { Notice } from "@/components/ui/Notice";
 import { Panel } from "@/components/ui/Panel";
 import { fetchTopProductsForPeriod } from "@/lib/api/topProducts";
@@ -56,7 +57,7 @@ const TopProductsSection = ({ initialProducts, initialPeriod, className }: TopPr
       className={className}
     >
       {error ? (
-        <div className="p-4">
+        <div className="p-6">
           <Notice variant="danger" title="No se pudo cargar esta sección">
             Intenta de nuevo o cambia el periodo.
           </Notice>
@@ -69,28 +70,18 @@ const TopProductsSection = ({ initialProducts, initialPeriod, className }: TopPr
         />
       ) : (
         <>
-          <div className="border-b border-border p-4">
+          <div className="border-b border-border p-6">
             <TopProductsBarChart products={products} />
           </div>
           <div>
             {products.map((product, index) => (
-              <div
+              <ListRow
                 key={product.sku}
-                className="flex items-center gap-3 border-t border-border px-4 py-3 first:border-t-0"
-              >
-                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-nb-sm border-[1.5px] border-ink bg-surface-sunken font-mono text-xs font-bold">
-                  {index + 1}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold">
-                    {product.productName} · {product.printName}
-                  </p>
-                  <p className="font-mono text-xs text-text-muted">{product.sku}</p>
-                </div>
-                <span className="shrink-0 font-mono text-sm font-bold">
-                  {formatInteger(product.units)}
-                </span>
-              </div>
+                rank={index + 1}
+                title={`${product.productName} · ${product.printName}`}
+                sub={product.sku}
+                right={<span className="font-mono text-sm font-bold">{formatInteger(product.units)}</span>}
+              />
             ))}
           </div>
         </>

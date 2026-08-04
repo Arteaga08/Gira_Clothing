@@ -47,12 +47,11 @@ describe("LowStockPanel", () => {
       />,
     );
     expect(screen.getByText("Playera oversize")).toBeInTheDocument();
-    expect(screen.getByText("PLY-CEMP-XS")).toBeInTheDocument();
-    expect(screen.getByText("Agotada")).toBeInTheDocument();
+    expect(screen.getByText("PLY-CEMP-XS · Agotada")).toBeInTheDocument();
     expect(screen.getByText("Umbral: 3 · 1 agotadas, 0 bajas")).toBeInTheDocument();
   });
 
-  it("el nombre del producto es el título; el SKU queda como subtítulo en mono", () => {
+  it("el nombre del producto es el título; el SKU + estado quedan como subtítulo en mono", () => {
     render(
       <LowStockPanel
         items={[{ id: "1", sku: "PLY-CEMP-XS", productName: "Playera oversize", available: 0 }]}
@@ -62,9 +61,10 @@ describe("LowStockPanel", () => {
       />,
     );
     const title = screen.getByText("Playera oversize");
-    const sku = screen.getByText("PLY-CEMP-XS");
+    const sub = screen.getByText("PLY-CEMP-XS · Agotada");
     expect(title.tagName).toBe("P");
-    expect(sku.nextElementSibling).toHaveTextContent("Agotada");
+    expect(sub.tagName).toBe("P");
+    expect(sub.className).toContain("font-mono");
   });
 
   it("stock bajo (no agotado) muestra el subtítulo correspondiente", () => {
@@ -76,7 +76,7 @@ describe("LowStockPanel", () => {
         lowStock={1}
       />,
     );
-    expect(screen.getByText("GOR-NOPA-U").nextElementSibling).toHaveTextContent("Stock bajo");
+    expect(screen.getByText("GOR-NOPA-U · Stock bajo")).toBeInTheDocument();
   });
 
   it("con arreglo vacío, EmptyState", () => {

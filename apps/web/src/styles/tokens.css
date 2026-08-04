@@ -4,73 +4,82 @@
  * This file is the ONLY place in the project that holds a colour literal or a
  * font-family name. Components read tokens, never raw values.
  *
- * Ported from mockups/tokens.css (M6). `:root` became `@theme static` so
- * Tailwind v4 reads this file as its theme and generates utilities from it
- * (bg-surface, border-ink, shadow-nb, ...). `static` matters: without it
- * Tailwind may prune tokens no utility name references directly — the
- * `--status-*`/`--ship-*` entries are only ever read via arbitrary values
- * (`bg-[var(--status-paid)]`), so pruning would silently blank every chip.
- *
- * ┌─ SWAP POINT #1 — PALETTE ────────────────────────────────────────────────┐
- * │ Every colour below is a PLACEHOLDER. When the official palette arrives,  │
- * │ edit the BRAND + SURFACES + INK blocks. Nothing else needs to change:    │
- * │ status chips, borders and shadows all derive from --color-ink and their   │
- * │ own --status-* entries.                                                  │
+ * ┌─ SWAP POINT #1 — PALETTE ── DONE ────────────────────────────────────────┐
+ * │ The brand palette below is FINAL, not a placeholder: verde bosque, blanco│
+ * │ hueso, negro tinta, rosa chicle, amarillo eléctrico, lila suave, menta.   │
+ * │ Verde bosque is the dominant page background — tienda AND consola alike, │
+ * │ not a sparse accent. Every role below (--color-wallpaper, --color-brand, │
+ * │ status chips, borders, shadows) derives from these seven named literals, │
+ * │ so a future retouch still only ever means editing this block.            │
  * └──────────────────────────────────────────────────────────────────────────┘
  *
- * ┌─ SWAP POINT #2 — TYPOGRAPHY ─────────────────────────────────────────────┐
- * │ --font-sans / --font-mono point at the next/font variables declared in    │
- * │ src/app/fonts.ts, with a system-stack fallback. A typeface change is one  │
- * │ edit there; these two lines never need to change.                        │
+ * ┌─ SWAP POINT #2 — TYPOGRAPHY ── DONE ──────────────────────────────────────┐
+ * │ --font-display / --font-sans / --font-mono point at the next/font        │
+ * │ variables declared in src/app/fonts.ts (Anton / Space Grotesk / Space     │
+ * │ Mono). These three lines never need to change again.                      │
  * └──────────────────────────────────────────────────────────────────────────┘
- *
- * Colours are OKLCH. Neutrals are tinted toward the brand hue (chroma 0.003 to
- * 0.02) so nothing in the UI is a dead grey.
  */
 
 @theme static {
-  /* ── BRAND ── PLACEHOLDER ────────────────────────────────────────────── */
-  --brand-hue: 162;
-  --color-brand: oklch(46% 0.11 var(--brand-hue));
-  --color-brand-hover: oklch(40% 0.11 var(--brand-hue));
-  --color-brand-soft: oklch(46% 0.11 var(--brand-hue) / 0.1);
-  --color-brand-subtle: oklch(94% 0.03 var(--brand-hue));
-  /* Secondary accent. Restrained: comparison series in charts, nothing else. */
-  --color-accent: oklch(62% 0.16 48);
-  --color-accent-soft: oklch(62% 0.16 48 / 0.14);
+  /* ── BRAND — literal hex, as specified. Never reinterpreted through OKLCH:
+     these are exact brand colours, not values we're free to nudge. ────────── */
+  --verde-bosque: #1f3d1f; /* dominant background — 60% of surface */
+  --blanco-hueso: #f5f3ee; /* card / panel surface — 25% */
+  --negro-tinta: #0d0d0d; /* every border, every shadow, most text — 15% */
+  --rosa-chicle: #ff2e9e; /* brand identity: logo, prices, links, special titles */
+  --amarillo-electrico: #f5ff3d; /* EXCLUSIVE to the primary CTA — never decoration */
+  --lila-suave: #c9a8ff; /* tile variant inside an icon grid */
+  --menta: #d9f2d0; /* soft secondary background, alternate card */
 
-  /* ── SURFACES ───────────────────────────────────────────────────────────── */
-  --color-wallpaper: oklch(96.5% 0.006 var(--brand-hue));
-  --color-surface: oklch(99.2% 0.003 var(--brand-hue));
-  --color-surface-raised: oklch(97.6% 0.008 var(--brand-hue));
-  --color-surface-sunken: oklch(93.8% 0.008 var(--brand-hue));
+  /* ── SURFACES ── mapped from the brand literals above ────────────────────── */
+  --color-wallpaper: var(--verde-bosque);
+  --color-surface: var(--blanco-hueso);
+  --color-surface-raised: #edeae2; /* one step darker than hueso, inside a card */
+  --color-surface-sunken: #e3dfd4; /* inset well, inside a card */
 
   /* ── INK ── the colour of every border and every hard shadow ────────────── */
-  --color-ink: oklch(24% 0.02 var(--brand-hue));
+  --color-ink: var(--negro-tinta);
 
-  /* ── TEXT ───────────────────────────────────────────────────────────────── */
-  --color-text-primary: oklch(24% 0.02 var(--brand-hue));
-  --color-text-secondary: oklch(48% 0.015 var(--brand-hue));
-  --color-text-muted: oklch(60% 0.012 var(--brand-hue));
-  --color-text-inverse: oklch(98% 0.004 var(--brand-hue));
+  /* ── TEXT ─────────────────────────────────────────────────────────────────
+     -primary/-secondary/-muted sit on a LIGHT surface (a card). -inverse and
+     -inverse-secondary sit directly on --color-wallpaper (verde bosque). */
+  --color-text-primary: var(--negro-tinta);
+  --color-text-secondary: #3d3a33;
+  --color-text-muted: #6b675c;
+  --color-text-inverse: var(--blanco-hueso);
+  --color-text-inverse-secondary: color-mix(in srgb, var(--blanco-hueso) 80%, transparent);
 
   /* ── BORDERS ────────────────────────────────────────────────────────────── */
-  --color-border: oklch(88% 0.01 var(--brand-hue));
+  --color-border: #d8d3c6;
   --color-border-strong: var(--color-ink);
-  --color-focus: oklch(55% 0.18 250);
+  --color-focus: oklch(55% 0.18 250); /* the one blue in the system, unrelated to brand */
+
+  /* ── BRAND ROLES ──────────────────────────────────────────────────────────
+     Verde bosque fills a "selected" control or a section divider sitting on
+     a light surface — it is NOT the CTA colour. Amarillo is the CTA colour
+     and nothing else ever uses it: mixing the two roles is exactly how the
+     "one accent" promise breaks down. */
+  --color-brand: var(--verde-bosque);
+  --color-brand-hover: #16301a;
+  --color-brand-subtle: var(--menta);
+  --color-cta: var(--amarillo-electrico);
+  --color-cta-hover: #e4ee1f;
+  --color-accent: var(--rosa-chicle);
+  --color-accent-soft: color-mix(in srgb, var(--rosa-chicle) 14%, var(--blanco-hueso));
+  --color-tile-alt: var(--lila-suave);
 
   /* ── STATUS ── one entry per enum member ────────────────────────────────── */
   /* OrderStatus — packages/shared/src/enums/orderStatus.ts                    */
-  /* Flat pastel fills. Nine statuses need nine distinguishable hues, so this  */
-  /* is a wayfinding vocabulary, not a semantic 4-colour set. Every chip also  */
-  /* carries an ink border + dark text, which is what separates a STATUS chip  */
-  /* from a BRAND surface — the distinction is form, not hue.                  */
+  /* Flat pastel fills, independent of the brand palette above: nine statuses  */
+  /* need nine distinguishable hues, so this stays its own wayfinding          */
+  /* vocabulary. Every chip also carries an ink border + dark text — the      */
+  /* distinction from a BRAND surface is form, not hue.                        */
   --status-pending_payment: oklch(89% 0.1 85);
   --status-paid: oklch(90% 0.09 152);
   --status-processing: oklch(88% 0.09 245);
   --status-shipped: oklch(88% 0.09 205);
   --status-delivered: oklch(88% 0.13 122);
-  --status-cancelled: oklch(90% 0.005 var(--brand-hue));
+  --status-cancelled: oklch(90% 0.005 162);
   --status-expired: oklch(88% 0.02 60);
   --status-refunded: oklch(88% 0.08 300);
   --status-disputed: oklch(87% 0.1 25);
@@ -82,9 +91,15 @@
   --ship-returned: oklch(89% 0.1 85);
   --ship-lost: oklch(87% 0.1 25);
 
-  /* Feedback (toasts, inline alerts) */
+  /* Feedback (toasts, inline alerts) — each is its OWN token, never an alias
+     of an order-status colour. `Notice`'s "info" variant used to borrow
+     --status-pending_payment; that coincidence is exactly the kind of drift
+     this file exists to prevent. */
   --color-success: oklch(52% 0.14 150);
+  --color-success-soft: oklch(90% 0.09 150);
+  --color-info: oklch(91% 0.045 240);
   --color-warning: oklch(68% 0.15 75);
+  --color-warning-soft: oklch(92% 0.06 80);
   --color-danger: oklch(52% 0.19 25);
   --color-danger-soft: oklch(92% 0.05 25);
 
@@ -100,32 +115,26 @@
   --nb-shadow-lg: 6px 6px 0 0 var(--color-ink);
   --nb-shadow-pressed: 0 0 0 0 var(--color-ink);
 
-  /* ── SPACING ── 4px scale ───────────────────────────────────────────────── */
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-5: 1.25rem;
-  --space-6: 1.5rem;
-  --space-8: 2rem;
-  --space-10: 2.5rem;
-  --space-12: 3rem;
-
-  /* ── TYPOGRAPHY ── PLACEHOLDER ──────────────────────────────────────────── */
+  /* ── TYPOGRAPHY ── FINAL ────────────────────────────────────────────────── */
   /* Real families are declared in src/app/fonts.ts (SWAP POINT #2). The
-     system stack is the fallback: if the font fails to load, the UI degrades
-     instead of breaking. */
+     system stack is the fallback: if a font fails to load, the UI degrades
+     instead of breaking. Anton has one weight (400) — it is never asked for
+     `font-weight: 700`; its own weight is already the heaviest thing here. */
+  --font-display: var(--font-display-var), Impact, "Haettenschweiler", sans-serif;
   --font-sans: var(--font-sans-var), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: var(--font-mono-var), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
-  /* Fixed rem scale, ratio ~1.2. Product UI, so no fluid clamp() headings. */
-  --text-xs: 0.75rem;
-  --text-sm: 0.8125rem;
-  --text-base: 0.9375rem;
-  --text-lg: 1.125rem;
-  --text-xl: 1.375rem;
-  --text-2xl: 1.75rem;
-  --text-3xl: 2.25rem;
+  /* Console ladder — the density this app runs at today. Product UI, so a
+     fixed rem scale, not a fluid clamp(). Storefront (Bloque 3) reads one
+     step up; see apps/web/src/components/ui/typography.ts. */
+  --text-2xs: 0.6875rem; /* 11px — helper text, mono labels */
+  --text-xs: 0.75rem; /* 12px — labels, badges */
+  --text-sm: 0.8125rem; /* 13px — body sm */
+  --text-base: 0.875rem; /* 14px — body, h4 */
+  --text-lg: 1rem; /* 16px — h3 / panel title */
+  --text-xl: 1.5rem; /* 24px — h2 */
+  --text-2xl: 2rem; /* 32px — h1 / page title */
+  --text-3xl: 2.625rem; /* 42px — reserved for storefront h1 (Bloque 3) */
 
   /* ── MOTION ─────────────────────────────────────────────────────────────── */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -142,7 +151,7 @@
   /* ── SCRIM ── the only translucent surface in the project ───────────────── */
   /* Lives here because it is a colour literal: writing it in a component would
      fail tests/designTokens.test.ts, which is exactly the point. */
-  --color-scrim: oklch(24% 0.02 var(--brand-hue) / 0.4);
+  --color-scrim: color-mix(in srgb, var(--negro-tinta) 40%, transparent);
 
   /* ── LAYERING ── one scale, six steps, no ad-hoc z-index anywhere else ──── */
   /* Tailwind v4 has no theme namespace for z-index, so components read these as

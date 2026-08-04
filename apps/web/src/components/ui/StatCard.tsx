@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { Icon } from "./Icon";
 import { NB_SURFACE } from "./styles";
+import { T_CAPTION, T_LABEL, T_METRIC } from "./typography";
 
 interface StatCardProps {
   label: string;
@@ -22,20 +23,20 @@ interface StatCardProps {
 }
 
 const StatCard = ({ label, value, unit, foot, icon, accent = false, className }: StatCardProps) => (
-  <div className={cn(NB_SURFACE, "p-4", accent && "bg-brand-subtle", className)}>
+  <div className={cn(NB_SURFACE, "p-6", accent && "bg-brand-subtle", className)}>
     <div className="flex items-start justify-between gap-2">
-      <p className="text-xs font-bold uppercase tracking-wide text-text-secondary">{label}</p>
+      <p className={T_LABEL}>{label}</p>
       {icon ? (
         <span className="grid h-7.5 w-7.5 shrink-0 place-items-center rounded-nb-sm border-[1.5px] border-ink bg-brand-subtle">
           <Icon icon={icon} />
         </span>
       ) : null}
     </div>
-    <p className="mt-2 font-mono text-xl font-bold tracking-tight lg:text-2xl">
+    <p className={cn("mt-2", T_METRIC)}>
       {value}
       {unit ? <small className="ml-1 text-xs font-semibold text-text-muted">{unit}</small> : null}
     </p>
-    {foot ? <p className="mt-2 text-xs text-text-secondary">{foot}</p> : null}
+    {foot ? <p className={cn("mt-2", T_CAPTION)}>{foot}</p> : null}
   </div>
 );
 

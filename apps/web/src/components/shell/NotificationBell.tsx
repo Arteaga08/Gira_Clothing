@@ -2,6 +2,8 @@
 
 import { BellIcon } from "@phosphor-icons/react/dist/ssr";
 import { Icon } from "@/components/ui/Icon";
+import { NB_ICON_TILE } from "@/components/ui/styles";
+import { cn } from "@/lib/cn";
 import { useOutboxHealth } from "@/hooks/useOutboxHealth";
 
 /**
@@ -19,13 +21,13 @@ const NotificationBell = () => {
     <span
       role="status"
       aria-label={label}
-      className="relative inline-flex h-[38px] w-[38px] items-center justify-center rounded-nb-sm border-2 border-ink bg-surface shadow-nb-sm"
+      className={cn(NB_ICON_TILE, "relative h-10 w-10")}
     >
       <Icon icon={BellIcon} />
       {count > 0 ? (
         <span
           aria-hidden="true"
-          className="absolute -right-1.5 -top-1.5 grid h-[18px] min-w-[18px] place-items-center rounded-nb-pill border-[1.5px] border-ink bg-danger px-1 font-mono text-[10px] font-bold leading-none text-text-inverse"
+          className="absolute -right-1.5 -top-1.5 grid h-4.5 min-w-4.5 place-items-center rounded-nb-pill border-[1.5px] border-ink bg-danger px-1 font-mono text-[10px] font-bold leading-none text-text-inverse"
         >
           {count}
         </span>

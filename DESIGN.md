@@ -1,250 +1,251 @@
 ---
-name: Gira Clothing — Admin Dashboard
-description: A neobrutalist operations console for running a custom-print apparel store.
+name: Gira Clothing — Design System
+description: A neobrutalist system, verde-bosque-dominant, running the admin console today and the storefront in Bloque 3.
 colors:
-  ink: "oklch(24% 0.02 162)"
-  wallpaper: "oklch(96.5% 0.006 162)"
-  surface: "oklch(99.2% 0.003 162)"
-  surface-raised: "oklch(97.6% 0.008 162)"
-  surface-sunken: "oklch(93.8% 0.008 162)"
-  brand: "oklch(46% 0.11 162)"
-  brand-hover: "oklch(40% 0.11 162)"
-  brand-soft: "oklch(46% 0.11 162 / 0.1)"
-  brand-subtle: "oklch(94% 0.03 162)"
-  accent: "oklch(62% 0.16 48)"
-  accent-soft: "oklch(62% 0.16 48 / 0.14)"
-  text-primary: "oklch(24% 0.02 162)"
-  text-secondary: "oklch(48% 0.015 162)"
-  text-muted: "oklch(60% 0.012 162)"
-  text-inverse: "oklch(98% 0.004 162)"
-  border: "oklch(88% 0.01 162)"
+  verde-bosque: "#1F3D1F"
+  blanco-hueso: "#F5F3EE"
+  negro-tinta: "#0D0D0D"
+  rosa-chicle: "#FF2E9E"
+  amarillo-electrico: "#F5FF3D"
+  lila-suave: "#C9A8FF"
+  menta: "#D9F2D0"
+  wallpaper: "{colors.verde-bosque}"
+  surface: "{colors.blanco-hueso}"
+  surface-raised: "#EDEAE2"
+  surface-sunken: "#E3DFD4"
+  ink: "{colors.negro-tinta}"
+  text-primary: "{colors.negro-tinta}"
+  text-secondary: "#3D3A33"
+  text-muted: "#6B675C"
+  text-inverse: "{colors.blanco-hueso}"
+  brand: "{colors.verde-bosque}"
+  brand-hover: "#16301A"
+  brand-subtle: "{colors.menta}"
+  cta: "{colors.amarillo-electrico}"
+  cta-hover: "#E4EE1F"
+  accent: "{colors.rosa-chicle}"
+  border: "#D8D3C6"
   focus: "oklch(55% 0.18 250)"
-  success: "oklch(52% 0.14 150)"
-  warning: "oklch(68% 0.15 75)"
   danger: "oklch(52% 0.19 25)"
   danger-soft: "oklch(92% 0.05 25)"
-  status-pending-payment: "oklch(89% 0.1 85)"
-  status-paid: "oklch(90% 0.09 152)"
-  status-processing: "oklch(88% 0.09 245)"
-  status-shipped: "oklch(88% 0.09 205)"
-  status-delivered: "oklch(88% 0.13 122)"
-  status-disputed: "oklch(87% 0.1 25)"
 typography:
   display:
-    fontFamily: "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
-    fontSize: "1.75rem"
-    fontWeight: 700
-    lineHeight: 1.2
-    letterSpacing: "normal"
-  title:
-    fontFamily: "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
-    fontSize: "1.125rem"
-    fontWeight: 700
-    lineHeight: 1.3
-  body:
-    fontFamily: "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
-    fontSize: "0.9375rem"
+    fontFamily: "Anton, Impact, 'Haettenschweiler', sans-serif"
     fontWeight: 400
-    lineHeight: 1.5
-  label:
-    fontFamily: "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
-    fontSize: "0.75rem"
-    fontWeight: 700
-    letterSpacing: "0.02em"
+    textTransform: uppercase
+    note: "One weight only — never request 700 on this family, the browser fakes it and smudges the strokes."
+  sans:
+    fontFamily: "'Space Grotesk', system-ui, -apple-system, sans-serif"
+    weights: [400, 500, 700]
   mono:
-    fontFamily: "JetBrains Mono, ui-monospace, 'SF Mono', Menlo, Consolas, monospace"
-    fontSize: "0.9375rem"
-    fontWeight: 700
+    fontFamily: "'Space Mono', ui-monospace, 'SF Mono', Menlo, monospace"
+    weights: [400, 700]
 rounded:
   sm: "8px"
   md: "12px"
   pill: "999px"
 spacing:
-  1: "4px"
-  2: "8px"
-  3: "12px"
-  4: "16px"
-  6: "24px"
-  8: "32px"
+  scale: "8px base — 8 / 16 / 24 / 32 / 40 / 56"
+  exception: "Button md vertical padding is 12px, not a multiple of 8 — 12 + 16 line-height + 12 lands on the shared 40px control height."
 components:
   button-primary:
-    backgroundColor: "{colors.brand}"
-    textColor: "{colors.text-inverse}"
+    backgroundColor: "{colors.cta}"
+    textColor: "{colors.text-primary}"
     rounded: "{rounded.sm}"
-    padding: "8px 16px"
-  button-primary-hover:
-    backgroundColor: "{colors.brand-hover}"
-  stat-card:
+    padding: "12px 24px"
+    note: "CTA is EXCLUSIVE to amarillo. Never brand, never accent."
+  card:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.text-primary}"
     rounded: "{rounded.md}"
-    padding: "16px"
-  stat-card-accent:
-    backgroundColor: "{colors.brand-subtle}"
-    textColor: "{colors.text-primary}"
-    rounded: "{rounded.md}"
-    padding: "16px"
+    padding: "24px"
 ---
 
-# Design System: Gira Clothing — Admin Dashboard
+# Design System: Gira Clothing
 
 ## 1. Overview
 
-**Creative North Star: "The Field Console"**
+**Creative North Star: "The Field Console, Printed in Forest Ink"**
 
-This is not a marketing surface, it is the instrument panel an operations team stares at during a
-shift: order queues, stock levels, notification failures. Every choice serves speed of reading over
-decoration. The system borrows its vocabulary from neobrutalism on purpose, not as a trend but as a
-literal metaphor: solid ink borders and hard offset shadows read like a printed control panel,
-something built rather than styled, exactly right for a store that sells physical printed apparel.
+Verde bosque is not an accent — it's the surface every screen sits on, tienda and consola alike.
+Content lives on hueso islands (cards, panels, the sidebar), bordered and shadowed in tinta the way
+a screen-printed garment carries a hard registration line. Amarillo is reserved, absolutely, for the
+one thing a person can act on right now; rosa carries the brand's identity everywhere else a title or
+a price needs to announce itself.
 
-It explicitly rejects the generic SaaS-dashboard look: no glassmorphism, no purple-to-blue
-gradients, no hairline 1px borders that vanish at a glance, no gradient-text hero metrics. Neutrals
-are never truly grey; every surface is tinted toward the brand hue (chroma 0.003–0.02) so the whole
-UI reads as one material, not a stack of disconnected panels.
+This is a deliberate pivot from the tinted-neutral placeholder system built in M6–M8: that system was
+light-dominant with a single sparse green accent. This one commits — a Full Palette / Committed
+strategy, not Restrained — because the brand called for it explicitly, twice, in the same
+conversation that built it.
 
 **Key Characteristics:**
+- Verde bosque (`#1F3D1F`) is the dominant background — page, sidebar rail, everything that isn't a
+  card — in the admin console exactly as much as in the future storefront.
 - Hard 2px ink borders and flat offset shadows (`shadow-nb`) instead of blur/opacity for depth.
-- One accent color used sparingly, reserved for exactly one KPI per screen.
-- Status conveyed by a wide, deliberately non-semantic palette of nine order-status hues, always
-  paired with an ink border and dark text, never by hue alone.
-- Zero decorative motion; state feedback only, translated into shadow offset, not scale or blur.
+- Amarillo eléctrico (`#F5FF3D`) fills the primary CTA and nothing else, ever.
+- Rosa chicle (`#FF2E9E`) carries brand identity — logo, prices, link/title emphasis — always at
+  ≥18px/700, never in running prose (it fails WCAG AA at body size: ~3.1:1 on hueso).
+- Three type families, three fixed jobs: Anton titles (always uppercase, one weight), Space Grotesk
+  reads, Space Mono counts.
+- One shape language, two densities: the console runs tight, the storefront (Bloque 3) runs looser —
+  same tokens, one step up.
 
 ## 2. Colors
 
-Tinted neutrals carry the whole surface; one desaturated green-leaning accent is reserved for a
-single highlighted KPI per screen.
-
-### Primary
-- **Deep Forest Ink** (`oklch(46% 0.11 162)`, `--color-brand`): the one accent. Used on primary
-  buttons and the single highlighted stat card per screen — never more than one per screen.
-
-### Secondary
-- **Warm Rust** (`oklch(62% 0.16 48)`, `--color-accent`): restrained to chart comparison series.
-  Never used for buttons, chips, or navigation.
-
-### Neutral
-- **Ink** (`oklch(24% 0.02 162)`, `--color-ink`): every border and every hard shadow in the system.
-  Never a background.
-- **Wallpaper** (`oklch(96.5% 0.006 162)`, `--color-wallpaper`): the app-shell background, behind
-  every card.
-- **Surface** (`oklch(99.2% 0.003 162)`, `--color-surface`): card and panel fill.
-- **Surface Raised / Sunken**: nested emphasis inside a panel (raised for a header strip, sunken for
-  an inset well) without ever introducing a shadow inside a shadow.
-- **Text Primary / Secondary / Muted / Inverse**: four steps of the same ink hue, never pure black,
-  reserved for text roles from headings down to disabled captions.
+### The seven brand literals
+| Token | Hex | Share | Role |
+|---|---|---|---|
+| `--verde-bosque` | `#1F3D1F` | 60% | Dominant background — page, header strips, section dividers |
+| `--blanco-hueso` | `#F5F3EE` | 25% | Card / panel surface, sidebar rail |
+| `--negro-tinta` | `#0D0D0D` | 15% | Every border, every hard shadow, ink text |
+| `--rosa-chicle` | `#FF2E9E` | — | Brand identity: logo, prices, link/title emphasis |
+| `--amarillo-electrico` | `#F5FF3D` | — | **Exclusive** to the primary CTA |
+| `--lila-suave` | `#C9A8FF` | — | Tile variant in an icon grid (reserved, not yet consumed) |
+| `--menta` | `#D9F2D0` | — | Soft secondary background — doubles as `--color-brand-subtle` |
 
 ### Named Rules
-**The One Accent Rule.** `--color-brand` appears on at most one stat card and interactive primary
-actions per screen. A second "highlighted" tile on the same screen is always a bug, not a design
-choice.
+**The CTA-Exclusivity Rule.** Amarillo fills `--color-cta` and nothing else. A second yellow surface
+on the same screen is always a bug — it stops meaning "you can act here."
 
-**The Nine-Hue Status Rule.** Order and shipment statuses each get their own hue from a
-wayfinding palette (`--status-*`, `--ship-*`), always with an ink border and dark text. A status is
-never conveyed by fill color alone.
+**The Rosa-at-Size Rule.** Rosa chicle measures 3.1:1 on hueso and 3.5:1 on verde bosque — both
+below the 4.5:1 a paragraph needs, both above the 3:1 a large/bold element or a UI component needs.
+So: rosa in a heading ≥18px/700, a bold price, or a chip fill — never in a sentence of body text.
+
+**Text-color-follows-surface.** Body's default text is `--color-text-inverse` (hueso), because the
+page background is verde bosque now, not a light neutral. Every light surface (`NB_SURFACE`,
+`NB_CONTROL`, the sidebar rail) resets back to `--color-text-primary` itself — components never rely
+on inherited color across a surface boundary.
+
+### Status colors
+Nine order-status hues and five shipment-status hues (`--status-*`, `--ship-*`) are their own flat
+pastel vocabulary, independent of the brand palette — a status is never conveyed by brand color.
+Every chip pairs its fill with an ink border and dark text.
+
+### Feedback
+`--color-info`, `--color-warning-soft`, `--color-success-soft`, `--color-danger-soft` are each their
+own token. `Notice`'s "info" variant used to borrow `--status-pending_payment` (an order-status hue
+repurposed for an unrelated banner) — that coincidence is exactly the drift this file exists to
+prevent.
 
 ## 3. Typography
 
-**Display Font:** Inter (with system-ui, -apple-system, "Segoe UI", Roboto fallback)
-**Label/Mono Font:** JetBrains Mono (with ui-monospace, "SF Mono", Menlo, Consolas fallback)
+Three families, three jobs, never crossed:
 
-**Character:** A single, unpretentious grotesque for everything a person reads, and a monospace
-reserved for anything a person counts: money, quantities, SKUs. The pairing signals "this number is
-exact," never decorative. Both are placeholders pending Gira's final brand typeface (see
-`src/app/fonts.ts`); component structure and token names do not change when the real family lands.
+| Family | Job | Weights |
+|---|---|---|
+| **Anton** | Every title, always uppercase | 400 only — never synthesize bold |
+| **Space Grotesk** | Everything read: prose, labels, buttons | 400 / 500 / 700 |
+| **Space Mono** | Everything counted: money, SKUs, labels/metadata | 400 / 700 |
 
-### Hierarchy
-- **Display** (700, 1.75rem, 1.2): page-level `<h1>` titles ("Resumen", "Pedidos").
-- **Title** (700, 1.125rem, 1.3): panel and card section headers ("Pedidos por día").
-- **Body** (400, 0.9375rem, 1.5): all prose, labels, table cells. Capped at 65–75ch where it wraps.
-- **Label** (700, 0.75rem, uppercase, 0.02em tracking): stat-card labels, chip text, form labels.
-- **Mono** (700, 0.9375rem): money, unit counts, SKUs, dates in tabular contexts.
+### Two densities, one ladder shape
+Product UI (the console) runs a fixed rem scale, tighter ratio, no fluid `clamp()`. The storefront
+(Bloque 3) runs the same roles one step up. Never mix a console recipe and a store recipe on the same
+screen.
 
-### Named Rules
-**The Numbers-Are-Mono Rule.** Any value the user might reconcile against a receipt or a shipping
-label (money, units, SKU, order id) renders in `--font-mono`. Everything else is `--font-sans`.
+| Role | Console | Store (reserved) |
+|---|---|---|
+| H1 / page title | Anton 32px | Anton 42px |
+| H2 / section | Anton 24px | Anton 32px |
+| H3 / panel title | Anton 16px | Anton 20px |
+| H4 | Grotesk 14px / 700 | Grotesk 16px / 700 |
+| Body | Grotesk 14px / 1.5 | Grotesk 16px / 1.6 |
+| Body sm | Grotesk 13px | Grotesk 14px |
+| Label / metadata | Mono 11px / 700 / UPPER | Mono 12px / 700 / UPPER |
+| Helper | Mono 11px, `--color-text-muted` | Mono 11px |
 
-## 4. Elevation
-
-Flat by default, with depth conveyed entirely through solid offset shadows, never blur or opacity.
-A shadow is either fully present (at rest) or collapses to zero on press, simulating a physical
-object being pushed flush against the surface behind it.
-
-### Shadow Vocabulary
-- **`shadow-nb-sm`** (`2px 2px 0 0 var(--color-ink)`): small controls, chips, ghost-button hover.
-- **`shadow-nb`** (`4px 4px 0 0 var(--color-ink)`): the default card/panel shadow.
-- **`shadow-nb-lg`** (`6px 6px 0 0 var(--color-ink)`): the single most important surface on a screen
-  (the attention band), and the hover state of a pressable card.
-- **`shadow-nb-pressed`** (`0 0 0 0 var(--color-ink)`): the active/pressed state — the shadow
-  disappears entirely as the element translates into it.
+Recipes live in `apps/web/src/components/ui/typography.ts` as named exports (`T_PAGE_TITLE`,
+`T_PANEL_TITLE`, `T_LABEL`, …) — a component asks for a role, never picks a size or family by hand.
+`T_PAGE_TITLE` and `T_SECTION_TITLE` bake in `text-text-inverse`: every page title in this app renders
+directly on verde bosque, never inside a card.
 
 ### Named Rules
-**The Press-Into-Shadow Rule.** Interactive elements never scale on press. They translate a couple
-of pixels toward their own shadow, which shrinks to zero at `active`. `motion-reduce` disables the
-translate but the shadow itself never disappears, so the element never looks broken.
+**The Anton-Never-Bold Rule.** Anton ships one weight. Bolding it is always a synthesis bug.
 
-## 5. Components
+**The Numbers-Are-Mono Rule.** Anything reconcilable against a receipt or shipping label — money,
+units, SKU, order id — renders in `--font-mono`.
+
+## 4. Spacing
+
+An 8px-multiple scale, drawn to real size in the system sheet (`mockups/sistema.html`).
+
+| Value | Use |
+|---|---|
+| 8px | Icon + text, label + control |
+| 16px | Control padding, gap between sibling buttons |
+| 24px | Card padding, gap between cards |
+| 32px | Gap between medium elements within a section |
+| 40px | Gap between major page sections |
+| 56px | Gap between large blocks (storefront-scale) |
+
+**The 12px exception.** Button md's vertical padding is 12px, not a multiple of 8 — but 12 + 16px
+line-height + 12 lands exactly on 40px, the shared control height. The rule is "lands on the grid,"
+not "every literal number is 8×n."
+
+Implemented via Tailwind's native 4px-unit scale (`gap-2`=8px, `gap-4`=16px, `gap-6`=24px, `gap-8`=32px,
+`gap-10`=40px, `gap-14`=56px) — the project's own `--space-*` custom tokens were removed; they
+duplicated this scale and were never referenced, which is exactly how spacing drifted before.
+
+## 5. States
+
+Seven states, mandatory on every interactive primitive:
+
+| State | Treatment |
+|---|---|
+| default | 2px ink border + `shadow-nb-sm` |
+| hover | translate -1px/-1px + `shadow-nb-lg` |
+| focus-visible | 2px outline in `--color-focus` (the one blue in the system), global, never overridden |
+| active | translate +2px/+2px + `shadow-nb-pressed` (shadow collapses to zero) |
+| disabled | 45% opacity, shadow removed, pointer-events none |
+| loading | spinner at 700ms (not 1s — faster reads as faster loading), `aria-busy` |
+| selected | `bg-brand` (verde bosque) fill + `text-text-inverse` |
+
+`Segmented` — the primitive behind RangeSelector, GranularitySelector, the chart's series toggle and
+the TopBar search trigger — is what makes "selected" consistent; before it existed, each of those four
+had its own radius, height and shadow for the same gesture.
+
+## 6. Elevation
+
+Unchanged from M6: flat by default, depth conveyed entirely through solid offset shadows.
+`shadow-nb-sm` (2px), `shadow-nb` (4px, the default), `shadow-nb-lg` (6px, at most one surface per
+screen), `shadow-nb-pressed` (0, the pressed state). Press-into-shadow, never scale.
+
+## 7. Components
 
 ### Buttons
-- **Shape:** 8px radius (`rounded-nb-sm`), 2px ink border, small offset shadow at rest.
-- **Primary:** brand fill, inverse text, 8–16px padding depending on size.
-- **Secondary:** surface fill, primary text, same border/shadow treatment.
-- **Ghost:** starts with no border/shadow; on hover gains the ink border and small shadow back, so a
-  ghost button never looks like a plain link at rest.
-- **Danger:** danger-soft fill with danger text, same shape language as every other variant.
-- **Hover / Focus:** translate up-left 1px and grow the shadow to `-lg`; focus ring uses
-  `--color-focus`, a distinct blue never used anywhere else in the palette.
+2px border, `NB_CONTROL`'s shared 40px height. Primary = amarillo + tinta text (never hueso — too
+light for white text). Secondary = hueso + tinta, the default `NB_CONTROL` treatment. Ghost = starts
+transparent, gains border/shadow on hover; assumes a light-surface ancestor. Danger = danger-soft.
 
-### Chips
-- **Style:** flat status-colored fill, 1.5px ink border, dark text — never white text on a saturated
-  fill, since the palette is intentionally pastel, not saturated.
-- **State:** one fixed fill per enum member (see `ORDER_STATUS_BG`/`SHIPMENT_STATUS_BG`), no
-  hover/selected state; chips are informational, not interactive.
+### Segmented / Badge / ListRow / MetricTile
+Four primitives extracted because each pattern was previously hand-copied 3–4 times with drifting
+details — see `apps/web/src/components/ui/{Segmented,Badge,ListRow,MetricTile}.tsx`. Badge is also
+the base `StatusChip` composes, so the nine order-status / five shipment-status chips share the same
+shape as every other badge in the app.
 
-### Cards / Containers (`StatCard`, `Panel`)
-- **Corner Style:** 12px radius (`rounded-nb`).
-- **Background:** surface fill; the single accented KPI per screen uses `brand-subtle` instead.
-- **Shadow Strategy:** `shadow-nb` at rest; panels never nest (a card inside a card is always wrong
-  in this system).
-- **Border:** 2px ink, always.
-- **Internal Padding:** 16px (`space-4`).
+### Cards / Panels
+12px radius, 24px internal padding (the brand's own spacing spec calls for 24px card padding),
+2px ink border, `shadow-nb`. Panels never nest.
 
-### Inputs / Fields
-- **Style:** surface fill, 2px ink border, 8px radius, no inset shadow.
-- **Focus:** border shifts to `--color-focus`, no glow/blur.
-- **Error:** border shifts to `--color-danger`, helper text below in the same color.
+### Inputs
+Surface fill, 2px ink border (danger on error), 8px radius, 40px height, no inset shadow. Focus
+shifts the border to `--color-focus`.
 
-### Navigation (sidebar + topbar)
-- **Style:** surface-raised fill, 2px ink border on the leading edge, active item marked by
-  `brand-subtle` fill plus bold label, never by an underline or a colored stripe.
-- **Mobile:** sidebar collapses to an off-canvas drawer sliding in from the left, `--color-scrim`
-  behind it (the one intentionally translucent surface in the whole system).
-
-### Attention Band (signature component)
-A full-width strip at the top of Resumen, the one surface that earns `shadow-nb-lg` outside of
-hover state: an ink-filled header in inverse text, then a grid of small tiles colored by
-`warn`/`danger`/`clear` level. It is the loudest element on the busiest screen, on purpose — the
-one place where three-way color state actually needs to compete with everything else on the page.
-
-## 6. Do's and Don'ts
+## 8. Do's and Don'ts
 
 ### Do:
-- **Do** keep every color literal inside `tokens.css`; components read tokens, never inline hex or
-  oklch values (`designTokens.test.ts` enforces this).
-- **Do** use `shadow-nb-lg` for at most one surface per screen — the thing that most needs to
-  interrupt the reader.
+- **Do** keep every color and font-family literal inside `tokens.css` / `fonts.ts` — components read
+  tokens, never inline values (`designTokens.test.ts` enforces this).
+- **Do** treat amarillo as CTA-only, everywhere, no exceptions.
+- **Do** size rosa chicle text ≥18px/700 or confine it to a chip fill.
+- **Do** reset text color explicitly on every light surface (`NB_SURFACE`, `NB_CONTROL`) — body's
+  default is now hueso-on-verde, not ink-on-neutral.
 - **Do** render money and unit counts in `--font-mono`, always.
-- **Do** draw every state explicitly (empty, error, zero), never leave a silent gap where data
-  should be — a gap reads as "broken," a labeled empty state reads as "nothing yet."
 
 ### Don't:
+- **Don't** request a bold weight on Anton.
 - **Don't** use glassmorphism, blur, or translucency anywhere except `--color-scrim` behind a mobile
-  drawer, which is the one deliberate exception.
-- **Don't** use gradients anywhere except `--pattern-zero-bar` (the diagonal hatch for a zero-value
-  chart bar), which is a texture, not a decoration.
-- **Don't** use `border-left`/`border-right` as a colored accent stripe on a card or list row.
-  Status and emphasis are conveyed by full borders, background tints, or leading icons/numbers.
-- **Don't** accent more than one stat card per screen with `brand-subtle`. A second accented tile is
-  always a mistake, not an intentional emphasis.
-- **Don't** nest a card inside another card. If a panel needs internal grouping, use spacing and a
-  divider, not a second bordered surface.
+  drawer.
+- **Don't** use `border-left`/`border-right` as a colored accent stripe.
+- **Don't** let a generic feedback banner (`Notice`) borrow an order-status color token — feedback
+  colors (`--color-info`, `--color-warning-soft`, …) are their own vocabulary.
+- **Don't** nest a card inside another card.

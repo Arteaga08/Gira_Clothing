@@ -30,7 +30,7 @@ const KpiRow = ({ orders, inventory }: KpiRowProps) => {
 
   return (
     <section aria-label="Indicadores del periodo">
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-3 xl:gap-4">
+      <div className="grid grid-cols-2 gap-6 xl:grid-cols-3">
         <StatCard
           label="Pedidos"
           value={formatInteger(orders.totalOrders)}
@@ -52,7 +52,7 @@ const KpiRow = ({ orders, inventory }: KpiRowProps) => {
           icon={PackageIcon}
         />
       </div>
-      <p className="mt-3 text-xs text-text-muted">
+      <p className="mt-3 text-xs text-text-inverse-secondary">
         El monto se muestra en pesos; una compra en otra moneda se convierte con la tasa vigente al
         momento del pedido.
       </p>

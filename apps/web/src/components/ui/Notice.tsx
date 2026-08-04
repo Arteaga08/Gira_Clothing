@@ -11,8 +11,8 @@ interface NoticeProps {
 }
 
 const VARIANT_CLASSES: Record<NoticeVariant, string> = {
-  info: "bg-[var(--status-pending_payment)]",
-  warning: "bg-[var(--color-warning)]",
+  info: "bg-info",
+  warning: "bg-warning-soft",
   danger: "bg-danger-soft",
 };
 
@@ -20,7 +20,7 @@ const Notice = ({ variant = "info", title, children, className }: NoticeProps) =
   <div
     role={variant === "danger" ? "alert" : "status"}
     className={cn(
-      "flex gap-3 rounded-nb-sm border-2 border-ink p-3 text-xs leading-relaxed",
+      "flex gap-3 rounded-nb-sm border-2 border-ink p-3 text-xs leading-relaxed text-text-primary",
       VARIANT_CLASSES[variant],
       className,
     )}

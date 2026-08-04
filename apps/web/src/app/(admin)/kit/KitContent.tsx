@@ -12,15 +12,19 @@ import {
   UsersIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import { useState } from "react";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Field } from "@/components/ui/Field";
 import { IconButton } from "@/components/ui/IconButton";
+import { ListRow } from "@/components/ui/ListRow";
+import { MetricTile } from "@/components/ui/MetricTile";
 import { Notice } from "@/components/ui/Notice";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { Panel } from "@/components/ui/Panel";
+import { Segmented } from "@/components/ui/Segmented";
 import { SelectField } from "@/components/ui/SelectField";
 import { Skeleton, SkeletonRows, SkeletonStatCard } from "@/components/ui/Skeleton";
 import { StatCard } from "@/components/ui/StatCard";
@@ -60,7 +64,9 @@ const KitContent = () => {
   const [loadingDemo, setLoadingDemo] = useState(false);
 
   return (
-    <main id="main-content" className="mx-auto flex max-w-6xl flex-col gap-10 p-6">
+    // Not <main>: AdminShell already renders the page's one #main-content
+    // landmark; this used to duplicate both the element and the id.
+    <div className="mx-auto flex max-w-6xl flex-col gap-10">
       <PageHeader
         title="Sistema de diseño"
         subtitle="Kitchen sink de M6 — contrastar contra mockups/ en 390 / 834 / 1440. Se borra en M12."
@@ -205,6 +211,43 @@ const KitContent = () => {
         <p className="mt-3 text-sm text-text-secondary">Pestaña activa: {activeTab}</p>
       </Panel>
 
+      <Panel title="Segmented" hint="RangeSelector, GranularitySelector, toggle de serie, búsqueda del TopBar">
+        <div className="flex gap-2">
+          <Segmented selected onClick={() => {}}>
+            7 días
+          </Segmented>
+          <Segmented selected={false} onClick={() => {}}>
+            30 días
+          </Segmented>
+          <Segmented selected={false} onClick={() => {}}>
+            90 días
+          </Segmented>
+        </div>
+      </Panel>
+
+      <Panel title="Badge" hint="Pronto, contadores, y estados genéricos fuera del enum de pedido">
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="neutral">Pronto</Badge>
+          <Badge variant="count">12</Badge>
+          <Badge variant="ok">Al día</Badge>
+          <Badge variant="warn">7</Badge>
+          <Badge variant="danger">2</Badge>
+        </div>
+      </Panel>
+
+      <Panel title="ListRow" hint="Más vendidos, Top estampas, Stock bajo" flush>
+        <ListRow rank={1} title="Playera Cactus" sub="GIR-PC-001" right={<span className="font-mono text-sm font-bold">128</span>} />
+        <ListRow rank={2} title="Sudadera Ruta" sub="GIR-SR-004" right={<Badge variant="warn">8</Badge>} />
+      </Panel>
+
+      <Panel title="MetricTile" hint="AttentionBand, salud de notificaciones">
+        <div className="grid grid-cols-3 gap-3">
+          <MetricTile level="clear" count={0} label="Sin pendientes" />
+          <MetricTile level="warn" count={3} label="Stock bajo" />
+          <MetricTile level="danger" count={2} label="Sin procesar" />
+        </div>
+      </Panel>
+
       <Panel title="Pagination">
         <Pagination page={page} limit={20} total={137} onPageChange={setPage} />
       </Panel>
@@ -244,7 +287,7 @@ const KitContent = () => {
           </Notice>
         </div>
       </Panel>
-    </main>
+    </div>
   );
 };
 

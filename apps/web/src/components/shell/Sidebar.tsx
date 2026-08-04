@@ -4,6 +4,7 @@ import type { PublicUser, Wire } from "@gira/shared";
 import { XIcon } from "@phosphor-icons/react/dist/ssr";
 import { useEffect } from "react";
 import { IconButton } from "@/components/ui/IconButton";
+import { T_BRAND_LOCKUP } from "@/components/ui/typography";
 import { cn } from "@/lib/cn";
 import { NAV_GROUPS } from "@/lib/navigation";
 import { useMobileNav } from "./MobileNavProvider";
@@ -39,7 +40,7 @@ const Sidebar = ({ user }: SidebarProps) => {
         aria-hidden="true"
         onClick={closeNav}
         className={cn(
-          "fixed inset-0 z-[var(--z-scrim)] bg-scrim lg:hidden",
+          "fixed inset-0 z-(--z-scrim) bg-scrim lg:hidden",
           open ? "block" : "hidden",
         )}
       />
@@ -48,14 +49,14 @@ const Sidebar = ({ user }: SidebarProps) => {
         data-open={open}
         aria-label="Navegación principal"
         className={cn(
-          "fixed inset-y-0 left-0 z-[var(--z-sidebar)] flex w-[var(--sidebar-width)] flex-col",
-          "border-r-2 border-ink bg-surface-raised transition-transform duration-[var(--duration-enter)] ease-[var(--ease-drawer)]",
-          open ? "translate-x-0" : "-translate-x-full",
+          "fixed inset-y-0 left-0 z-(--z-sidebar) flex w-(--sidebar-width) flex-col text-text-primary",
+          "border-r-2 border-ink bg-surface-raised transition-transform ease-drawer",
+          open ? "translate-x-0 duration-(--duration-enter)" : "-translate-x-full duration-(--duration-exit)",
           "lg:sticky lg:top-0 lg:h-dvh lg:translate-x-0",
         )}
       >
         <div className="flex h-[var(--topbar-height)] items-center justify-between border-b-2 border-ink px-4">
-          <span className="flex items-center gap-2 text-lg font-extrabold tracking-tight">
+          <span className={cn("flex items-center gap-2", T_BRAND_LOCKUP)}>
             <span className="grid h-[30px] w-[30px] place-items-center rounded-nb-sm border-2 border-ink bg-brand text-sm font-extrabold text-text-inverse">
               G
             </span>

@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/cn";
-import { NB_PRESSABLE } from "./styles";
+import { NB_CONTROL, NB_PRESSABLE } from "./styles";
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 type ButtonSize = "sm" | "md";
@@ -13,17 +13,27 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
-  primary: "bg-brand text-text-inverse hover:bg-brand-hover",
-  secondary: "bg-surface text-text-primary",
-  // Starts with no border/shadow (mirrors mockups/mockup.css .btn-ghost);
-  // its own hover state below adds the treatment back in.
+  // Amarillo is EXCLUSIVE to the primary action — it never fills anything
+  // else. Text is ink, not hueso: amarillo is far too light for white text
+  // (~1.2:1) and ink reads at 17.8:1 on it.
+  primary: "bg-cta text-text-primary hover:bg-cta-hover",
+  // No override needed — NB_CONTROL's own bg-surface/text-text-primary is
+  // exactly the secondary treatment.
+  secondary: "",
+  // Starts with no border/shadow (mirrors mockups/mockup.css .btn-ghost); its
+  // own hover state adds the treatment back in. Assumes a light-surface
+  // ancestor (a Panel/Card) for its ink text — every current usage (only
+  // inside Pagination, always inside a Panel) satisfies that.
   ghost: "border-transparent bg-transparent shadow-none hover:border-ink hover:bg-surface hover:shadow-nb-sm",
   danger: "bg-danger-soft text-danger",
 };
 
+/* 12px vertical / 24px horizontal on md is a deliberate one-off: 12 + 16 of
+   line height + 12 lands on 40px, the shared control height, even though 12
+   itself isn't a multiple of 8. See DESIGN.md — Espaciado. */
 const SIZE_CLASSES: Record<ButtonSize, string> = {
-  sm: "min-h-[30px] px-3 py-1 text-xs",
-  md: "min-h-[38px] px-4 py-2 text-sm",
+  sm: "min-h-8 px-4 py-1.5 text-xs",
+  md: "px-6 py-3 text-sm",
 };
 
 const ButtonSpinner = () => (
@@ -49,7 +59,8 @@ const Button = ({
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       className={cn(
-        "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-nb-sm border-2 border-ink font-bold shadow-nb-sm",
+        "inline-flex items-center justify-center gap-2 whitespace-nowrap font-bold",
+        NB_CONTROL,
         "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none",
         NB_PRESSABLE,
         VARIANT_CLASSES[variant],

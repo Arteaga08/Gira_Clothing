@@ -1,4 +1,5 @@
 import { cn } from "@/lib/cn";
+import { NB_SURFACE } from "./styles";
 
 interface SkeletonProps {
   className?: string;
@@ -27,7 +28,7 @@ const SkeletonRows = ({ rows = 5, cols = 4 }: { rows?: number; cols?: number }) 
     {Array.from({ length: rows }).map((_, rowIndex) => (
       <div
         key={rowIndex}
-        className="flex min-h-[61px] items-center gap-4 border-t border-border px-4 py-3 first:border-t-0"
+        className="flex min-h-[61px] items-center gap-3 border-t border-border px-6 py-3.5 first:border-t-0"
       >
         {Array.from({ length: cols }).map((_, colIndex) => (
           <Skeleton key={colIndex} className="h-3 flex-1" />
@@ -38,7 +39,7 @@ const SkeletonRows = ({ rows = 5, cols = 4 }: { rows?: number; cols?: number }) 
 );
 
 const SkeletonStatCard = () => (
-  <div className="rounded-nb border-2 border-ink bg-surface p-4 shadow-nb">
+  <div className={cn(NB_SURFACE, "p-6")}>
     <Skeleton className="h-3 w-20" />
     <Skeleton className="mt-3 h-6 w-24" />
   </div>

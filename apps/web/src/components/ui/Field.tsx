@@ -34,14 +34,14 @@ const Field = ({
     <div className={cn("flex flex-col gap-1.5", containerClassName)}>
       <label
         htmlFor={inputId}
-        className="text-xs font-bold uppercase tracking-wide text-text-secondary"
+        className="font-mono text-2xs font-bold uppercase tracking-wide text-text-secondary"
       >
         {label}
       </label>
       <div
         className={cn(
-          "flex min-h-9.5 items-center gap-2 rounded-nb-sm border-2 bg-surface px-3 shadow-nb-sm",
-          "focus-within:outline focus-within:outline-offset-2 focus-within:outline-focus",
+          "flex min-h-10 items-center gap-2 rounded-nb-sm border-2 bg-surface px-3 text-text-primary shadow-nb-sm",
+          "focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus",
           hasError ? "border-danger" : "border-ink",
         )}
       >
