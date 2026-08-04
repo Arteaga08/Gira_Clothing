@@ -1,8 +1,6 @@
 import type { StatsGranularity } from "@gira/shared";
-import Link from "next/link";
+import { Segmented } from "@/components/ui/Segmented";
 import { rangeOptionsFor } from "@/lib/stats/range";
-import { cn } from "@/lib/cn";
-import { NB_PRESSABLE, NB_SURFACE } from "@/components/ui/styles";
 
 interface RangeSelectorProps {
   activeDays: number;
@@ -19,24 +17,11 @@ interface RangeSelectorProps {
  */
 const RangeSelector = ({ activeDays, granularity }: RangeSelectorProps) => (
   <div role="group" aria-label="Rango del periodo" className="flex gap-2">
-    {rangeOptionsFor(granularity).map((days) => {
-      const active = days === activeDays;
-      return (
-        <Link
-          key={days}
-          href={`/resumen?dias=${days}&vista=${granularity}`}
-          aria-current={active ? "page" : undefined}
-          className={cn(
-            NB_SURFACE,
-            NB_PRESSABLE,
-            "px-3 py-1.5 text-xs font-bold",
-            active && "bg-brand text-text-inverse",
-          )}
-        >
-          {days} d
-        </Link>
-      );
-    })}
+    {rangeOptionsFor(granularity).map((days) => (
+      <Segmented key={days} href={`/resumen?dias=${days}&vista=${granularity}`} selected={days === activeDays}>
+        {days} d
+      </Segmented>
+    ))}
   </div>
 );
 

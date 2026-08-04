@@ -70,7 +70,7 @@ const ResumenPage = async ({ searchParams }: ResumenPageProps) => {
   const attentionTiles = attentionTilesFrom(overview?.orders.alerts, health);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-10">
       <PageHeader
         title="Resumen"
         subtitle={`${greetingFor(now)}, ${adminName} · ${formatLongDate(now)}`}
@@ -103,7 +103,7 @@ const ResumenPage = async ({ searchParams }: ResumenPageProps) => {
        * bajo share row 2 — and `align-items: stretch` (the initial value,
        * nothing to opt into) equalizes each row's height automatically.
        */}
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         {timeseries ? (
           <TimeseriesChart
             series={timeseries.series}
@@ -150,7 +150,7 @@ const ResumenPage = async ({ searchParams }: ResumenPageProps) => {
         )}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2">
         {overview ? (
           <TopPrintsPanel prints={overview.orders.period.topPrints} />
         ) : (

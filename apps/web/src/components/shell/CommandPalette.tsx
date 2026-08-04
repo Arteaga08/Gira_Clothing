@@ -4,6 +4,7 @@ import { MagnifyingGlassIcon } from "@phosphor-icons/react/dist/ssr";
 import { useRouter } from "next/navigation";
 import { useId, useMemo, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
+import { Badge } from "@/components/ui/Badge";
 import { Icon } from "@/components/ui/Icon";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { cn } from "@/lib/cn";
@@ -103,7 +104,7 @@ const CommandPalette = () => {
         aria-modal="true"
         aria-labelledby={titleId}
         onKeyDown={handleKeyDown}
-        className="relative z-(--z-dialog) mx-auto mt-24 flex w-full max-w-md flex-col gap-3 rounded-nb border-2 border-ink bg-surface p-3 shadow-nb-lg"
+        className="relative z-(--z-dialog) mx-auto mt-24 flex w-full max-w-md flex-col gap-3 rounded-nb border-2 border-ink bg-surface p-3 text-text-primary shadow-nb-lg"
       >
         <h2 id={titleId} className="sr-only">
           Buscar en el panel
@@ -145,9 +146,9 @@ const CommandPalette = () => {
                 <Icon icon={item.icon} className="shrink-0" />
                 {item.label}
                 {item.available ? null : (
-                  <span className="ml-auto text-[10px] font-bold uppercase tracking-wide">
+                  <Badge variant="neutral" className="ml-auto">
                     Pronto
-                  </span>
+                  </Badge>
                 )}
               </li>
             ))

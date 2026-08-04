@@ -11,7 +11,7 @@ interface CardProps {
 }
 
 const Card = ({ as: Tag = "div", className, children }: CardProps) => {
-  return <Tag className={cn(NB_SURFACE, "p-4", className)}>{children}</Tag>;
+  return <Tag className={cn(NB_SURFACE, "p-6", className)}>{children}</Tag>;
 };
 
 export type { CardProps };

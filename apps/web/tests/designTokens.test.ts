@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 
 const SRC_DIR = join(process.cwd(), "src");
 const EXEMPT_FILES = new Set([join(SRC_DIR, "styles", "tokens.css"), join(SRC_DIR, "app", "fonts.ts")]);
+const TYPOGRAPHY_FILE = join(SRC_DIR, "components", "ui", "typography.ts");
 
 const walk = (dir: string): string[] =>
   readdirSync(dir).flatMap((entry) => {
@@ -75,11 +76,54 @@ describe("design tokens: un solo lugar para color y tipografía", () => {
     expect(FONT_FAMILY.test('fontFamily: "Arial";')).toBe(true);
   });
 
-  it("los neutros derivan de --brand-hue", () => {
+  it("las superficies derivan de los literales de marca nombrados, no de un hex duplicado", () => {
     const tokens = readFileSync(join(SRC_DIR, "styles", "tokens.css"), "utf8");
-    for (const token of ["--color-wallpaper", "--color-surface", "--color-ink", "--color-text-primary"]) {
-      const derivesFromBrandHue = new RegExp(`${token}:[^;]*var\\(--brand-hue\\)`);
-      expect(tokens).toMatch(derivesFromBrandHue);
+    const derivations: Record<string, string> = {
+      "--color-wallpaper": "--verde-bosque",
+      "--color-surface": "--blanco-hueso",
+      "--color-ink": "--negro-tinta",
+      "--color-text-primary": "--negro-tinta",
+    };
+    for (const [token, source] of Object.entries(derivations)) {
+      const derivesFromNamedBrand = new RegExp(`${token}:\\s*var\\(${source}\\)`);
+      expect(tokens).toMatch(derivesFromNamedBrand);
     }
+  });
+
+  it("ningún <h1>/<h2> fuera de typography.ts escribe su propio tamaño o peso", () => {
+    // The original bug: PageHeader, resumen/loading.tsx and login/page.tsx
+    // each hand-wrote a heading's size/weight and drifted into three
+    // different treatments. A heading may only reach typography via a JSX
+    // expression (className={T_PAGE_TITLE}) — never a literal string.
+    const HEADING_TAG = /<h[12][\s>]/;
+    const SIZE_OR_WEIGHT_LITERAL =
+      /className\s*=\s*"[^"]*\b(?:text-(?:2xs|xs|sm|base|lg|xl|2xl|3xl)|font-(?:normal|bold|extrabold|semibold))\b/;
+    const offenders: string[] = [];
+
+    for (const file of SOURCE_FILES) {
+      if (file === TYPOGRAPHY_FILE) continue;
+      const lines = readFileSync(file, "utf8").split("\n");
+      lines.forEach((line, index) => {
+        if (!HEADING_TAG.test(line)) return;
+        // Accumulate only the opening tag itself (it may wrap a couple of
+        // attributes across lines), never sibling/child JSX below it.
+        let openingTag = "";
+        for (let cursor = index; cursor < lines.length; cursor += 1) {
+          openingTag += `${lines[cursor]} `;
+          if (lines[cursor]?.includes(">")) break;
+        }
+        if (SIZE_OR_WEIGHT_LITERAL.test(openingTag)) {
+          offenders.push(`${relative(SRC_DIR, file)}:${index + 1}: ${line.trim()}`);
+        }
+      });
+    }
+
+    expect(offenders, offenders.join("\n")).toEqual([]);
+  });
+
+  it("amarillo eléctrico sólo aparece en los roles de CTA, nunca como fondo o acento suelto", () => {
+    const tokens = readFileSync(join(SRC_DIR, "styles", "tokens.css"), "utf8");
+    const usages = [...tokens.matchAll(/^\s*(--[\w-]+):\s*var\(--amarillo-electrico\)/gm)].map((m) => m[1]);
+    expect(usages).toEqual(["--color-cta"]);
   });
 });

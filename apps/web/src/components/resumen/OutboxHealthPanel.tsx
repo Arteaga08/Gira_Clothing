@@ -1,7 +1,7 @@
 import { NotificationChannelKind, NotificationType, type OutboxHealth, type Wire } from "@gira/shared";
+import { MetricTile } from "@/components/ui/MetricTile";
 import { Notice } from "@/components/ui/Notice";
 import { Panel } from "@/components/ui/Panel";
-import { cn } from "@/lib/cn";
 import { formatInteger, formatShortTime } from "@/lib/format";
 
 interface OutboxHealthPanelProps {
@@ -28,24 +28,6 @@ const NOTIFICATION_CHANNEL_LABELS: Record<NotificationChannelKind, string> = {
   [NotificationChannelKind.TEAM]: "equipo",
 };
 
-interface TileProps {
-  label: string;
-  count: number;
-  danger?: boolean;
-}
-
-const Tile = ({ label, count, danger = false }: TileProps) => (
-  <div
-    className={cn(
-      "rounded-nb-sm border-2 border-ink p-3",
-      danger && count > 0 ? "bg-[var(--status-disputed)]" : "bg-surface-raised",
-    )}
-  >
-    <p className="font-mono text-xl font-bold leading-none">{formatInteger(count)}</p>
-    <p className="mt-2 text-xs font-semibold text-text-secondary">{label}</p>
-  </div>
-);
-
 /**
  * No "Estancadas" tile: `OutboxHealth.stale` is hardcoded to 0 in
  * notificationService.ts (a reserved field, no distinct queryable state yet)
@@ -59,9 +41,13 @@ const OutboxHealthPanel = ({ health }: OutboxHealthPanelProps) => {
   return (
     <Panel title="Salud de notificaciones" hint="Cola transaccional (correo y equipo)">
       <div className="grid grid-cols-3 gap-3">
-        <Tile label="Enviadas" count={health.sent} />
-        <Tile label="Pendientes" count={health.pending} />
-        <Tile label="Fallidas" count={health.failed} danger />
+        <MetricTile label="Enviadas" count={formatInteger(health.sent)} />
+        <MetricTile label="Pendientes" count={formatInteger(health.pending)} />
+        <MetricTile
+          label="Fallidas"
+          count={formatInteger(health.failed)}
+          level={health.failed > 0 ? "danger" : "clear"}
+        />
       </div>
       {latestFailure ? (
         <Notice

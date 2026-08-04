@@ -3,6 +3,7 @@
 import type { StatsGranularity, TimeseriesPoint, Wire } from "@gira/shared";
 import { useState } from "react";
 import { Panel } from "@/components/ui/Panel";
+import { Segmented } from "@/components/ui/Segmented";
 import { cn } from "@/lib/cn";
 import { formatInteger, formatPeriodLabel } from "@/lib/format";
 import { type ChartSeriesKind, toChartBars } from "@/lib/stats/chart";
@@ -67,20 +68,11 @@ const TimeseriesChart = ({
       hint={`Últimos ${rangeDays} días · zona horaria ${timezone}`}
       className={className}
       actions={
-        <div role="group" aria-label="Serie" className="flex gap-1">
+        <div role="group" aria-label="Serie" className="flex gap-2">
           {(Object.keys(SERIES_LABELS) as ChartSeriesKind[]).map((option) => (
-            <button
-              key={option}
-              type="button"
-              aria-pressed={option === kind}
-              onClick={() => setKind(option)}
-              className={cn(
-                "rounded-nb-sm border-2 border-ink px-2.5 py-1 text-xs font-bold",
-                option === kind ? "bg-brand text-text-inverse" : "bg-surface",
-              )}
-            >
+            <Segmented key={option} selected={option === kind} onClick={() => setKind(option)}>
               {SERIES_LABELS[option]}
-            </button>
+            </Segmented>
           ))}
         </div>
       }

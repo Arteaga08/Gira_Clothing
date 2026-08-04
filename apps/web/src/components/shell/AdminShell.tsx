@@ -28,7 +28,7 @@ const AdminShell = ({ user, children }: AdminShellProps) => {
           <div className="flex min-w-0 flex-col">
             <TopBar />
             <Breadcrumbs />
-            <main id="main-content" className="flex-1 p-4 lg:px-6">
+            <main id="main-content" className="flex-1 p-6 lg:p-10">
               {children}
             </main>
           </div>

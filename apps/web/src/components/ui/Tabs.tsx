@@ -60,8 +60,8 @@ const Tabs = ({ tabs, value, onChange, className }: TabsProps) => {
             onClick={() => onChange(tab.id)}
             onKeyDown={handleKeyDown}
             className={cn(
-              "inline-flex items-center gap-2 whitespace-nowrap rounded-nb-pill border-2 border-ink px-3 py-2 text-xs font-bold",
-              selected ? "bg-ink text-text-inverse" : "bg-surface text-text-secondary",
+              "inline-flex items-center gap-2 whitespace-nowrap rounded-nb-pill border-2 border-ink px-4 py-2 font-mono text-xs font-bold uppercase tracking-wide",
+              selected ? "bg-brand text-text-inverse" : "bg-surface text-text-secondary",
             )}
           >
             {tab.label}

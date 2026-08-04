@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Badge } from "@/components/ui/Badge";
 import { Icon } from "@/components/ui/Icon";
 import { cn } from "@/lib/cn";
 import { isNavItemActive, type NavItemConfig } from "@/lib/navigation";
@@ -22,9 +23,9 @@ const NavItem = ({ item }: { item: NavItemConfig }) => {
       >
         <Icon icon={item.icon} className="shrink-0" />
         {item.label}
-        <span className="ml-auto rounded-nb-pill border border-ink bg-surface px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-text-muted">
+        <Badge variant="neutral" className="ml-auto text-text-muted">
           Pronto
-        </span>
+        </Badge>
       </span>
     );
   }
@@ -36,7 +37,9 @@ const NavItem = ({ item }: { item: NavItemConfig }) => {
       href={item.href}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex items-center gap-3 rounded-nb-sm border-l-2 px-3 py-2 text-sm font-medium transition-colors duration-[var(--duration-state)] ease-[var(--ease-out-expo)]",
+        // A colour change, not a move — plain `ease`, not the strong expo
+        // curve reserved for the shadow-press treatment elsewhere.
+        "flex items-center gap-3 rounded-nb-sm border-l-2 px-3 py-2 text-sm font-medium transition-colors duration-(--duration-state) ease-in-out",
         active
           ? "border-brand bg-brand-soft font-bold text-brand"
           : "border-transparent text-text-secondary hover:bg-surface-sunken hover:text-text-primary",

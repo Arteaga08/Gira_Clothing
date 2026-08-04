@@ -23,9 +23,13 @@ operativas más rápidas con menos fricción, nunca "bonito" a costa de "claro".
 
 ## Brand Personality
 
-Claro, robusto, directo. Ya expresado en el sistema neobrutalista construido en M6-M8: bordes de
-tinta de 2px, sombras duras (`shadow-nb`), cero gradientes, cero vidrio translúcido. La herramienta
-se siente como una consola física bien construida: confiable, legible, sin decoración porque sí.
+Claro, robusto, directo — expresado en un neobrutalismo que ya no es placeholder: paleta y
+tipografía finales (ver DESIGN.md), bordes de tinta de 2px, sombras duras (`shadow-nb`), cero
+gradientes, cero vidrio translúcido. Verde bosque es el fondo dominante de TODA la app, consola
+incluida — no es un acento tenue reservado a la tienda. La herramienta se siente como una consola
+física bien construida: confiable, legible, sin decoración porque sí, aunque el fondo ya no sea
+neutro. Un solo lenguaje de forma para consola y tienda; lo que cambia entre ambas es la densidad
+(consola apretada, tienda respira más), nunca el vocabulario visual.
 
 ## Anti-references
 
@@ -36,11 +40,13 @@ paneles translúcidos).
 
 ## Design Principles
 
-- Un solo lugar para el color: `tokens.css` es la única fuente, nunca colores inline (impuesto por
-  `designTokens.test.ts`).
+- Un solo lugar para el color y la tipografía: `tokens.css` y `fonts.ts` son la única fuente, nunca
+  colores ni familias inline (impuesto por `designTokens.test.ts`).
 - Lo urgente sube arriba siempre: el patrón de "banda de atención" antes que cualquier KPI.
 - Cero animación decorativa: feedback de estado sí, coreografía no.
-- Un acento por pantalla, nunca más (regla de KPI acentuado).
+- Amarillo eléctrico es exclusivo del CTA — nunca decoración, nunca un segundo uso en la misma
+  pantalla. Rosa chicle es la identidad de marca (precios, links, logo) pero nunca en texto corrido:
+  falla AA a tamaño de párrafo (~3.1:1), así que se reserva a títulos ≥18px/700 o chips.
 - Cada estado se dibuja explícito (vacío, error, cero) — nunca un hueco silencioso que parezca un
   bug.
 

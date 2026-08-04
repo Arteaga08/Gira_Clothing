@@ -3,6 +3,7 @@ import { UserRole } from "@gira/shared";
 import { redirect } from "next/navigation";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { Card } from "@/components/ui/Card";
+import { T_BRAND_LOCKUP } from "@/components/ui/typography";
 import { loadSession } from "@/lib/api/session";
 
 const metadata: Metadata = { title: "Iniciar sesión" };
@@ -25,7 +26,7 @@ const LoginPage = async () => {
         <span className="grid h-9 w-9 place-items-center rounded-nb-sm border-2 border-ink bg-brand text-sm font-extrabold text-text-inverse">
           G
         </span>
-        <h1 className="text-xl font-extrabold tracking-tight">Panel Gira</h1>
+        <h1 className={T_BRAND_LOCKUP}>Panel Gira</h1>
         <p className="text-xs text-text-muted">Inicia sesión para continuar.</p>
       </div>
       <LoginForm />

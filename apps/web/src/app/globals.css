@@ -18,7 +18,7 @@
   --radius-nb: var(--nb-radius);
   --radius-nb-sm: var(--nb-radius-sm);
   --radius-nb-pill: var(--nb-radius-pill);
-  --animate-shimmer: shimmer var(--duration-shimmer) ease-in-out infinite;
+  --animate-shimmer: shimmer var(--duration-shimmer) linear infinite;
 }
 
 /*
@@ -36,11 +36,17 @@
     box-sizing: border-box;
   }
 
+  /* Verde bosque is the dominant page background now, not a light neutral —
+     so the page-level default text is --color-text-inverse (hueso). Anything
+     that sits on a light surface (a card, the sidebar, the search trigger)
+     resets back to --color-text-primary explicitly; NB_SURFACE in
+     components/ui/styles.ts carries that reset for every card/panel so
+     individual components never have to remember it. */
   body {
     min-height: 100dvh;
     margin: 0;
     background: var(--color-wallpaper);
-    color: var(--color-text-primary);
+    color: var(--color-text-inverse);
     font-family: var(--font-sans);
     font-size: var(--text-base);
     line-height: 1.5;
@@ -54,12 +60,16 @@
     border-radius: var(--nb-radius-sm);
   }
 
+  /* Reduced motion means LESS and GENTLER, not zero — opacity/colour feedback
+     still helps comprehension. The previous blanket 0.01ms !important on every
+     transition-duration also silenced NB_PRESSABLE's own motion-reduce:
+     variants (components/ui/styles.ts), which had nothing left to disable. */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
     *::after {
-      transition-duration: 0.01ms !important;
       animation-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
     }
   }
 }

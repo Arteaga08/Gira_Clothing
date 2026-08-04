@@ -3,6 +3,7 @@
 import { ListIcon, MagnifyingGlassIcon } from "@phosphor-icons/react/dist/ssr";
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
+import { Segmented } from "@/components/ui/Segmented";
 import { useCommandPalette } from "./CommandPaletteProvider";
 import { useMobileNav } from "./MobileNavProvider";
 import { NotificationBell } from "./NotificationBell";
@@ -31,17 +32,13 @@ const TopBar = () => {
       <div className="ml-auto flex items-center gap-2">
         <RefreshButton />
         <NotificationBell />
-        <button
-          type="button"
-          onClick={openPalette}
-          className="flex items-center gap-2 rounded-nb-sm border-2 border-ink bg-surface px-3 py-1.5 text-xs font-bold shadow-nb-sm"
-        >
+        <Segmented selected={false} onClick={openPalette}>
           <Icon icon={MagnifyingGlassIcon} size={14} />
           Buscar
           <kbd className="rounded-nb-sm border border-ink bg-surface-sunken px-1.5 py-0.5 font-mono text-[10px]">
             ⌘K
           </kbd>
-        </button>
+        </Segmented>
       </div>
     </header>
   );
