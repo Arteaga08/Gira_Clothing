@@ -20,4 +20,5 @@ coverage/
 
 # Environment (secrets never committed; only .env.*.example is versioned)
 .env
+.env.local
 .env.*.local
