@@ -114,7 +114,7 @@ const loginUser = async (
     }
   }
 
-  const token = signAuthToken({ sub: user.id as string, role: user.role });
+  const token = signAuthToken({ sub: user.id as string, role: user.role, tv: user.tokenVersion });
 
   await recordAudit({
     actorId: user._id,
@@ -208,6 +208,10 @@ const enableTwoFactor = async (
   }
 
   user.twoFactor.enabled = true;
+  // Any session issued before turning 2FA on no longer reflects the account's
+  // real security state — bump the version so those tokens stop working and
+  // whoever holds one has to log in again (this time through the 2FA gate).
+  user.tokenVersion += 1;
   await user.save();
 
   await recordAudit({
@@ -235,6 +239,10 @@ const disableTwoFactor = async (
 
   user.twoFactor.enabled = false;
   user.twoFactor.secret = undefined;
+  // BACKEND_SECURITY_GUIDELINES §2: disabling 2FA must revoke active sessions
+  // too, not just flip the flag — a stolen cookie shouldn't survive the
+  // account's own security downgrade.
+  user.tokenVersion += 1;
   await user.save();
 
   await recordAudit({

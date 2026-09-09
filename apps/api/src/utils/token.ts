@@ -11,6 +11,7 @@ import { env } from "../config/env.js";
 interface AuthTokenPayload {
   sub: string; // user id
   role: string;
+  tv: number; // tokenVersion at signing time — see User.tokenVersion
 }
 
 /** Pinned on both sides: the verifier must never let the token pick the algorithm. */
@@ -27,7 +28,11 @@ const verifyAuthToken = (token: string): AuthTokenPayload => {
   if (typeof decoded === "string" || typeof decoded.sub !== "string") {
     throw new jwt.JsonWebTokenError("Token inválido");
   }
-  return { sub: decoded.sub, role: String(decoded.role) };
+  // Tokens signed before this field existed carry no `tv` — treat them as
+  // version 0, same default as a freshly created user, so a rollout doesn't
+  // invalidate every session already in flight.
+  const tv = typeof decoded.tv === "number" ? decoded.tv : 0;
+  return { sub: decoded.sub, role: String(decoded.role), tv };
 };
 
 // Milliseconds for the cookie maxAge, parsed from the same JWT_EXPIRES_IN value.

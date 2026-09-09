@@ -9,11 +9,19 @@ type ValidationSource = "body" | "params" | "query";
  * keys (kills mass assignment) and collects every message into a single 400.
  * For body/params the cleaned value replaces the source; query is a read-only
  * getter in Express 5, so its keys are mutated in place instead.
+ *
+ * `req.body` is `undefined` (not `{}`) when `express.json()` skips parsing —
+ * an unexpected Content-Type, or no body at all. Joi accepts `undefined`
+ * silently on a schema with no required fields, which would let the request
+ * through with `value` unset and crash downstream as an unhandled 500 instead
+ * of the 400 this middleware exists to produce. Feeding `{}` in that case
+ * lets the schema's own `.required()` rules do their job normally.
  */
 const validate =
   (schema: ObjectSchema, source: ValidationSource = "body"): RequestHandler =>
   (req: Request, _res: Response, next: NextFunction): void => {
-    const { value, error } = schema.validate(req[source], {
+    const validationTarget: unknown = source === "body" ? (req.body ?? {}) : req[source];
+    const { value, error } = schema.validate(validationTarget, {
       abortEarly: false,
       stripUnknown: true,
       convert: true,

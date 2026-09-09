@@ -173,6 +173,22 @@ const updateProduct = async (
     await assertNoActiveVariants(id);
   }
 
+  // Reactivation guard (same pattern as variantService): a product cannot go
+  // back to active under a category that is itself retired. When `category`
+  // also changes in this call, `findActiveCategoryOrThrow` below already
+  // guarantees the new category is active, so this only checks the current one.
+  if (input.isActive === true && !product.isActive && input.category === undefined) {
+    const category = await ProductCategory.findById(product.category)
+      .select("isActive")
+      .lean();
+    if (!category?.isActive) {
+      throw new AppError(
+        "No puedes reactivar este producto: su categoría está retirada. Reactiva primero la categoría o asígnale una categoría activa.",
+        409,
+      );
+    }
+  }
+
   if (input.name !== undefined && input.name !== product.name) {
     product.name = input.name;
     product.slug = await resolveUniqueSlug(

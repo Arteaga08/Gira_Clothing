@@ -10,6 +10,7 @@ import { SectionError } from "@/components/resumen/SectionError";
 import { TimeseriesChart } from "@/components/resumen/TimeseriesChart";
 import { TopPrintsPanel } from "@/components/resumen/TopPrintsPanel";
 import { TopProductsSection } from "@/components/resumen/TopProductsSection";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { isApiError } from "@/lib/api/ApiError";
 import { loadSession } from "@/lib/api/session";
@@ -22,6 +23,9 @@ import { parseGranularity, parseRangeDays } from "@/lib/stats/range";
 const metadata: Metadata = { title: "Resumen" };
 
 const GENERIC_SECTION_ERROR = "No se pudo conectar con el servidor. Intenta de nuevo.";
+/** Shown when a panel's own render throws (bad shape, unexpected value) —
+ *  distinct from a fetch failure, which `SectionError` above already covers. */
+const RENDER_CRASH_MESSAGE = "Esta sección no se pudo mostrar. Actualiza la página para reintentar.";
 
 /** "Más vendidos" opens on "this week so far" — a calendar-anchored period
  *  independent of the `?dias=`/`?vista=` range the rest of the page uses. */
@@ -85,10 +89,12 @@ const ResumenPage = async ({ searchParams }: ResumenPageProps) => {
       {attentionTiles.length > 0 ? <AttentionBand tiles={attentionTiles} /> : null}
 
       {overview ? (
-        <KpiRow
-          orders={overview.orders.period}
-          inventory={{ unitsAvailable: overview.inventory.unitsAvailable }}
-        />
+        <ErrorBoundary fallback={<SectionError message={RENDER_CRASH_MESSAGE} />}>
+          <KpiRow
+            orders={overview.orders.period}
+            inventory={{ unitsAvailable: overview.inventory.unitsAvailable }}
+          />
+        </ErrorBoundary>
       ) : (
         <SectionError
           message={messageOf(overviewOutcome.status === "rejected" ? overviewOutcome.reason : undefined)}
@@ -105,12 +111,14 @@ const ResumenPage = async ({ searchParams }: ResumenPageProps) => {
        */}
       <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         {timeseries ? (
-          <TimeseriesChart
-            series={timeseries.series}
-            rangeDays={days}
-            timezone={timeseries.range.timezone}
-            granularity={timeseries.granularity}
-          />
+          <ErrorBoundary fallback={<SectionError message={RENDER_CRASH_MESSAGE} />}>
+            <TimeseriesChart
+              series={timeseries.series}
+              rangeDays={days}
+              timezone={timeseries.range.timezone}
+              granularity={timeseries.granularity}
+            />
+          </ErrorBoundary>
         ) : (
           <SectionError
             message={messageOf(
@@ -120,10 +128,12 @@ const ResumenPage = async ({ searchParams }: ResumenPageProps) => {
         )}
 
         {topProductsPeriod ? (
-          <TopProductsSection
-            initialProducts={topProductsPeriod.products}
-            initialPeriod={DEFAULT_TOP_PRODUCTS_PERIOD}
-          />
+          <ErrorBoundary fallback={<SectionError message={RENDER_CRASH_MESSAGE} />}>
+            <TopProductsSection
+              initialProducts={topProductsPeriod.products}
+              initialPeriod={DEFAULT_TOP_PRODUCTS_PERIOD}
+            />
+          </ErrorBoundary>
         ) : (
           <SectionError
             message={messageOf(
@@ -133,18 +143,22 @@ const ResumenPage = async ({ searchParams }: ResumenPageProps) => {
         )}
 
         {overview ? (
-          <DistributionPanel byStatus={overview.orders.byStatus} />
+          <ErrorBoundary fallback={<SectionError message={RENDER_CRASH_MESSAGE} />}>
+            <DistributionPanel byStatus={overview.orders.byStatus} />
+          </ErrorBoundary>
         ) : (
           <SectionError message={GENERIC_SECTION_ERROR} />
         )}
 
         {overview ? (
-          <LowStockPanel
-            items={overview.inventory.lowStockItems}
-            lowStockThreshold={overview.inventory.lowStockThreshold}
-            outOfStock={overview.inventory.outOfStock}
-            lowStock={overview.inventory.lowStock}
-          />
+          <ErrorBoundary fallback={<SectionError message={RENDER_CRASH_MESSAGE} />}>
+            <LowStockPanel
+              items={overview.inventory.lowStockItems}
+              lowStockThreshold={overview.inventory.lowStockThreshold}
+              outOfStock={overview.inventory.outOfStock}
+              lowStock={overview.inventory.lowStock}
+            />
+          </ErrorBoundary>
         ) : (
           <SectionError message={GENERIC_SECTION_ERROR} />
         )}
@@ -152,13 +166,17 @@ const ResumenPage = async ({ searchParams }: ResumenPageProps) => {
 
       <div className="grid gap-6 md:grid-cols-2">
         {overview ? (
-          <TopPrintsPanel prints={overview.orders.period.topPrints} />
+          <ErrorBoundary fallback={<SectionError message={RENDER_CRASH_MESSAGE} />}>
+            <TopPrintsPanel prints={overview.orders.period.topPrints} />
+          </ErrorBoundary>
         ) : (
           <SectionError message={GENERIC_SECTION_ERROR} />
         )}
 
         {health ? (
-          <OutboxHealthPanel health={health} />
+          <ErrorBoundary fallback={<SectionError message={RENDER_CRASH_MESSAGE} />}>
+            <OutboxHealthPanel health={health} />
+          </ErrorBoundary>
         ) : (
           <SectionError
             message={messageOf(healthOutcome.status === "rejected" ? healthOutcome.reason : undefined)}

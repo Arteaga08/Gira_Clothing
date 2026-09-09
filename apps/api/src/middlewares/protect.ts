@@ -22,7 +22,7 @@ const protect: RequestHandler = asyncHandler(
 
     const payload = verifyAuthToken(token);
     const user = await User.findById(payload.sub);
-    if (!user || !user.isActive) {
+    if (!user || !user.isActive || payload.tv !== user.tokenVersion) {
       throw new AppError("Tu sesión ya no es válida. Inicia sesión de nuevo.", 401);
     }
 
@@ -49,7 +49,7 @@ const optionalAuth: RequestHandler = asyncHandler(
     try {
       const payload = verifyAuthToken(token);
       const user = await User.findById(payload.sub);
-      if (user?.isActive) req.user = user;
+      if (user?.isActive && payload.tv === user.tokenVersion) req.user = user;
     } catch {
       // Invalid/expired token on an optional route: proceed as guest.
     }

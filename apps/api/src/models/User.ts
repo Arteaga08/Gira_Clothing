@@ -22,6 +22,7 @@ interface UserAttrs {
   role: UserRole;
   twoFactor: TwoFactor;
   isActive: boolean;
+  tokenVersion: number;
 }
 
 interface UserMethods {
@@ -62,6 +63,12 @@ const userSchema = new Schema<UserAttrs, UserModel, UserMethods>(
       default: () => ({ enabled: false }),
     },
     isActive: { type: Boolean, default: true },
+    // Bumped whenever every existing session must be invalidated at once
+    // (today: enabling/disabling 2FA). The JWT carries the version it was
+    // signed with; `protect` rejects a token whose version doesn't match
+    // the user's current one (BACKEND_SECURITY_GUIDELINES §2, session
+    // revocation on 2FA changes).
+    tokenVersion: { type: Number, default: 0 },
   },
   { timestamps: true },
 );

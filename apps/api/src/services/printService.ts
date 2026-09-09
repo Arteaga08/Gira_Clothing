@@ -165,6 +165,20 @@ const updatePrint = async (
     await assertNoActiveVariants(id);
   }
 
+  // Reactivation guard (same pattern as variantService): a print cannot go
+  // back to active under a family that is itself retired. When `family` also
+  // changes in this call, `findActiveFamilyOrThrow` below already guarantees
+  // the new family is active, so this only checks the current one.
+  if (input.isActive === true && !print.isActive && input.family === undefined) {
+    const family = await PrintFamily.findById(print.family).select("isActive").lean();
+    if (!family?.isActive) {
+      throw new AppError(
+        "No puedes reactivar este estampado: su familia está retirada. Reactiva primero la familia o asígnale una familia activa.",
+        409,
+      );
+    }
+  }
+
   if (input.name !== undefined && input.name !== print.name) {
     print.name = input.name;
     print.slug = await resolveUniqueSlug(

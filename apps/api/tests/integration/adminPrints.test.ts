@@ -208,3 +208,77 @@ describe("Admin · PrintFamily · guard de baja con Print activo (activado en Ta
     expect(res.status).toBe(200);
   });
 });
+
+describe("Admin · Print · guard de reactivación bajo familia retirada", () => {
+  it("rechaza reactivar un estampado cuya familia está retirada", async () => {
+    const cookie = await loginAsAdmin(app);
+    const familyId = await createFamily(cookie, "Retirable");
+    const created = await createPrint(cookie, familyId);
+    const printId = created.body.data.print.id as string;
+
+    await request(app)
+      .delete(`${BASE}/${printId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", cookie);
+    await request(app)
+      .delete(`${FAMILIES_BASE}/${familyId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", cookie);
+
+    const res = await request(app)
+      .patch(`${BASE}/${printId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", cookie)
+      .send({ isActive: true });
+
+    expect(res.status).toBe(409);
+    expect(res.body.message).toMatch(/familia/i);
+  });
+
+  it("permite reactivar cuando la familia sigue activa", async () => {
+    const cookie = await loginAsAdmin(app);
+    const familyId = await createFamily(cookie, "Sigue activa");
+    const created = await createPrint(cookie, familyId);
+    const printId = created.body.data.print.id as string;
+
+    await request(app)
+      .delete(`${BASE}/${printId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", cookie);
+
+    const res = await request(app)
+      .patch(`${BASE}/${printId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", cookie)
+      .send({ isActive: true });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.print.isActive).toBe(true);
+  });
+
+  it("permite reactivar reasignando a una familia activa distinta", async () => {
+    const cookie = await loginAsAdmin(app);
+    const retiredFamilyId = await createFamily(cookie, "Se retira");
+    const activeFamilyId = await createFamily(cookie, "Destino activo");
+    const created = await createPrint(cookie, retiredFamilyId);
+    const printId = created.body.data.print.id as string;
+
+    await request(app)
+      .delete(`${BASE}/${printId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", cookie);
+    await request(app)
+      .delete(`${FAMILIES_BASE}/${retiredFamilyId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", cookie);
+
+    const res = await request(app)
+      .patch(`${BASE}/${printId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", cookie)
+      .send({ isActive: true, family: activeFamilyId });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.print.isActive).toBe(true);
+  });
+});

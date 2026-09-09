@@ -197,3 +197,79 @@ describe("Admin · ProductCategory · guard de baja con Product activo (activado
     expect(res.status).toBe(200);
   });
 });
+
+describe("Admin · Product · guard de reactivación bajo categoría retirada", () => {
+  it("rechaza reactivar un producto cuya categoría está retirada", async () => {
+    const cookie = await loginAsAdmin(app);
+    const categoryId = await createCategory(cookie, "Retirable");
+    const created = await createProduct(cookie, categoryId);
+    const productId = created.body.data.product.id as string;
+
+    // Product first, then its category — mirrors the order the variant guard
+    // test uses, and matches how an admin would actually retire a branch.
+    await request(app)
+      .delete(`${BASE}/${productId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", cookie);
+    await request(app)
+      .delete(`${CATEGORIES_BASE}/${categoryId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", cookie);
+
+    const res = await request(app)
+      .patch(`${BASE}/${productId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", cookie)
+      .send({ isActive: true });
+
+    expect(res.status).toBe(409);
+    expect(res.body.message).toMatch(/categoría/i);
+  });
+
+  it("permite reactivar cuando la categoría sigue activa", async () => {
+    const cookie = await loginAsAdmin(app);
+    const categoryId = await createCategory(cookie, "Sigue activa");
+    const created = await createProduct(cookie, categoryId);
+    const productId = created.body.data.product.id as string;
+
+    await request(app)
+      .delete(`${BASE}/${productId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", cookie);
+
+    const res = await request(app)
+      .patch(`${BASE}/${productId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", cookie)
+      .send({ isActive: true });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.product.isActive).toBe(true);
+  });
+
+  it("permite reactivar reasignando a una categoría activa distinta", async () => {
+    const cookie = await loginAsAdmin(app);
+    const retiredCategoryId = await createCategory(cookie, "Se retira");
+    const activeCategoryId = await createCategory(cookie, "Destino activo");
+    const created = await createProduct(cookie, retiredCategoryId);
+    const productId = created.body.data.product.id as string;
+
+    await request(app)
+      .delete(`${BASE}/${productId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", cookie);
+    await request(app)
+      .delete(`${CATEGORIES_BASE}/${retiredCategoryId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", cookie);
+
+    const res = await request(app)
+      .patch(`${BASE}/${productId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", cookie)
+      .send({ isActive: true, category: activeCategoryId });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.product.isActive).toBe(true);
+  });
+});

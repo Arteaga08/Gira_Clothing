@@ -154,6 +154,13 @@ describe("2FA · disable", () => {
       .set("Cookie", cookie)
       .set("Origin", ORIGIN)
       .send({ code });
+    // Enabling 2FA bumps tokenVersion (session revocation on 2FA change),
+    // so the cookie used to call `enable` is now stale — log back in with
+    // the TOTP code to get one that's actually valid for `disable`.
+    const relogin = await request(app)
+      .post("/api/v1/auth/login")
+      .send({ email: adminCreds.email, password: adminCreds.password, code: authenticator.generate(secret) });
+    cookie = cookieFrom(relogin);
   });
 
   it("sin código válido no se puede desactivar (400)", async () => {
@@ -203,6 +210,13 @@ describe("2FA · setup sobre una cuenta que YA tiene el segundo factor activo", 
       .set("Cookie", cookie)
       .set("Origin", ORIGIN)
       .send({ code: authenticator.generate(secret) });
+    // Same reason as the `disable` suite: enabling 2FA revokes the cookie
+    // that performed the enable — refresh it via a 2FA login before reusing
+    // it against `/2fa/setup` below.
+    const relogin = await request(app)
+      .post("/api/v1/auth/login")
+      .send({ email: adminCreds.email, password: adminCreds.password, code: authenticator.generate(secret) });
+    cookie = cookieFrom(relogin);
   });
 
   it("sin código responde 400 y el segundo factor sigue activo con su secreto intacto", async () => {
@@ -248,5 +262,60 @@ describe("2FA · setup sobre una cuenta que YA tiene el segundo factor activo", 
     // Vuelve a "pendiente": el alta sigue siendo de dos pasos.
     expect(after?.twoFactor.enabled).toBe(false);
     expect(after?.twoFactor.secret).not.toBe(before?.twoFactor.secret);
+  });
+});
+
+describe("2FA · revocación de sesión (tokenVersion, BACKEND_SECURITY_GUIDELINES §2)", () => {
+  it("activar 2FA invalida la cookie con la que se hizo login antes de activarlo", async () => {
+    const cookie = await loginAsAdmin();
+    const setup = await request(app)
+      .post("/api/v1/auth/2fa/setup")
+      .set("Cookie", cookie)
+      .set("Origin", ORIGIN);
+    const secret = new URL(setup.body.data.otpauthUrl).searchParams.get("secret") ?? "";
+
+    await request(app)
+      .post("/api/v1/auth/2fa/enable")
+      .set("Cookie", cookie)
+      .set("Origin", ORIGIN)
+      .send({ code: authenticator.generate(secret) });
+
+    // Same cookie, obtained before 2FA existed on the account — must be dead now.
+    const res = await request(app).get("/api/v1/auth/me").set("Cookie", cookie);
+    expect(res.status).toBe(401);
+  });
+
+  it("desactivar 2FA invalida la cookie con la que se hizo la propia petición de desactivar", async () => {
+    const cookie = await loginAsAdmin();
+    const setup = await request(app)
+      .post("/api/v1/auth/2fa/setup")
+      .set("Cookie", cookie)
+      .set("Origin", ORIGIN);
+    const secret = new URL(setup.body.data.otpauthUrl).searchParams.get("secret") ?? "";
+    await request(app)
+      .post("/api/v1/auth/2fa/enable")
+      .set("Cookie", cookie)
+      .set("Origin", ORIGIN)
+      .send({ code: authenticator.generate(secret) });
+
+    const relogin = await request(app)
+      .post("/api/v1/auth/login")
+      .send({
+        email: adminCreds.email,
+        password: adminCreds.password,
+        code: authenticator.generate(secret),
+      });
+    const freshCookie = cookieFrom(relogin);
+
+    const disableRes = await request(app)
+      .post("/api/v1/auth/2fa/disable")
+      .set("Cookie", freshCookie)
+      .set("Origin", ORIGIN)
+      .send({ code: authenticator.generate(secret) });
+    expect(disableRes.status).toBe(200);
+
+    // The very cookie that just disabled 2FA must not survive the next request.
+    const res = await request(app).get("/api/v1/auth/me").set("Cookie", freshCookie);
+    expect(res.status).toBe(401);
   });
 });

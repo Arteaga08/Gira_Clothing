@@ -143,3 +143,18 @@ describe("Auth · límite de body", () => {
     expect(res.status).toBe(413);
   });
 });
+
+describe("Auth · body ausente o Content-Type inesperado (BACKEND_SECURITY_GUIDELINES §8)", () => {
+  it("POST sin body responde 400, no 500", async () => {
+    const res = await request(app).post("/api/v1/auth/register");
+    expect(res.status).toBe(400);
+  });
+
+  it("POST con Content-Type de texto plano (body no parseado por express.json) responde 400", async () => {
+    const res = await request(app)
+      .post("/api/v1/auth/register")
+      .set("Content-Type", "text/plain")
+      .send("nombre=algo");
+    expect(res.status).toBe(400);
+  });
+});
