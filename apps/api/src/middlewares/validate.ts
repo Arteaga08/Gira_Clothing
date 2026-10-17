@@ -7,8 +7,9 @@ type ValidationSource = "body" | "params" | "query";
 /**
  * Joi validation middleware (BACKEND_SECURITY_GUIDELINES §8). Strips unknown
  * keys (kills mass assignment) and collects every message into a single 400.
- * For body/params the cleaned value replaces the source; query is a read-only
- * getter in Express 5, so its keys are mutated in place instead.
+ * The cleaned value replaces the source. In Express 5 `req.query` is a getter
+ * that re-parses the URL on each read, so this only sticks because
+ * `materializeQuery` pins it as an own property earlier in the chain.
  *
  * `req.body` is `undefined` (not `{}`) when `express.json()` skips parsing —
  * an unexpected Content-Type, or no body at all. Joi accepts `undefined`
@@ -33,13 +34,7 @@ const validate =
       return;
     }
 
-    if (source === "query") {
-      const target = req.query as Record<string, unknown>;
-      for (const key of Object.keys(target)) delete target[key];
-      Object.assign(target, value);
-    } else {
-      req[source] = value;
-    }
+    req[source] = value;
 
     next();
   };

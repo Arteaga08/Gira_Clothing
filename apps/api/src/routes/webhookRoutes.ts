@@ -1,4 +1,5 @@
 import { Router, raw } from "express";
+import { webhookLimiter } from "../middlewares/rateLimit.js";
 import { stripeWebhook } from "../controllers/webhookController.js";
 
 /**
@@ -8,6 +9,6 @@ import { stripeWebhook } from "../controllers/webhookController.js";
  */
 const webhookRouter = Router();
 
-webhookRouter.post("/stripe", raw({ type: "application/json", limit: "1mb" }), stripeWebhook);
+webhookRouter.post("/stripe", webhookLimiter, raw({ type: "application/json", limit: "1mb" }), stripeWebhook);
 
 export { webhookRouter };

@@ -1,6 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import request from "supertest";
+import bcrypt from "bcryptjs";
 import { buildApp } from "../../src/app.js";
+import { User } from "../../src/models/User.js";
+import { resetRateLimitStores } from "../../src/middlewares/rateLimit.js";
 
 const app = buildApp();
 
@@ -17,18 +20,34 @@ const cookieFrom = (res: request.Response): string => {
 };
 
 describe("Auth · registro", () => {
-  it("crea un usuario y responde 201 sin devolver el password", async () => {
+  it("crea la cuenta y responde 201 genérico, sin devolver usuario ni password", async () => {
     const res = await request(app).post("/api/v1/auth/register").send(validUser);
     expect(res.status).toBe(201);
-    expect(res.body.data.user.email).toBe("ana@example.com");
-    expect(res.body.data.user).not.toHaveProperty("password");
-    expect(res.body.data.user.role).toBe("customer");
+    expect(res.body.data ?? {}).not.toHaveProperty("user");
+    expect(JSON.stringify(res.body)).not.toContain(validUser.password);
+    const stored = await User.findOne({ email: validUser.email });
+    expect(stored?.role).toBe("customer");
   });
 
-  it("rechaza email duplicado con 409", async () => {
+  it("un correo ya registrado responde igual (201 genérico), no crea otra cuenta ni cambia la contraseña", async () => {
+    const first = await request(app).post("/api/v1/auth/register").send(validUser);
+    const second = await request(app)
+      .post("/api/v1/auth/register")
+      .send({ ...validUser, password: "OtraClave123" });
+    expect(second.status).toBe(201);
+    expect(second.body).toEqual(first.body);
+    expect(await User.countDocuments({ email: validUser.email })).toBe(1);
+
+    const stored = await User.findOne({ email: validUser.email }).select("+password");
+    expect(await bcrypt.compare(validUser.password, stored!.password)).toBe(true);
+  });
+
+  it("el correo ya registrado también paga el costo de bcrypt (tiempo uniforme)", async () => {
     await request(app).post("/api/v1/auth/register").send(validUser);
-    const res = await request(app).post("/api/v1/auth/register").send(validUser);
-    expect(res.status).toBe(409);
+    const hashSpy = vi.spyOn(bcrypt, "hash");
+    await request(app).post("/api/v1/auth/register").send(validUser);
+    expect(hashSpy).toHaveBeenCalledTimes(1);
+    hashSpy.mockRestore();
   });
 
   it("ignora un intento de mass assignment de role=admin", async () => {
@@ -36,7 +55,8 @@ describe("Auth · registro", () => {
       .post("/api/v1/auth/register")
       .send({ ...validUser, role: "admin" });
     expect(res.status).toBe(201);
-    expect(res.body.data.user.role).toBe("customer");
+    const stored = await User.findOne({ email: validUser.email });
+    expect(stored?.role).toBe("customer");
   });
 
   it("rechaza password débil con 400", async () => {
@@ -75,16 +95,40 @@ describe("Auth · login", () => {
     expect(wrongPass.status).toBe(401);
     expect(wrongPass.body.message).toBe(noUser.body.message);
   });
+
+  it("con un correo inexistente también ejecuta bcrypt.compare (hash señuelo)", async () => {
+    const compareSpy = vi.spyOn(bcrypt, "compare");
+    const res = await request(app)
+      .post("/api/v1/auth/login")
+      .send({ email: "nadie@example.com", password: "Incorrecta123" });
+    expect(res.status).toBe(401);
+    expect(compareSpy).toHaveBeenCalledTimes(1);
+    compareSpy.mockRestore();
+  });
+
+  it("con un usuario inactivo también ejecuta bcrypt.compare y da el 401 genérico", async () => {
+    await User.updateOne({ email: validUser.email }, { isActive: false });
+    const compareSpy = vi.spyOn(bcrypt, "compare");
+    const res = await request(app)
+      .post("/api/v1/auth/login")
+      .send({ email: validUser.email, password: validUser.password });
+    expect(res.status).toBe(401);
+    expect(compareSpy).toHaveBeenCalledTimes(1);
+    compareSpy.mockRestore();
+  });
 });
 
 describe("Auth · rate limiting", () => {
+  beforeEach(() => {
+    process.env.RATE_LIMIT_ENABLED = "true";
+    resetRateLimitStores();
+  });
   afterEach(() => {
-    process.env.NODE_ENV = "test";
+    process.env.RATE_LIMIT_ENABLED = "false";
   });
 
   it("bloquea el 6º intento de login dentro de la ventana con 429 (en producción)", async () => {
     await request(app).post("/api/v1/auth/register").send(validUser);
-    process.env.NODE_ENV = "production";
 
     let last = 0;
     for (let i = 0; i < 6; i += 1) {
@@ -131,6 +175,21 @@ describe("Auth · me + logout", () => {
     const cleared = cookieFrom(out);
     const after = await request(app).get("/api/v1/auth/me").set("Cookie", cleared);
     expect(after.status).toBe(401);
+  });
+
+  it("logout sube tokenVersion: la cookie anterior deja de servir aunque se reenvíe", async () => {
+    const cookie = await loginCookie();
+    const before = await User.findOne({ email: validUser.email });
+    await request(app)
+      .post("/api/v1/auth/logout")
+      .set("Cookie", cookie)
+      .set("Origin", "http://localhost:3000");
+
+    const after = await User.findOne({ email: validUser.email });
+    expect(after!.tokenVersion).toBe(before!.tokenVersion + 1);
+
+    const replay = await request(app).get("/api/v1/auth/me").set("Cookie", cookie);
+    expect(replay.status).toBe(401);
   });
 });
 

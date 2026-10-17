@@ -95,6 +95,11 @@ openssl rand -hex 32    # para ENCRYPTION_KEY — corre el comando otra vez, deb
 | `CLIENT_URL` | `http://localhost:3000` |
 | `COOKIE_NAME` | `gira_session` |
 
+En desarrollo local (http) agrega también `COOKIE_SECURE=false` y
+`RATE_LIMIT_ENABLED=false`: sin ellos la cookie de sesión lleva `Secure` y el
+navegador no la guarda sobre `http://localhost`, y los límites de peticiones
+estorban al probar.
+
 Opcional: `LOG_LEVEL=debug` (por defecto `info`) y `TRUST_PROXY_HOPS=0` (por
 defecto `0`, que es lo correcto en local).
 
@@ -310,6 +315,11 @@ son dominios tuyos. Y aunque técnicamente se pueda mandar por SMTP de Gmail:
 Con `.mx` sube a ~$30-45 USD/año.
 
 ## B.5 — Al desplegar
+
+- [ ] **`COOKIE_SECURE` y `RATE_LIMIT_ENABLED`** — en producción déjalos sin definir
+      (valen `true`) o ponlos en `true`. Con `false` la API **no arranca**: es a propósito,
+      para que una variable copiada de desarrollo no debilite producción. Un staging o
+      preview también los hereda en `true`.
 
 - [ ] **`TRUST_PROXY_HOPS`** — cuántos proxies inversos hay delante de la API:
       - `1` → Railway, Render, Fly, Nginx directo

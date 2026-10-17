@@ -151,7 +151,7 @@ const cancelPendingOrder = async (
   // The expiry sweep releases any hold left on a cancelled order, so a failure
   // here is recoverable and must not turn a cancelled order into an error page.
   await releaseReservation(order._id, "admin_cancelled").catch((err: unknown) => {
-    logger.error({ err, order: order.publicId }, "No se pudo liberar la reserva de una orden cancelada");
+    logger.error({ err, orderId: String(order._id) }, "No se pudo liberar la reserva de una orden cancelada");
   });
   return settled;
 };

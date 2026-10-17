@@ -7,6 +7,7 @@ import { env } from "../config/env.js";
 import { AppError } from "../utils/AppError.js";
 import {
   registerCustomer,
+  logoutUser,
   loginUser,
   getCurrentUser,
   setupTwoFactor,
@@ -23,8 +24,9 @@ import { recordAudit } from "../services/auditService.js";
  */
 
 const register = asyncHandler(async (req: Request, res: Response) => {
-  const user = await registerCustomer(req.body as RegisterInput);
-  sendResponse(res, 201, "Cuenta creada correctamente.", { user });
+  // Identical answer whether or not the email already had an account.
+  await registerCustomer(req.body as RegisterInput);
+  sendResponse(res, 201, "Registro recibido. Si el correo no tenía cuenta, ya puedes iniciar sesión.");
 });
 
 const login = asyncHandler(async (req: Request, res: Response) => {
@@ -42,6 +44,9 @@ const me = asyncHandler(async (req: Request, res: Response) => {
 });
 
 const logout = asyncHandler(async (req: Request, res: Response) => {
+  // Bump tokenVersion first: clearing the cookie only helps this browser, a
+  // copied token would stay valid until it expires.
+  if (req.user) await logoutUser(req.user.id as string);
   res.cookie(env.cookieName, "", buildClearCookieOptions());
   await recordAudit({
     actorId: req.user?._id,

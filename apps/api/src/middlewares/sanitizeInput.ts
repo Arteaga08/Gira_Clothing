@@ -39,7 +39,7 @@ const sanitizeValue = (value: unknown, key?: string): unknown => {
 const sanitizeInput = (req: Request, _res: Response, next: NextFunction): void => {
   if (req.body !== undefined) req.body = sanitizeValue(req.body);
   if (req.params !== undefined) sanitizeValue(req.params); // object mutated in place
-  if (req.query !== undefined) sanitizeValue(req.query); // read-only getter in Express 5
+  if (req.query !== undefined) sanitizeValue(req.query); // stable object thanks to materializeQuery
   next();
 };
 

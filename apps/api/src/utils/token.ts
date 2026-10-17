@@ -52,7 +52,7 @@ const parseDurationMs = (value: string): number => {
 
 const buildCookieOptions = (): CookieOptions => ({
   httpOnly: true,
-  secure: env.nodeEnv === "production",
+  secure: env.cookieSecure,
   sameSite: "strict",
   maxAge: parseDurationMs(env.jwtExpiresIn),
   path: "/",
@@ -61,7 +61,7 @@ const buildCookieOptions = (): CookieOptions => ({
 // Options for clearing the cookie on logout (same attributes, expired).
 const buildClearCookieOptions = (): CookieOptions => ({
   httpOnly: true,
-  secure: env.nodeEnv === "production",
+  secure: env.cookieSecure,
   sameSite: "strict",
   maxAge: 0,
   path: "/",

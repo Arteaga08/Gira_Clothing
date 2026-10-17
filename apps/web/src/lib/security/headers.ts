@@ -1,0 +1,58 @@
+/**
+ * Security headers for every response (BACKEND_SECURITY_GUIDELINES §12; the
+ * site CSP lives here, not in the API). Pure so it can be unit-tested;
+ * next.config.ts only wires it in.
+ *
+ * Stripe (Elements/Checkout) and Cloudinary (images) are NOT allowed yet: the
+ * storefront that needs them is Block 3, which extends `script-src`,
+ * `frame-src`, `connect-src` and `img-src` at that point.
+ *
+ * `'unsafe-inline'` in script-src is the cost of a static CSP: Next injects
+ * inline bootstrap scripts, and a nonce would force every page to render
+ * dynamically (and needs middleware). Everything else is locked down.
+ */
+
+interface SecurityHeadersOptions {
+  /** NEXT_PUBLIC_API_URL, e.g. https://api.gira.mx/api/v1 — only its origin is allowed. */
+  apiUrl: string;
+  isProd: boolean;
+}
+
+interface Header {
+  key: string;
+  value: string;
+}
+
+const buildCsp = ({ apiUrl, isProd }: SecurityHeadersOptions): string => {
+  // `new URL` throws on garbage: a bad API URL must fail the build, not ship a broken CSP.
+  const apiOrigin = new URL(apiUrl).origin;
+
+  const directives = [
+    "default-src 'self'",
+    `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"}`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self'",
+    `connect-src 'self' ${apiOrigin}`,
+    "frame-ancestors 'none'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    ...(isProd ? ["upgrade-insecure-requests"] : []),
+  ];
+  return directives.join("; ");
+};
+
+const buildSecurityHeaders = (options: SecurityHeadersOptions): Header[] => [
+  { key: "Content-Security-Policy", value: buildCsp(options) },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+  ...(options.isProd
+    ? [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" }]
+    : []),
+];
+
+export type { SecurityHeadersOptions, Header };
+export { buildCsp, buildSecurityHeaders };

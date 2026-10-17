@@ -232,3 +232,60 @@ describe("loadEnv", () => {
     });
   });
 });
+
+describe("loadEnv · flags de seguridad explícitos", () => {
+  const base = (): NodeJS.ProcessEnv => ({
+    NODE_ENV: "development",
+    PORT: "4000",
+    MONGODB_URI: "mongodb://127.0.0.1:27017/gira",
+    JWT_SECRET: "x".repeat(48),
+    JWT_EXPIRES_IN: "7d",
+    ENCRYPTION_KEY: "y".repeat(48),
+    CLIENT_URL: "http://localhost:3000",
+    COOKIE_NAME: "gira_session",
+  });
+  const prod = (): NodeJS.ProcessEnv => ({
+    ...base(),
+    NODE_ENV: "production",
+    CLIENT_URL: "https://gira.mx",
+    CLOUDINARY_CLOUD_NAME: "c",
+    CLOUDINARY_API_KEY: "k",
+    CLOUDINARY_API_SECRET: "s",
+    STRIPE_SECRET_KEY: "sk_test_x",
+    STRIPE_WEBHOOK_SECRET: "whsec_x",
+    RESEND_API_KEY: "re_x",
+    MAIL_FROM: "hola@giraclothing.mx",
+    TELEGRAM_BOT_TOKEN: "1:a",
+    TELEGRAM_CHAT_ID: "-1",
+  });
+
+  it("COOKIE_SECURE y RATE_LIMIT_ENABLED valen true cuando faltan, también en development", () => {
+    const env = loadEnv(base());
+    expect(env.cookieSecure).toBe(true);
+    expect(env.rateLimitEnabled).toBe(true);
+  });
+
+  it("en development se pueden apagar explícitamente", () => {
+    const env = loadEnv({ ...base(), COOKIE_SECURE: "false", RATE_LIMIT_ENABLED: "0" });
+    expect(env.cookieSecure).toBe(false);
+    expect(env.rateLimitEnabled).toBe(false);
+  });
+
+  it("en producción COOKIE_SECURE=false aborta el arranque", () => {
+    expect(() => loadEnv({ ...prod(), COOKIE_SECURE: "false" })).toThrow(/COOKIE_SECURE/);
+  });
+
+  it("en producción RATE_LIMIT_ENABLED=false aborta el arranque", () => {
+    expect(() => loadEnv({ ...prod(), RATE_LIMIT_ENABLED: "false" })).toThrow(/RATE_LIMIT_ENABLED/);
+  });
+
+  it("un valor que no es booleano aborta el arranque", () => {
+    expect(() => loadEnv({ ...base(), COOKIE_SECURE: "quizas" })).toThrow(/COOKIE_SECURE/);
+  });
+
+  it("producción con los defaults arranca con ambos activos", () => {
+    const env = loadEnv(prod());
+    expect(env.cookieSecure).toBe(true);
+    expect(env.rateLimitEnabled).toBe(true);
+  });
+});

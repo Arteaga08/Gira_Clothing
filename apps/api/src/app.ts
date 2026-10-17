@@ -2,14 +2,15 @@ import express, { type Express } from "express";
 import helmet from "helmet";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import { pinoHttp } from "pino-http";
+import type { Logger } from "pino";
 import { allowedOrigins } from "./config/cors.js";
 import { env } from "./config/env.js";
 import { logger } from "./config/logger.js";
 import { mongoSanitize } from "./middlewares/mongoSanitize.js";
 import { sanitizeInput } from "./middlewares/sanitizeInput.js";
 import { verifyOrigin } from "./middlewares/verifyOrigin.js";
-import { globalLimiter } from "./middlewares/rateLimit.js";
+import { materializeQuery } from "./middlewares/materializeQuery.js";
+import { createHttpLogger } from "./middlewares/httpLogger.js";
 import { notFound } from "./middlewares/notFound.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 import { v1Router } from "./routes/v1/index.js";
@@ -22,7 +23,12 @@ import { webhookRouter } from "./routes/webhookRoutes.js";
  * Middleware order is exact and load-bearing (BACKEND_SECURITY_GUIDELINES §13 /
  * ECOMMERCE_ARCHITECTURE_GUIDELINES "cadena de middleware").
  */
-const buildApp = (): Express => {
+interface BuildAppOptions {
+  /** Injectable so tests can capture log output. */
+  logger?: Logger;
+}
+
+const buildApp = ({ logger: appLogger = logger }: BuildAppOptions = {}): Express => {
   const app = express();
 
   // Must be set BEFORE the limiters, and it is a hop count, never `true`.
@@ -39,19 +45,22 @@ const buildApp = (): Express => {
   // express.json would discard them, and mongoSanitize/sanitizeInput would
   // rewrite keys and escape strings, invalidating the HMAC every time.
   //
-  // It also sits before globalLimiter on purpose — Stripe retries in bursts,
-  // and throttling those retries would cause the exact problem the webhook
-  // prevents. The barrier here is the cryptographic signature, not a rate limit.
+  // It also sits before the global limiter on purpose — Stripe retries in
+  // bursts, and throttling those would cause the exact problem the webhook
+  // prevents. The barrier is the cryptographic signature; its own limiter is
+  // only a loose ceiling against unsigned junk.
   app.use("/api/webhooks", webhookRouter);
 
   app.use(cors({ origin: allowedOrigins, credentials: true }));
   app.use(express.json({ limit: "10kb" }));
   app.use(cookieParser());
+  // Before the sanitizers: Express 5 re-parses req.query on every read, so
+  // without pinning it they would be cleaning a throwaway copy.
+  app.use(materializeQuery);
   app.use(mongoSanitize);
   app.use(sanitizeInput);
   app.use(verifyOrigin);
-  app.use(globalLimiter);
-  app.use(pinoHttp({ logger }));
+  app.use(createHttpLogger(appLogger));
 
   app.use("/api/v1", v1Router);
 

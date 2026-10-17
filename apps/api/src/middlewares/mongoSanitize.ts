@@ -5,8 +5,8 @@ import type { Request, Response, NextFunction } from "express";
  * req.body, req.params and req.query (BACKEND_SECURITY_GUIDELINES §4).
  *
  * Removes any key starting with `$` or containing `.`, plus the dangerous
- * `__proto__` / `constructor` / `prototype` keys. In Express 5 `req.query` is
- * a read-only getter, so it must be mutated in place — never reassigned.
+ * `__proto__` / `constructor` / `prototype` keys. `req.query` is only stable
+ * because `materializeQuery` pins it first (Express 5 re-parses it per read).
  */
 
 const FORBIDDEN_KEYS = new Set(["__proto__", "constructor", "prototype"]);
@@ -33,7 +33,7 @@ const sanitizeInPlace = (value: unknown): void => {
 const mongoSanitize = (req: Request, _res: Response, next: NextFunction): void => {
   sanitizeInPlace(req.body);
   sanitizeInPlace(req.params);
-  sanitizeInPlace(req.query); // mutate in place — do not reassign in Express 5
+  sanitizeInPlace(req.query); // stable object thanks to materializeQuery
   next();
 };
 

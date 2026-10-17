@@ -3,6 +3,7 @@ import { env } from "./config/env.js";
 import { logger } from "./config/logger.js";
 import { connectDB, disconnectDB } from "./config/db.js";
 import { buildApp } from "./app.js";
+import { warmAuthDecoy } from "./services/authService.js";
 import { startJobs, stopJobs } from "./jobs/scheduler.js";
 
 /**
@@ -14,6 +15,7 @@ const SHUTDOWN_TIMEOUT_MS = 10_000;
 
 const start = async (): Promise<void> => {
   await connectDB();
+  await warmAuthDecoy();
   const app = buildApp();
   const server = app.listen(env.port, () => {
     logger.info(`API escuchando en el puerto ${env.port} (${env.nodeEnv})`);

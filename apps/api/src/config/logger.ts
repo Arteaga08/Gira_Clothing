@@ -1,4 +1,4 @@
-import { pino } from "pino";
+import { pino, type DestinationStream, type Logger } from "pino";
 import { env } from "./env.js";
 
 /**
@@ -19,6 +19,11 @@ const SENSITIVE = ["password", "token", "secret", "email", "phone", "twoFactor"]
 const redactPaths = [
   "req.headers.cookie",
   "req.headers.authorization",
+  // The session JWT travels in Set-Cookie on login: pino-http logs response
+  // headers, so without this the token lands in the log (it is a live session).
+  'res.headers["set-cookie"]',
+  // publicId is a credential for the order's PII (anti-IDOR design).
+  "req.params.publicId",
   ...SENSITIVE,
   ...SENSITIVE.map((key) => `*.${key}`),
   ...SENSITIVE.map((key) => `*.*.${key}`),
@@ -27,12 +32,24 @@ const redactPaths = [
 
 const isDev = env.nodeEnv === "development";
 
-const logger = pino({
-  level: env.logLevel,
-  redact: { paths: redactPaths, censor: "[redacted]" },
-  ...(isDev
-    ? { transport: { target: "pino-pretty", options: { colorize: true, translateTime: "SYS:standard" } } }
-    : {}),
-});
+/**
+ * Factory so tests can capture the output in memory. `destination` and `level`
+ * default to the real stdout/pretty transport and LOG_LEVEL.
+ */
+const createLogger = (destination?: DestinationStream, level: string = env.logLevel): Logger => {
+  const options = {
+    level,
+    redact: { paths: redactPaths, censor: "[redacted]" },
+  };
+  if (destination) return pino(options, destination);
+  return pino({
+    ...options,
+    ...(isDev
+      ? { transport: { target: "pino-pretty", options: { colorize: true, translateTime: "SYS:standard" } } }
+      : {}),
+  });
+};
 
-export { logger };
+const logger = createLogger();
+
+export { logger, createLogger };

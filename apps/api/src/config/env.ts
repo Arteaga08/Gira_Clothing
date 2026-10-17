@@ -61,6 +61,15 @@ interface Env {
    * limiters back to the attacker.
    */
   trustProxyHops: number;
+  /**
+   * `Secure` flag of the session cookie. An explicit variable instead of
+   * inferring it from NODE_ENV, so a staging/preview environment that is not
+   * literally "production" never silently inherits the insecure dev behaviour.
+   * Defaults to true everywhere; only development turns it off (plain http).
+   */
+  cookieSecure: boolean;
+  /** Same reasoning as `cookieSecure`: default ON, dev/test opt out explicitly. */
+  rateLimitEnabled: boolean;
   /** null outside production when no provider is configured -> stub adapter. */
   cloudinary: CloudinaryConfig | null;
   /** null outside production when no provider is configured -> stub adapter. */
@@ -93,6 +102,18 @@ const requireLength = (
   return value;
 };
 
+/**
+ * Strict boolean flag: only true/false/1/0 are valid. Anything else is a
+ * typo that would otherwise be read as "off" (or "on") by accident.
+ */
+const parseBooleanFlag = (raw: string | undefined, fallback: boolean): boolean | null => {
+  const value = raw?.trim().toLowerCase();
+  if (!value) return fallback;
+  if (value === "true" || value === "1") return true;
+  if (value === "false" || value === "0") return false;
+  return null;
+};
+
 const loadEnv = (source: NodeJS.ProcessEnv = process.env): Readonly<Env> => {
   const errors: string[] = [];
 
@@ -121,6 +142,22 @@ const loadEnv = (source: NodeJS.ProcessEnv = process.env): Readonly<Env> => {
   if (!Number.isInteger(trustProxyHops) || trustProxyHops < 0) {
     errors.push("TRUST_PROXY_HOPS debe ser un entero mayor o igual a 0.");
   }
+
+  // Security switches: ON by default in every environment; production refuses
+  // to boot with either one off, so a copied dev .env can never weaken it.
+  const readSecurityFlag = (key: "COOKIE_SECURE" | "RATE_LIMIT_ENABLED"): boolean => {
+    const parsed = parseBooleanFlag(source[key], true);
+    if (parsed === null) {
+      errors.push(`${key} debe ser true o false (recibido: ${source[key]}).`);
+      return true;
+    }
+    if (nodeEnv === "production" && !parsed) {
+      errors.push(`En producción ${key} no puede ser false.`);
+    }
+    return parsed;
+  };
+  const cookieSecure = readSecurityFlag("COOKIE_SECURE");
+  const rateLimitEnabled = readSecurityFlag("RATE_LIMIT_ENABLED");
 
   // In production the public client URL must be HTTPS (cookies are `secure`).
   if (nodeEnv === "production" && clientUrl && !clientUrl.startsWith("https://")) {
@@ -251,6 +288,8 @@ const loadEnv = (source: NodeJS.ProcessEnv = process.env): Readonly<Env> => {
     cookieName,
     logLevel,
     trustProxyHops,
+    cookieSecure,
+    rateLimitEnabled,
     cloudinary,
     stripe,
     mail,
@@ -269,4 +308,4 @@ if (existsSync(envFile)) {
 const env = loadEnv();
 
 export type { Env, NodeEnv, CloudinaryConfig, StripeConfig, MailConfig, TelegramConfig };
-export { loadEnv, env };
+export { loadEnv, parseBooleanFlag, env };

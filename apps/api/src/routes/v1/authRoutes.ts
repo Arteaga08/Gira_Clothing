@@ -2,7 +2,7 @@ import { Router } from "express";
 import { UserRole } from "@gira/shared";
 import { validate } from "../../middlewares/validate.js";
 import { protect, restrictTo } from "../../middlewares/protect.js";
-import { loginLimiter, registerLimiter } from "../../middlewares/rateLimit.js";
+import { loginIpLimiter, loginLimiter, registerLimiter } from "../../middlewares/rateLimit.js";
 import {
   registerSchema,
   loginSchema,
@@ -22,7 +22,7 @@ import {
 const authRouter = Router();
 
 authRouter.post("/register", registerLimiter, validate(registerSchema), register);
-authRouter.post("/login", loginLimiter, validate(loginSchema), login);
+authRouter.post("/login", loginIpLimiter, loginLimiter, validate(loginSchema), login);
 authRouter.post("/logout", protect, logout);
 authRouter.get("/me", protect, me);
 
