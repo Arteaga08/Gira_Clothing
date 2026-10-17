@@ -51,6 +51,9 @@ interface PublicOrder {
 interface StatusHistoryEntry {
   status: OrderStatus;
   at: Date;
+  actorType: "user" | "system";
+  /** Admin-only: the customer-facing DTOs never expose which employee moved an order. */
+  actorId?: string;
   reason?: string;
 }
 

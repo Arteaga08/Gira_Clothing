@@ -10,6 +10,7 @@ import {
 import { Order, type OrderDocument } from "../models/Order.js";
 import { AppError } from "../utils/AppError.js";
 import { assertAdminTransition } from "../utils/orderTransitions.js";
+import { applyOrderTransition } from "./orderTransitionService.js";
 import { getPaymentProvider } from "../adapters/payment/index.js";
 import { recordAudit } from "./auditService.js";
 import { enqueueNotification } from "./notificationService.js";
@@ -92,9 +93,15 @@ const changeOrderStatus = async (
 
   assertAdminTransition(order.status, status);
   const before = order.status;
-  order.status = status;
-  order.statusHistory.push({ status, at: new Date() });
-  await order.save();
+  const moved = await applyOrderTransition({
+    orderId: order._id,
+    from: before,
+    to: status,
+    actor: { type: "user", id: ctx.actorId },
+  });
+  if (!moved) {
+    throw new AppError("La orden cambió de estado mientras la editabas. Recarga e intenta de nuevo.", 409);
+  }
 
   // Only PROCESSING triggers a customer email here; SHIPPED belongs to the
   // shipment flow, which owns the tracking data the email needs.
@@ -132,7 +139,7 @@ const changeOrderStatus = async (
     ip: ctx.ip,
   });
 
-  return toPublicAdminOrder(order.toObject());
+  return toPublicAdminOrder(moved.toObject());
 };
 
 const REFUNDABLE_STATUSES = new Set<OrderStatus>([

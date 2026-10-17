@@ -13,8 +13,8 @@ const stripeWebhook = asyncHandler(async (req: Request, res: Response) => {
   // Throws AppError(400) on a bad signature or a timestamp outside tolerance.
   const outcome = await handleStripeWebhook(req.body as Buffer, signature);
 
-  // Always 200 once the signature checked out: a 4xx/5xx makes Stripe retry,
-  // and there is nothing to retry for a duplicate or an event we chose to ignore.
+  // 200 for processed/duplicate/ignored: nothing to retry. If the effect threw,
+  // handleStripeWebhook rethrows (500) on purpose so Stripe redelivers it.
   sendResponse(res, 200, outcome === "duplicate" ? "Evento ya procesado." : "Evento procesado.");
 });
 

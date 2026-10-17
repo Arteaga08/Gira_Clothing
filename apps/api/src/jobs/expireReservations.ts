@@ -1,10 +1,10 @@
 import { AuditAction, AuditModule, OrderStatus, ReservationStatus } from "@gira/shared";
 import { StockReservation } from "../models/StockReservation.js";
-import { Order } from "../models/Order.js";
+import { Order, type OrderDocument } from "../models/Order.js";
 import { releaseReservation } from "../services/reservationService.js";
 import { recordAudit } from "../services/auditService.js";
 import { getPaymentProvider } from "../adapters/payment/index.js";
-import { assertTransition } from "../utils/orderTransitions.js";
+import { applyOrderTransition } from "../services/orderTransitionService.js";
 import { logger } from "../config/logger.js";
 
 /**
@@ -43,6 +43,22 @@ const cancelPendingCharge = async (intentId: string, publicId: string): Promise<
   }
 };
 
+/** Statuses where the order is already dead, so an active hold is leftover and safe to release. */
+const DEAD_STATUSES = new Set<OrderStatus>([OrderStatus.CANCELLED, OrderStatus.EXPIRED]);
+
+/** Audit + close the charging window, after the order is already expired. */
+const expireAftermath = async (order: OrderDocument): Promise<void> => {
+  await recordAudit({
+    actorType: "system",
+    action: AuditAction.ORDER_EXPIRED,
+    module: AuditModule.ORDERS,
+    targetId: order.publicId,
+  });
+  if (order.payment.intentId) {
+    await cancelPendingCharge(order.payment.intentId, order.publicId);
+  }
+};
+
 const expireReservations = async (): Promise<{ released: number }> => {
   const due = await StockReservation.find({
     status: ReservationStatus.ACTIVE,
@@ -55,35 +71,33 @@ const expireReservations = async (): Promise<{ released: number }> => {
   let released = 0;
   for (const reservation of due) {
     try {
-      const applied = await releaseReservation(reservation.order, "expired");
-      if (applied) released += 1;
-
-      // The order may not exist (crash between reserve and create) — releasing
-      // the stock is the point; everything below is best-effort on top of that.
       const order = await Order.findById(reservation.order);
-      if (!order || order.status !== OrderStatus.PENDING_PAYMENT) continue;
 
-      // The same single gate every other status change goes through. The guard
-      // above already replicates the rule, but the rule lives in ONE file and
-      // this must not become a second copy of it.
-      assertTransition(order.status, OrderStatus.EXPIRED);
-      order.status = OrderStatus.EXPIRED;
-      order.statusHistory.push({
-        status: OrderStatus.EXPIRED,
-        at: new Date(),
-        reason: "reservation_expired",
-      });
-      await order.save();
+      // The order is expired BEFORE its stock is released. Releasing first left
+      // two holes: a webhook paying in between found its hold gone (paid order,
+      // units back on sale), and a failure after the release left the order
+      // pending with nothing for this sweep to revisit.
+      if (order && order.status === OrderStatus.PENDING_PAYMENT) {
+        // Atomic on `pending_payment`: if the webhook paid the order since the
+        // read above this matches nothing, the paid order is left alone, and
+        // its commitReservation keeps ownership of the hold.
+        const expired = await applyOrderTransition({
+          orderId: order._id,
+          from: OrderStatus.PENDING_PAYMENT,
+          to: OrderStatus.EXPIRED,
+          actor: { type: "system" },
+          reason: "reservation_expired",
+        });
+        if (!expired) continue;
+        if (await releaseReservation(reservation.order, "expired")) released += 1;
+        await expireAftermath(expired);
+        continue;
+      }
 
-      await recordAudit({
-        actorType: "system",
-        action: AuditAction.ORDER_EXPIRED,
-        module: AuditModule.ORDERS,
-        targetId: order.publicId,
-      });
-
-      if (order.payment.intentId) {
-        await cancelPendingCharge(order.payment.intentId, order.publicId);
+      // No order (crash between reserve and create) or one already dead: the
+      // stock is the point. A paid/shipped order never has its hold stolen.
+      if (!order || DEAD_STATUSES.has(order.status)) {
+        if (await releaseReservation(reservation.order, "expired")) released += 1;
       }
     } catch (err) {
       // One bad reservation must not stop the sweep.

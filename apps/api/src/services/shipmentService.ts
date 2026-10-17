@@ -10,6 +10,8 @@ import type { ApiMeta, AdminShipmentListItem } from "@gira/shared";
 import { Shipment, type ShipmentDocument, type ShipmentAttrs } from "../models/Shipment.js";
 import { Order, type OrderDocument } from "../models/Order.js";
 import { AppError } from "../utils/AppError.js";
+import { logger } from "../config/logger.js";
+import { applyOrderTransition } from "./orderTransitionService.js";
 import { assertAdminTransition } from "../utils/orderTransitions.js";
 import { assertShipmentTransition } from "../utils/shipmentTransitions.js";
 import { enqueueNotification } from "./notificationService.js";
@@ -134,9 +136,21 @@ const createShipment = async (
     throw err;
   }
 
-  order.status = OrderStatus.SHIPPED;
-  order.statusHistory.push({ status: OrderStatus.SHIPPED, at: new Date(), reason: "shipment_created" });
-  await order.save();
+  const moved = await applyOrderTransition({
+    orderId: order._id,
+    from: order.status,
+    to: OrderStatus.SHIPPED,
+    actor: { type: "user", id: ctx.actorId },
+    reason: "shipment_created",
+  });
+  if (!moved) {
+    // The order moved under us: do not leave a shipment pointing at an order that never shipped.
+    await Shipment.deleteOne({ _id: shipment._id }).catch((cleanupErr: unknown) => {
+      // An orphan shipment would block any retry (unique index on the order).
+      logger.error({ err: cleanupErr, order: order.publicId }, "No se pudo revertir el envío huérfano");
+    });
+    throw new AppError("La orden cambió de estado mientras se registraba el envío.", 409);
+  }
 
   await queueShippedEmail(order, shipment);
 
@@ -182,13 +196,13 @@ const addShipmentEvent = async (
     const order = await Order.findById(orderId);
     if (order && order.status === OrderStatus.SHIPPED) {
       assertAdminTransition(order.status, OrderStatus.DELIVERED);
-      order.status = OrderStatus.DELIVERED;
-      order.statusHistory.push({
-        status: OrderStatus.DELIVERED,
-        at: new Date(),
+      await applyOrderTransition({
+        orderId: order._id,
+        from: OrderStatus.SHIPPED,
+        to: OrderStatus.DELIVERED,
+        actor: { type: "user", id: ctx.actorId },
         reason: "shipment_delivered",
       });
-      await order.save();
     }
   }
 
