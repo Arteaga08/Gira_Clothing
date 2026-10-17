@@ -1,9 +1,10 @@
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { randomUUID } from "node:crypto";
 import request from "supertest";
 import { buildApp } from "../../src/app.js";
 import { Variant } from "../../src/models/Variant.js";
 import { Order } from "../../src/models/Order.js";
+import { resetRateLimitStores } from "../../src/middlewares/rateLimit.js";
 import { loginAsAdmin, loginAsCustomer, ORIGIN } from "../helpers/auth.js";
 
 const app = buildApp();
@@ -329,12 +330,15 @@ describe("Order routes · ownership de /mine/:id", () => {
 });
 
 describe("Order routes · rate limiting", () => {
+  beforeEach(() => {
+    process.env.RATE_LIMIT_ENABLED = "true";
+    resetRateLimitStores();
+  });
   afterEach(() => {
-    process.env.NODE_ENV = "test";
+    process.env.RATE_LIMIT_ENABLED = "false";
   });
 
   it("el checkoutLimiter bloquea tras superar el máximo (en producción)", async () => {
-    process.env.NODE_ENV = "production";
     let last = 0;
     for (let i = 0; i < 11; i += 1) {
       const res = await request(app)
@@ -347,7 +351,6 @@ describe("Order routes · rate limiting", () => {
   });
 
   it("el orderLookupLimiter bloquea tras superar el máximo (en producción)", async () => {
-    process.env.NODE_ENV = "production";
     let last = 0;
     for (let i = 0; i < 31; i += 1) {
       const res = await request(app).get(`${ORDERS_BASE}/${"b".repeat(43)}`);

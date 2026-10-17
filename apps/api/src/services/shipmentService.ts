@@ -147,7 +147,7 @@ const createShipment = async (
     // The order moved under us: do not leave a shipment pointing at an order that never shipped.
     await Shipment.deleteOne({ _id: shipment._id }).catch((cleanupErr: unknown) => {
       // An orphan shipment would block any retry (unique index on the order).
-      logger.error({ err: cleanupErr, order: order.publicId }, "No se pudo revertir el envío huérfano");
+      logger.error({ err: cleanupErr, orderId: String(order._id) }, "No se pudo revertir el envío huérfano");
     });
     throw new AppError("La orden cambió de estado mientras se registraba el envío.", 409);
   }

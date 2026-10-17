@@ -15,6 +15,10 @@ process.env.ENCRYPTION_KEY ??= TEST_SECRET;
 process.env.CLIENT_URL ??= "http://localhost:3000";
 process.env.COOKIE_NAME ??= "gira_session";
 process.env.LOG_LEVEL ??= "silent";
+// Dev/test turn these off explicitly; their default is ON in every environment.
+// Tests that exercise a limiter opt back in with RATE_LIMIT_ENABLED=true.
+process.env.RATE_LIMIT_ENABLED = "false";
+process.env.COOKIE_SECURE = "false";
 
 // Force the stub upload adapter (M2): a developer's shell must never leak
 // real Cloudinary credentials into the test run.

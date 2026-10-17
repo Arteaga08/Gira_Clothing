@@ -1,4 +1,6 @@
 import { authenticator } from "otplib";
+import bcrypt from "bcryptjs";
+import { randomBytes } from "node:crypto";
 import {
   UserRole,
   AuditAction,
@@ -55,21 +57,54 @@ const toPublicUser = (user: UserDocument): PublicUser => ({
   isActive: user.isActive,
 });
 
-const registerCustomer = async (input: RegisterInput): Promise<PublicUser> => {
+// Must match User.SALT_ROUNDS: the decoy and the "email already taken" branch
+// have to cost the same as the real work they imitate.
+const BCRYPT_ROUNDS = 12;
+
+let decoyHash: Promise<string> | undefined;
+/** Valid bcrypt hash of random bytes, computed once; compared against when no real hash exists. */
+const getDecoyHash = (): Promise<string> => {
+  decoyHash ??= bcrypt.hash(randomBytes(24).toString("hex"), BCRYPT_ROUNDS);
+  return decoyHash;
+};
+
+/** Computes the decoy hash at boot so the first unknown-email login is not visibly slower. */
+const warmAuthDecoy = async (): Promise<void> => {
+  await getDecoyHash();
+};
+
+/**
+ * Registration never reveals whether the email was taken: the caller always
+ * gets the same answer, and the taken branch burns the same bcrypt cost as a
+ * real signup so response time does not leak it either
+ * (BACKEND_SECURITY_GUIDELINES, "Timing-oracle"). Verification email arrives
+ * in M8.5, which completes the anti-enumeration flow.
+ */
+const registerCustomer = async (input: RegisterInput): Promise<void> => {
   const existing = await User.findOne({ email: input.email }).lean();
   if (existing) {
-    throw new AppError("Ya existe una cuenta con ese correo.", 409);
+    await bcrypt.hash(input.password, BCRYPT_ROUNDS);
+    return;
   }
 
-  // Explicit field assignment — never spread the payload (anti mass-assignment).
-  const user = await User.create({
-    name: input.name,
-    email: input.email,
-    password: input.password,
-    role: UserRole.CUSTOMER,
-  });
+  try {
+    // Explicit field assignment — never spread the payload (anti mass-assignment).
+    await User.create({
+      name: input.name,
+      email: input.email,
+      password: input.password,
+      role: UserRole.CUSTOMER,
+    });
+  } catch (err) {
+    // Lost a race against a concurrent signup of the same email: same outcome.
+    if ((err as { code?: number }).code === 11000) return;
+    throw err;
+  }
+};
 
-  return toPublicUser(user);
+/** Invalidates every session of the user: protect() compares the JWT's `tv` to this counter. */
+const logoutUser = async (userId: string): Promise<void> => {
+  await User.updateOne({ _id: userId }, { $inc: { tokenVersion: 1 } });
 };
 
 const loginUser = async (
@@ -79,6 +114,9 @@ const loginUser = async (
   const user = await User.findOne({ email: input.email }).select("+password");
 
   if (!user || !user.isActive) {
+    // Same bcrypt cost as a wrong password, so timing does not reveal that the
+    // account does not exist (or is disabled).
+    await bcrypt.compare(input.password, await getDecoyHash());
     await recordAudit({
       actorType: "user",
       action: AuditAction.LOGIN_FAILED,
@@ -256,6 +294,8 @@ const disableTwoFactor = async (
 
 export type { RequestContext, RegisterInput, LoginInput, PublicUser };
 export {
+  warmAuthDecoy,
+  logoutUser,
   registerCustomer,
   loginUser,
   getCurrentUser,

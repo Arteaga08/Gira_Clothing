@@ -14,8 +14,12 @@ const topProductsQuerySchema = Joi.object({
       "any.only": "El periodo debe ser today, week, month o custom.",
       "any.required": "El periodo es obligatorio.",
     }),
+  // convert:false — validate() now really replaces req.query with the Joi
+  // output, and isoDate() would otherwise rewrite "2026-06-15" into a full
+  // ISO timestamp that parseDayRange (expects YYYY-MM-DD) rejects.
   fecha: Joi.string()
     .isoDate()
+    .options({ convert: false })
     .when("period", { is: "custom", then: Joi.required(), otherwise: Joi.forbidden() })
     .messages({
       "any.required": "La fecha es obligatoria cuando period=custom.",
