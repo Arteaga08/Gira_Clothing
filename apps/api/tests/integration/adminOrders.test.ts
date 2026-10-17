@@ -1,10 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
 import request from "supertest";
-import { Currency, OrderStatus, AuditAction } from "@gira/shared";
+import { Currency, OrderStatus, AuditAction, PaymentStatus, ReservationStatus } from "@gira/shared";
 import { buildApp } from "../../src/app.js";
 import { Variant } from "../../src/models/Variant.js";
 import { Order } from "../../src/models/Order.js";
+import { StockReservation } from "../../src/models/StockReservation.js";
 import { AuditLog } from "../../src/models/AuditLog.js";
+import { AppError } from "../../src/utils/AppError.js";
 import { createOrder } from "../../src/services/orderService.js";
 import { applyPaymentSucceeded } from "../../src/services/orderPaymentService.js";
 import { getPaymentProvider } from "../../src/adapters/payment/index.js";
@@ -189,6 +191,20 @@ describe("Admin · Orders · detalle", () => {
     expect(res.body.data.order.payment.intentId).toBeDefined();
   });
 
+  it("el detalle y el listado traen id (para abrir la orden desde el panel)", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const order = await seedOrder(adminCookie, "D2");
+
+    const detail = await request(app)
+      .get(`${ADMIN_ORDERS_BASE}/${order._id}`)
+      .set("Cookie", adminCookie);
+    expect(detail.body.data.order.id).toBe(String(order._id));
+
+    const list = await request(app).get(ADMIN_ORDERS_BASE).set("Cookie", adminCookie);
+    const ids = (list.body.data.orders as { id?: string }[]).map((o) => o.id);
+    expect(ids).toContain(String(order._id));
+  });
+
   it("id inexistente responde 404", async () => {
     const adminCookie = await loginAsAdmin(app);
     const res = await request(app)
@@ -266,6 +282,139 @@ describe("Admin · Orders · transición de estado", () => {
     }).lean();
     expect(entry?.before).toMatchObject({ status: "paid" });
     expect(entry?.after).toMatchObject({ status: "processing" });
+  });
+});
+
+describe("Admin · Orders · shipped/delivered solo por el flujo de envío", () => {
+  it("processing -> shipped a mano responde 403", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const order = await seedOrder(adminCookie, "SH1");
+    await applyPaymentSucceeded(order._id);
+    await request(app)
+      .patch(`${ADMIN_ORDERS_BASE}/${order._id}/status`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", adminCookie)
+      .send({ status: "processing" });
+
+    const res = await request(app)
+      .patch(`${ADMIN_ORDERS_BASE}/${order._id}/status`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", adminCookie)
+      .send({ status: "shipped" });
+    expect(res.status).toBe(403);
+    expect((await Order.findById(order._id).lean())?.status).toBe(OrderStatus.PROCESSING);
+  });
+});
+
+describe("Admin · Orders · cancelar una orden pendiente", () => {
+  const cancel = (adminCookie: string, id: unknown) =>
+    request(app)
+      .patch(`${ADMIN_ORDERS_BASE}/${String(id)}/status`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", adminCookie)
+      .send({ status: "cancelled" });
+
+  it("cancela el intent, libera la reserva y deja el pago como cancelado", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const order = await seedOrder(adminCookie, "C1");
+    const variantId = String(order.lines[0]!.variant);
+    expect((await Variant.findById(variantId).lean())?.reserved).toBe(1);
+    const spy = vi.spyOn(getPaymentProvider(), "cancelPayment").mockResolvedValue(undefined);
+
+    const res = await cancel(adminCookie, order._id);
+
+    expect(res.status).toBe(200);
+    expect(spy).toHaveBeenCalledWith(order.payment.intentId);
+    const after = await Order.findById(order._id).lean();
+    expect(after?.status).toBe(OrderStatus.CANCELLED);
+    expect(after?.payment.status).toBe(PaymentStatus.CANCELLED);
+    expect((await Variant.findById(variantId).lean())?.reserved).toBe(0);
+    const reservation = await StockReservation.findOne({ order: order._id }).lean();
+    expect(reservation?.status).toBe(ReservationStatus.RELEASED);
+    spy.mockRestore();
+  });
+
+  it("si el cliente ya pagó (cancel falla y el intent está succeeded) responde 409 y no toca nada", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const order = await seedOrder(adminCookie, "C2");
+    const provider = getPaymentProvider();
+    const cancelSpy = vi.spyOn(provider, "cancelPayment").mockRejectedValue(new Error("already succeeded"));
+    const getSpy = vi.spyOn(provider, "getPayment").mockResolvedValue({
+      providerId: order.payment.intentId!,
+      status: PaymentStatus.SUCCEEDED,
+      amount: order.total,
+      currency: Currency.MXN,
+    });
+
+    const res = await cancel(adminCookie, order._id);
+
+    expect(res.status).toBe(409);
+    const after = await Order.findById(order._id).lean();
+    expect(after?.status).toBe(OrderStatus.PENDING_PAYMENT);
+    const reservation = await StockReservation.findOne({ order: order._id }).lean();
+    expect(reservation?.status).toBe(ReservationStatus.ACTIVE);
+    cancelSpy.mockRestore();
+    getSpy.mockRestore();
+  });
+
+  it("un intent ya cancelado cuenta como cerrado: el reintento completa la cancelación", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const order = await seedOrder(adminCookie, "C4");
+    const provider = getPaymentProvider();
+    const cancelSpy = vi.spyOn(provider, "cancelPayment").mockRejectedValue(new AppError("ya cancelado", 502));
+    const getSpy = vi.spyOn(provider, "getPayment").mockResolvedValue({
+      providerId: order.payment.intentId!,
+      status: PaymentStatus.CANCELLED,
+      amount: order.total,
+      currency: Currency.MXN,
+    });
+
+    const res = await cancel(adminCookie, order._id);
+
+    expect(res.status).toBe(200);
+    expect((await Order.findById(order._id).lean())?.status).toBe(OrderStatus.CANCELLED);
+    cancelSpy.mockRestore();
+    getSpy.mockRestore();
+  });
+
+  it("si el webhook de intent cancelado gana la carrera, la cancelación igual responde 200 y se audita", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const order = await seedOrder(adminCookie, "C5");
+    const { applyPaymentCancelled } = await import("../../src/services/orderPaymentService.js");
+    const cancelSpy = vi.spyOn(getPaymentProvider(), "cancelPayment").mockImplementation(async () => {
+      await applyPaymentCancelled(order._id);
+    });
+
+    const res = await cancel(adminCookie, order._id);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.order.status).toBe(OrderStatus.CANCELLED);
+    expect(
+      await AuditLog.countDocuments({ action: AuditAction.ORDER_STATUS_CHANGED, targetId: order.publicId }),
+    ).toBe(1);
+    cancelSpy.mockRestore();
+  });
+
+  it("si Stripe está caído responde 502 y la orden sigue pendiente con su reserva", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const order = await seedOrder(adminCookie, "C3");
+    const provider = getPaymentProvider();
+    const cancelSpy = vi.spyOn(provider, "cancelPayment").mockRejectedValue(new AppError("No se pudo cancelar el cobro pendiente.", 502));
+    const getSpy = vi.spyOn(provider, "getPayment").mockResolvedValue({
+      providerId: order.payment.intentId!,
+      status: PaymentStatus.REQUIRES_PAYMENT,
+      amount: order.total,
+      currency: Currency.MXN,
+    });
+
+    const res = await cancel(adminCookie, order._id);
+
+    expect(res.status).toBe(502);
+    expect((await Order.findById(order._id).lean())?.status).toBe(OrderStatus.PENDING_PAYMENT);
+    const reservation = await StockReservation.findOne({ order: order._id }).lean();
+    expect(reservation?.status).toBe(ReservationStatus.ACTIVE);
+    cancelSpy.mockRestore();
+    getSpy.mockRestore();
   });
 });
 

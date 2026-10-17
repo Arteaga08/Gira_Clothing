@@ -1,7 +1,11 @@
 import { PaymentStatus, OrderStatus } from "@gira/shared";
 import { Order } from "../models/Order.js";
 import { getPaymentProvider } from "../adapters/payment/index.js";
-import { applyPaymentSucceeded, applyPaymentCancelled } from "../services/orderPaymentService.js";
+import {
+  PAID_AND_ALIVE,
+  applyPaymentSucceeded,
+  applyPaymentCancelled,
+} from "../services/orderPaymentService.js";
 import { logger } from "../config/logger.js";
 
 /**
@@ -14,6 +18,13 @@ import { logger } from "../config/logger.js";
  */
 const GRACE_MINUTES = 15;
 const BATCH = 100;
+/**
+ * How far back a paid order with unfinished effects is revisited. Short on
+ * purpose: far below the 30-day purge of the outbox and of committed
+ * reservations, so a redo can never resend a purged email or raise a false
+ * stock alert; orders paid before `paidEffectsAt` existed age out of it.
+ */
+const UNFINISHED_EFFECTS_DAYS = 3;
 
 const reconcilePayments = async (): Promise<{ checked: number; settled: number }> => {
   const cutoff = new Date(Date.now() - GRACE_MINUTES * 60 * 1000);
@@ -45,6 +56,34 @@ const reconcilePayments = async (): Promise<{ checked: number; settled: number }
       logger.error({ err, order: order._id }, "No se pudo conciliar el pago");
     }
   }
+
+  // Second sweep: paid orders whose effects stopped halfway (a strict enqueue or
+  // the stock commit threw after the order flipped to paid). They are no longer
+  // pending, so the sweep above never sees them again; applyPaymentSucceeded is
+  // re-runnable and finishes whatever is missing.
+  const now = Date.now();
+  const unfinished = await Order.find({
+    status: { $in: [...PAID_AND_ALIVE] },
+    paidEffectsAt: { $exists: false },
+    paidAt: {
+      $gte: new Date(now - UNFINISHED_EFFECTS_DAYS * 24 * 60 * 60 * 1000),
+      $lt: cutoff,
+    },
+  })
+    // Newest first: an order that fails every time ages out in 3 days instead of
+    // pinning the head of the batch and starving the ones behind it.
+    .sort({ paidAt: -1 })
+    .select("_id")
+    .limit(BATCH)
+    .lean();
+  for (const order of unfinished) {
+    try {
+      await applyPaymentSucceeded(order._id);
+    } catch (err) {
+      logger.error({ err, order: order._id }, "No se pudieron completar los efectos del pago");
+    }
+  }
+
   return { checked: stale.length, settled };
 };
 

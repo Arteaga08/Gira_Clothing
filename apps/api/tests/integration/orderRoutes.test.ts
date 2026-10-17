@@ -213,6 +213,8 @@ describe("Order routes · consulta pública", () => {
     const res = await request(app).get(`${ORDERS_BASE}/${publicId}`);
     expect(res.status).toBe(200);
     expect(res.body.data.order.publicId).toBe(publicId);
+    // The publicId is the access credential; the internal id never goes out here.
+    expect(res.body.data.order).not.toHaveProperty("id");
   });
 
   it("publicId inexistente responde 404", async () => {
@@ -273,6 +275,13 @@ describe("Order routes · panel de usuario", () => {
     expect(res.status).toBe(200);
     expect(res.body.data.orders).toHaveLength(1);
     expect(res.body.meta.total).toBe(1);
+    expect(typeof res.body.data.orders[0].id).toBe("string");
+
+    const detail = await request(app)
+      .get(`${ORDERS_BASE}/mine/${String(res.body.data.orders[0].id)}`)
+      .set("Cookie", customerA);
+    expect(detail.status).toBe(200);
+    expect(detail.body.data.order.id).toBe(res.body.data.orders[0].id);
   });
 
   it("ignora ?user= del cliente: nunca devuelve órdenes de otro", async () => {

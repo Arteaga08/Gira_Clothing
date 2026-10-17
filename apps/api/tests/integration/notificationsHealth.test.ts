@@ -28,6 +28,7 @@ describe("GET /admin/notifications/health", () => {
         sending: 0,
         failed: 0,
         sent: 0,
+        skipped: 0,
         stale: 0,
         oldestPendingAt: null,
         failedSample: [],
@@ -60,6 +61,20 @@ describe("GET /admin/notifications/health", () => {
     expect(res.body.data.pending).toBe(1);
     expect(res.body.data.failed).toBe(1);
     expect(new Date(res.body.data.oldestPendingAt).getTime()).toBe(old.getTime());
+  });
+
+  it("cuenta skipped aparte de sent", async () => {
+    const cookie = await loginAsAdmin(app);
+    await Notification.create({
+      channel: NotificationChannelKind.TEAM,
+      type: NotificationType.TEAM_ORDER_PAID,
+      to: "team",
+      payload: {},
+      status: NotificationStatus.SKIPPED,
+    });
+    const res = await request(app).get(URL).set("cookie", cookie);
+    expect(res.body.data.skipped).toBe(1);
+    expect(res.body.data.sent).toBe(0);
   });
 
   it("failedSample omite `to` y `payload`, e incluye lastError truncado", async () => {

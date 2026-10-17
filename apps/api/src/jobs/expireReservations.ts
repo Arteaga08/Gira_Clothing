@@ -95,8 +95,11 @@ const expireReservations = async (): Promise<{ released: number }> => {
           reason: "reservation_expired",
         });
         if (!expired) continue;
-        if (await releaseReservation(reservation.order, "expired")) released += 1;
+        // Aftermath first: it closes the charging window and never throws. If
+        // the release below throws, the next sweep finds a dead order with an
+        // active hold and releases it — the intent is already cancelled by then.
         await expireAftermath(expired);
+        if (await releaseReservation(reservation.order, "expired")) released += 1;
         continue;
       }
 

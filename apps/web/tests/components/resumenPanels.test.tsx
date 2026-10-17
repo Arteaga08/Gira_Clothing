@@ -91,6 +91,7 @@ describe("OutboxHealthPanel", () => {
     sending: 0,
     failed: 0,
     sent: 214,
+    skipped: 0,
     stale: 0,
     oldestPendingAt: null,
     failedSample: [],

@@ -125,6 +125,17 @@ const markSent = async (id: Types.ObjectId, providerId: string): Promise<void> =
   );
 };
 
+/** The channel is not configured (dev/test stub): terminal, but honestly not `sent`. */
+const markSkipped = async (id: Types.ObjectId): Promise<void> => {
+  await Notification.updateOne(
+    { _id: id },
+    {
+      $set: { status: NotificationStatus.SKIPPED, purgeAt: purgeDate() },
+      $unset: { lastError: "" },
+    },
+  );
+};
+
 /** Back to pending with backoff, or terminal once the attempts run out. */
 const markFailed = async (doc: NotificationDocument, error: string): Promise<void> => {
   const giveUp = doc.attempts >= MAX_ATTEMPTS;
@@ -200,6 +211,7 @@ const getOutboxHealth = async (): Promise<OutboxHealth> => {
     sending: countOf(NotificationStatus.SENDING),
     failed: countOf(NotificationStatus.FAILED),
     sent: countOf(NotificationStatus.SENT),
+    skipped: countOf(NotificationStatus.SKIPPED),
     // Reserved: no distinct STALE status exists. A SENDING doc past
     // STALE_SENDING_MS is transient and reclaimed by the next dispatcher
     // run, not a separate queryable state — see Pendientes conocidos.
@@ -221,6 +233,7 @@ export {
   enqueueNotification,
   claimNextBatch,
   markSent,
+  markSkipped,
   markFailed,
   MAX_ATTEMPTS,
   getOutboxHealth,

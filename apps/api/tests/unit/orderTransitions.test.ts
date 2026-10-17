@@ -4,6 +4,7 @@ import {
   canTransition,
   assertTransition,
   assertAdminTransition,
+  assertShipmentDrivenTransition,
   LABELS,
 } from "../../src/utils/orderTransitions.js";
 
@@ -65,9 +66,11 @@ const EXPECTED: Record<OrderStatus, readonly OrderStatus[]> = {
 };
 const ADMIN_EXPECTED = new Set([
   `${S.PAID}->${S.PROCESSING}`,
+  `${S.PENDING_PAYMENT}->${S.CANCELLED}`,
+]);
+const SHIPMENT_EXPECTED = new Set([
   `${S.PROCESSING}->${S.SHIPPED}`,
   `${S.SHIPPED}->${S.DELIVERED}`,
-  `${S.PENDING_PAYMENT}->${S.CANCELLED}`,
 ]);
 const ALL = Object.values(OrderStatus);
 
@@ -103,6 +106,27 @@ describe("matriz completa estado×estado", () => {
   }
 });
 
+describe("matriz assertShipmentDrivenTransition", () => {
+  for (const from of ALL) {
+    for (const to of ALL) {
+      const legal = EXPECTED[from].includes(to);
+      it(`${from} -> ${to}`, () => {
+        if (!legal) {
+          expect(() => assertShipmentDrivenTransition(from, to)).toThrow(
+            expect.objectContaining({ statusCode: 409 }),
+          );
+        } else if (SHIPMENT_EXPECTED.has(`${from}->${to}`)) {
+          expect(() => assertShipmentDrivenTransition(from, to)).not.toThrow();
+        } else {
+          expect(() => assertShipmentDrivenTransition(from, to)).toThrow(
+            expect.objectContaining({ statusCode: 403 }),
+          );
+        }
+      });
+    }
+  }
+});
+
 describe("assertTransition", () => {
   it("lanza 409 con mensaje en español en una transición inválida", () => {
     expect(() => assertTransition(OrderStatus.PENDING_PAYMENT, OrderStatus.SHIPPED)).toThrow(
@@ -117,11 +141,19 @@ describe("assertTransition", () => {
 describe("assertAdminTransition", () => {
   it("permite a la admin avanzar la operación", () => {
     expect(() => assertAdminTransition(OrderStatus.PAID, OrderStatus.PROCESSING)).not.toThrow();
-    expect(() => assertAdminTransition(OrderStatus.PROCESSING, OrderStatus.SHIPPED)).not.toThrow();
-    expect(() => assertAdminTransition(OrderStatus.SHIPPED, OrderStatus.DELIVERED)).not.toThrow();
     expect(() =>
       assertAdminTransition(OrderStatus.PENDING_PAYMENT, OrderStatus.CANCELLED),
     ).not.toThrow();
+  });
+  it("shipped y delivered solo se marcan desde el envío, con mensaje propio", () => {
+    for (const [from, to] of [
+      [OrderStatus.PROCESSING, OrderStatus.SHIPPED],
+      [OrderStatus.SHIPPED, OrderStatus.DELIVERED],
+    ] as const) {
+      expect(() => assertAdminTransition(from, to)).toThrow(
+        expect.objectContaining({ statusCode: 403, message: expect.stringContaining("envío") }),
+      );
+    }
   });
   it("prohíbe a la admin marcar una orden como pagada a mano", () => {
     expect(() => assertAdminTransition(OrderStatus.PENDING_PAYMENT, OrderStatus.PAID)).toThrow(

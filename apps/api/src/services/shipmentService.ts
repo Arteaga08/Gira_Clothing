@@ -12,7 +12,7 @@ import { Order, type OrderDocument } from "../models/Order.js";
 import { AppError } from "../utils/AppError.js";
 import { logger } from "../config/logger.js";
 import { applyOrderTransition } from "./orderTransitionService.js";
-import { assertAdminTransition } from "../utils/orderTransitions.js";
+import { assertShipmentDrivenTransition } from "../utils/orderTransitions.js";
 import { assertShipmentTransition } from "../utils/shipmentTransitions.js";
 import { enqueueNotification } from "./notificationService.js";
 import { recordAudit } from "./auditService.js";
@@ -26,8 +26,8 @@ import {
 
 /**
  * Manual shipping. Capturing the guide is ONE operation, not two: it creates the
- * parcel, moves the order to `shipped` through assertAdminTransition (the same
- * gate every other status change goes through), and queues the tracking email.
+ * parcel, moves the order to `shipped` through assertShipmentDrivenTransition (the gate only
+ * this flow passes), and queues the tracking email.
  * Splitting it would allow "order shipped with no guide captured", which is the
  * exact state the customer calls about.
  *
@@ -116,7 +116,7 @@ const createShipment = async (
   if (!order) throw new AppError("La orden no existe.", 404);
 
   // Validated BEFORE any write: an invalid move must leave nothing behind.
-  assertAdminTransition(order.status, OrderStatus.SHIPPED);
+  assertShipmentDrivenTransition(order.status, OrderStatus.SHIPPED);
 
   let shipment: ShipmentDocument;
   try {
@@ -195,7 +195,7 @@ const addShipmentEvent = async (
   if (input.status === ShipmentStatus.DELIVERED) {
     const order = await Order.findById(orderId);
     if (order && order.status === OrderStatus.SHIPPED) {
-      assertAdminTransition(order.status, OrderStatus.DELIVERED);
+      assertShipmentDrivenTransition(order.status, OrderStatus.DELIVERED);
       await applyOrderTransition({
         orderId: order._id,
         from: OrderStatus.SHIPPED,

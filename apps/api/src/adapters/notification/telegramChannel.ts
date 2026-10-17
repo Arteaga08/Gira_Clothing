@@ -1,6 +1,6 @@
 import type { TelegramConfig } from "../../config/env.js";
 import { AppError } from "../../utils/AppError.js";
-import type { NotificationChannel, TeamMessage } from "./types.js";
+import type { NotificationChannel, NotifyResult, TeamMessage } from "./types.js";
 
 /**
  * Telegram Bot API over plain fetch. The bot token lives in the URL path, so no
@@ -14,7 +14,7 @@ const render = (message: TeamMessage): string =>
   [message.title, "", ...message.lines].join("\n");
 
 const createTelegramChannel = (config: TelegramConfig): NotificationChannel => ({
-  notify: async (message: TeamMessage): Promise<void> => {
+  notify: async (message: TeamMessage): Promise<NotifyResult> => {
     let response: Response;
     try {
       response = await fetch(`https://api.telegram.org/bot${config.botToken}/sendMessage`, {
@@ -37,6 +37,7 @@ const createTelegramChannel = (config: TelegramConfig): NotificationChannel => (
         502,
       );
     }
+    return { delivered: true };
   },
 });
 

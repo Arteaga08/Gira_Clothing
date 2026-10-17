@@ -12,7 +12,7 @@ import type { ImageAttrs } from "../models/schemas/image.js";
 /**
  * Public, read-only catalog queries. Every query is scoped to isActive:true —
  * visitors never see paused/retired documents, and public DTOs never expose
- * onHand/reserved (only the derived `available`).
+ * onHand/reserved or the derived count (only an `isAvailable` flag).
  */
 
 interface RawPublicQuery {
@@ -283,7 +283,7 @@ interface PublicVariantView {
   sku: string;
   images: ImageAttrs[];
   priceOverride?: number;
-  available: number;
+  isAvailable: boolean;
   print: { id: string; name: string; slug: string; sku: string; image: ImageAttrs };
 }
 
@@ -321,7 +321,7 @@ const getPublicProduct = async (slug: string): Promise<PublicProductDetail> => {
       sku: v.sku,
       images: v.images,
       ...(v.priceOverride !== undefined ? { priceOverride: v.priceOverride } : {}),
-      available: v.onHand - v.reserved,
+      isAvailable: v.onHand - v.reserved > 0,
       print: {
         id: String(v.print._id),
         name: v.print.name,

@@ -113,7 +113,7 @@ pnpm --filter @gira/api seed:admin -- \
 
 Es idempotente: correrlo dos veces con el mismo correo no hace nada.
 
-## A.4 — Telegram (opcional, pero se puede hacer ya)
+## A.4 — Telegram (obligatorio en producción)
 
 Es la única integración externa que funciona igual en todos los entornos, así que
 no hay razón para dejarla para producción. Es por donde te vas a enterar de que
@@ -124,8 +124,11 @@ entró un pedido.
       `https://api.telegram.org/bot<TOKEN>/getUpdates`)
 - [ ] Agregar `TELEGRAM_BOT_TOKEN` y `TELEGRAM_CHAT_ID`
 
-> **Las dos o ninguna.** Si pones solo una, el arranque falla a propósito. Si no
-> pones ninguna, los avisos se escriben en la consola y nadie los ve.
+> **En producción son obligatorias las dos:** sin ellas la API no arranca (igual que
+> el correo), porque por aquí te enteras de que dinero e inventario no cuadran.
+> En desarrollo y pruebas son opcionales y van de a pares: si pones solo una, el
+> arranque falla; si no pones ninguna, el aviso queda en la bitácora como
+> `skipped` (no como enviado) y solo se escribe en la consola.
 
 ## A.5 — Stripe, Cloudinary y Resend
 

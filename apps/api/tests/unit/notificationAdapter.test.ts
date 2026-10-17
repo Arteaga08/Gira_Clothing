@@ -5,9 +5,9 @@ import { createTelegramChannel } from "../../src/adapters/notification/telegramC
 const message = { title: "Nueva orden pagada", lines: ["Folio: ABC", "Total: $1,200.00 MXN"] };
 
 describe("stubChannel", () => {
-  it("resuelve sin tocar la red", async () => {
+  it("resuelve sin tocar la red y reporta que NO entregó", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
-    await expect(createStubChannel().notify(message)).resolves.toBeUndefined();
+    await expect(createStubChannel().notify(message)).resolves.toEqual({ delivered: false });
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
   });
@@ -20,7 +20,10 @@ describe("telegramChannel", () => {
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
-    await createTelegramChannel({ botToken: "123:abc", chatId: "-100" }).notify(message);
+    const result = await createTelegramChannel({ botToken: "123:abc", chatId: "-100" }).notify(
+      message,
+    );
+    expect(result).toEqual({ delivered: true });
 
     const [url, init] = fetchSpy.mock.calls[0]!;
     expect(url).toBe("https://api.telegram.org/bot123:abc/sendMessage");

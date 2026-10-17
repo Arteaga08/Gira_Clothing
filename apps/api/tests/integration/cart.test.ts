@@ -100,7 +100,7 @@ describe("Cart · lectura", () => {
     expect(res.body.data.cart.lines).toEqual([]);
   });
 
-  it("tras un PUT devuelve la línea con precio vivo y available", async () => {
+  it("tras un PUT devuelve la línea con precio vivo e isAvailable", async () => {
     const adminCookie = await loginAsAdmin(app);
     const { variantId } = await seedVariant(adminCookie, "R1", { basePrice: 12000 });
     const customerCookie = await loginAsCustomer(app);
@@ -116,7 +116,7 @@ describe("Cart · lectura", () => {
     const line = res.body.data.cart.lines[0];
     expect(line.qty).toBe(2);
     expect(line.unitPriceMxn).toBe(12000);
-    expect(line.available).toBe(20);
+    expect(line).not.toHaveProperty("available");
     expect(line.isAvailable).toBe(true);
   });
 });
@@ -295,7 +295,7 @@ describe("Cart · precio vivo", () => {
 });
 
 describe("Cart · disponibilidad", () => {
-  it("una línea sin stock aparece con available:0 e isAvailable:false, sin romper la respuesta", async () => {
+  it("una línea sin stock aparece con isAvailable:false, sin romper la respuesta", async () => {
     const adminCookie = await loginAsAdmin(app);
     const { variantId } = await seedVariant(adminCookie, "AV1");
     const customerCookie = await loginAsCustomer(app);
@@ -310,7 +310,23 @@ describe("Cart · disponibilidad", () => {
 
     const res = await request(app).get(CART_BASE).set("Cookie", customerCookie);
     expect(res.status).toBe(200);
-    expect(res.body.data.cart.lines[0].available).toBe(0);
+    expect(res.body.data.cart.lines[0]).not.toHaveProperty("available");
+    expect(res.body.data.cart.lines[0].isAvailable).toBe(false);
+  });
+
+  it("isAvailable compara la cantidad del carrito contra lo disponible, no solo > 0", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { variantId } = await seedVariant(adminCookie, "AV2");
+    const customerCookie = await loginAsCustomer(app);
+
+    await request(app)
+      .put(`${CART_BASE}/lines/${variantId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", customerCookie)
+      .send({ qty: 5 });
+    await Variant.updateOne({ _id: variantId }, { $set: { onHand: 3 } });
+
+    const res = await request(app).get(CART_BASE).set("Cookie", customerCookie);
     expect(res.body.data.cart.lines[0].isAvailable).toBe(false);
   });
 });

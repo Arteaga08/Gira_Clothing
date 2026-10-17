@@ -2,6 +2,7 @@ import { AuditModule, NotificationChannelKind, NotificationType, type AuditActio
 import type { Types } from "mongoose";
 import { recordAudit } from "./auditService.js";
 import { enqueueNotification } from "./notificationService.js";
+import { Notification } from "../models/Notification.js";
 
 /**
  * The one alarm a human must act on when money and inventory disagree. Shared
@@ -34,14 +35,7 @@ const flagForReview = async (
   action: AuditAction,
   { dedupePerOrder = true, strict = false }: FlagOptions = {},
 ): Promise<void> => {
-  await recordAudit({
-    actorType: "system",
-    action,
-    module: AuditModule.PAYMENTS,
-    targetId: order.publicId,
-    after: { reason, status: order.status },
-  });
-  await enqueueNotification(
+  const queued = await enqueueNotification(
     {
       channel: NotificationChannelKind.TEAM,
       type: NotificationType.TEAM_PAYMENT_NEEDS_REVIEW,
@@ -51,6 +45,30 @@ const flagForReview = async (
     },
     { strict },
   );
+  // A retry that finds the SAME alert already queued must not stack a second
+  // identical audit entry. Anything else is audited: this call queued it, the
+  // enqueue failed (non-strict), or the slot holds a different reason — the
+  // audit trail is the only place that one survives. A failed strict enqueue
+  // throws before this line, so its retry audits exactly once.
+  let repeat = false;
+  if (!queued && dedupePerOrder) {
+    const existing = await Notification.findOne({
+      order: order._id,
+      type: NotificationType.TEAM_PAYMENT_NEEDS_REVIEW,
+    })
+      .select("payload.reason")
+      .lean();
+    repeat = (existing?.payload as { reason?: string } | undefined)?.reason === reason;
+  }
+  if (!repeat) {
+    await recordAudit({
+      actorType: "system",
+      action,
+      module: AuditModule.PAYMENTS,
+      targetId: order.publicId,
+      after: { reason, status: order.status },
+    });
+  }
 };
 
 export type { FlagTarget, FlagOptions };

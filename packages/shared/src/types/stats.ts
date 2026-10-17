@@ -122,6 +122,7 @@ interface OutboxHealth {
   sending: number;
   failed: number;
   sent: number;
+  skipped: number;
   stale: number;
   oldestPendingAt: Date | null;
   failedSample: FailedNotificationSample[];

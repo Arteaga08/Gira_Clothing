@@ -48,6 +48,11 @@ interface PublicOrder {
   paidAt?: Date;
 }
 
+/** What the OWNING customer receives ("mis órdenes"): the public view plus the internal id. */
+interface CustomerOrder extends PublicOrder {
+  id: string;
+}
+
 interface StatusHistoryEntry {
   status: OrderStatus;
   at: Date;
@@ -67,7 +72,7 @@ interface OrderPayment {
   refundedAt?: Date;
 }
 
-interface AdminOrder extends PublicOrder {
+interface AdminOrder extends CustomerOrder {
   user?: string;
   statusHistory: StatusHistoryEntry[];
   payment: OrderPayment;
@@ -82,6 +87,7 @@ export type {
   ImageAttrs,
   OrderLine,
   PublicOrder,
+  CustomerOrder,
   StatusHistoryEntry,
   OrderPayment,
   AdminOrder,

@@ -184,9 +184,11 @@ describe("orderService.createOrder · con cuenta", () => {
     const orderDoc = await Order.findOne({ publicId: result.order.publicId }).lean();
     expect(orderDoc?.user?.toString()).toBe(userId.toString());
 
+    // The cart is emptied when the order is PAID, not when it is created.
+    expect(orderDoc?.fromCart).toBe(true);
     const { getCart } = await import("../../src/services/cartService.js");
     const cart = await getCart(userId);
-    expect(cart.lines).toEqual([]);
+    expect(cart.lines).toHaveLength(1);
   });
 });
 
