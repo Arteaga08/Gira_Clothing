@@ -46,6 +46,64 @@ describe("canTransition", () => {
   });
 });
 
+/**
+ * The expected table is written out by hand on purpose: deriving it from
+ * TRANSITIONS would make the test pass for any table, including a wrong one.
+ * Every (from, to) pair is checked, so a new status or a new edge cannot slip
+ * in without someone editing this table.
+ */
+const S = OrderStatus;
+const EXPECTED: Record<OrderStatus, readonly OrderStatus[]> = {
+  [S.PENDING_PAYMENT]: [S.PAID, S.CANCELLED, S.EXPIRED],
+  [S.PAID]: [S.PROCESSING, S.REFUNDED, S.DISPUTED],
+  [S.PROCESSING]: [S.SHIPPED, S.REFUNDED, S.DISPUTED],
+  [S.SHIPPED]: [S.DELIVERED, S.REFUNDED, S.DISPUTED],
+  [S.DELIVERED]: [S.REFUNDED, S.DISPUTED],
+  [S.DISPUTED]: [S.PAID, S.REFUNDED],
+  [S.CANCELLED]: [],
+  [S.EXPIRED]: [],
+  [S.REFUNDED]: [],
+};
+const ADMIN_EXPECTED = new Set([
+  `${S.PAID}->${S.PROCESSING}`,
+  `${S.PROCESSING}->${S.SHIPPED}`,
+  `${S.SHIPPED}->${S.DELIVERED}`,
+  `${S.PENDING_PAYMENT}->${S.CANCELLED}`,
+]);
+const ALL = Object.values(OrderStatus);
+
+describe("matriz completa estado×estado", () => {
+  it("la tabla esperada cubre todos los estados", () => {
+    expect(Object.keys(EXPECTED).sort()).toEqual([...ALL].sort());
+  });
+
+  for (const from of ALL) {
+    for (const to of ALL) {
+      const allowed = EXPECTED[from].includes(to);
+      it(`${from} -> ${to}: canTransition = ${allowed}`, () => {
+        expect(canTransition(from, to)).toBe(allowed);
+      });
+      it(`${from} -> ${to}: assertTransition ${allowed ? "no lanza" : "lanza 409"}`, () => {
+        if (allowed) expect(() => assertTransition(from, to)).not.toThrow();
+        else expect(() => assertTransition(from, to)).toThrow(expect.objectContaining({ statusCode: 409 }));
+      });
+      it(`${from} -> ${to}: assertAdminTransition`, () => {
+        if (!allowed) {
+          expect(() => assertAdminTransition(from, to)).toThrow(
+            expect.objectContaining({ statusCode: 409 }),
+          );
+        } else if (ADMIN_EXPECTED.has(`${from}->${to}`)) {
+          expect(() => assertAdminTransition(from, to)).not.toThrow();
+        } else {
+          expect(() => assertAdminTransition(from, to)).toThrow(
+            expect.objectContaining({ statusCode: 403 }),
+          );
+        }
+      });
+    }
+  }
+});
+
 describe("assertTransition", () => {
   it("lanza 409 con mensaje en español en una transición inválida", () => {
     expect(() => assertTransition(OrderStatus.PENDING_PAYMENT, OrderStatus.SHIPPED)).toThrow(

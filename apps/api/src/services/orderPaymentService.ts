@@ -10,7 +10,7 @@ import {
 import { Order, type OrderDocument } from "../models/Order.js";
 import { commitReservation, releaseReservation } from "./reservationService.js";
 import { restockUnits } from "./inventoryService.js";
-import { assertTransition } from "../utils/orderTransitions.js";
+import { applyOrderTransition } from "./orderTransitionService.js";
 import { recordAudit } from "./auditService.js";
 import { enqueueNotification } from "./notificationService.js";
 
@@ -112,27 +112,43 @@ const flagForReview = async (
   });
 };
 
+const SYSTEM = { type: "system" } as const;
+
+/** Money landed on an order that is already expired/cancelled: raise the alarm, move nothing. */
+const flagIfDeadOnArrival = async (order: OrderDocument): Promise<void> => {
+  if (DEAD_ON_ARRIVAL.has(order.status)) {
+    await flagForReview(order, "payment_after_expiry", AuditAction.PAYMENT_AFTER_EXPIRY);
+  }
+};
+
 const applyPaymentSucceeded = async (orderId: Types.ObjectId): Promise<void> => {
-  const order = await Order.findById(orderId);
-  if (!order) return;
-  if (order.status !== OrderStatus.PENDING_PAYMENT) {
+  const current = await Order.findById(orderId);
+  if (!current) return;
+  if (current.status !== OrderStatus.PENDING_PAYMENT) {
     // Already paid/shipped/refunded: genuinely idempotent, nothing to say.
     // Expired or cancelled is NOT the same thing — the charging window was
     // supposed to be closed and the customer was charged anyway. Returning
     // quietly here is how an order used to dead-end with the money taken, no
     // email, no stock movement and no trace.
-    if (DEAD_ON_ARRIVAL.has(order.status)) {
-      await flagForReview(order, "payment_after_expiry", AuditAction.PAYMENT_AFTER_EXPIRY);
-    }
+    await flagIfDeadOnArrival(current);
     return;
   }
 
-  assertTransition(order.status, OrderStatus.PAID);
-  order.status = OrderStatus.PAID;
-  order.paidAt = new Date();
-  order.payment.status = PaymentStatus.SUCCEEDED;
-  order.statusHistory.push({ status: OrderStatus.PAID, at: new Date() });
-  await order.save();
+  // Atomic against the expiry sweep: the filter pins `pending_payment`, so if
+  // the sweep got there first this returns null instead of overwriting it.
+  const order = await applyOrderTransition({
+    orderId,
+    from: OrderStatus.PENDING_PAYMENT,
+    to: OrderStatus.PAID,
+    actor: SYSTEM,
+    set: { paidAt: new Date(), "payment.status": PaymentStatus.SUCCEEDED },
+  });
+  if (!order) {
+    // Lost the race. If the sweep expired it, the customer was still charged.
+    const latest = await Order.findById(orderId);
+    if (latest) await flagIfDeadOnArrival(latest);
+    return;
+  }
 
   // Only now do the held units leave the warehouse for good. Idempotent by design.
   // A `false` here means the hold was already released (the expiry sweep won the
@@ -187,19 +203,15 @@ const applyPaymentFailed = async (orderId: Types.ObjectId, reason?: string): Pro
 };
 
 const applyPaymentCancelled = async (orderId: Types.ObjectId): Promise<void> => {
-  const order = await Order.findById(orderId);
-  if (!order) return;
-  if (order.status !== OrderStatus.PENDING_PAYMENT) return;
-
-  assertTransition(order.status, OrderStatus.CANCELLED);
-  order.status = OrderStatus.CANCELLED;
-  order.payment.status = PaymentStatus.CANCELLED;
-  order.statusHistory.push({
-    status: OrderStatus.CANCELLED,
-    at: new Date(),
+  const order = await applyOrderTransition({
+    orderId,
+    from: OrderStatus.PENDING_PAYMENT,
+    to: OrderStatus.CANCELLED,
+    actor: SYSTEM,
     reason: "payment_cancelled",
+    set: { "payment.status": PaymentStatus.CANCELLED },
   });
-  await order.save();
+  if (!order) return; // not pending anymore (or gone): nothing to cancel
 
   await releaseReservation(order._id, "payment_cancelled");
 
@@ -235,17 +247,23 @@ const applyRefund = async (orderId: Types.ObjectId): Promise<void> => {
       publicId = "";
       restocked = false;
 
-      const order = await Order.findById(orderId).session(session);
-      if (!order || order.status === OrderStatus.REFUNDED) return;
+      const before = await Order.findById(orderId).session(session);
+      if (!before || before.status === OrderStatus.REFUNDED) return;
 
-      const everLeftTheWarehouse = order.statusHistory.some((h) =>
+      const everLeftTheWarehouse = before.statusHistory.some((h) =>
         LEFT_THE_WAREHOUSE.has(h.status),
       );
-      assertTransition(order.status, OrderStatus.REFUNDED);
-      order.status = OrderStatus.REFUNDED;
-      order.payment.status = PaymentStatus.REFUNDED;
-      order.statusHistory.push({ status: OrderStatus.REFUNDED, at: new Date() });
-      await order.save({ session });
+      const order = await applyOrderTransition({
+        orderId,
+        from: before.status,
+        to: OrderStatus.REFUNDED,
+        actor: SYSTEM,
+        set: { "payment.status": PaymentStatus.REFUNDED },
+        session,
+      });
+      // Moved by someone else between the read and the write: abort this
+      // attempt; the redelivered webhook re-evaluates from the new state.
+      if (!order) throw new Error("order_status_changed_during_refund");
 
       if (!everLeftTheWarehouse) {
         await restockUnits(order.lines, session);
@@ -283,10 +301,13 @@ const applyDisputeOpened = async (orderId: Types.ObjectId): Promise<void> => {
   const order = await Order.findById(orderId);
   if (!order || order.status === OrderStatus.DISPUTED) return;
 
-  assertTransition(order.status, OrderStatus.DISPUTED);
-  order.status = OrderStatus.DISPUTED;
-  order.statusHistory.push({ status: OrderStatus.DISPUTED, at: new Date() });
-  await order.save();
+  const moved = await applyOrderTransition({
+    orderId,
+    from: order.status,
+    to: OrderStatus.DISPUTED,
+    actor: SYSTEM,
+  });
+  if (!moved) throw new Error("order_status_changed_during_dispute");
 
   await recordAudit({
     actorType: "system",
@@ -306,10 +327,14 @@ const applyDisputeClosed = async (orderId: Types.ObjectId, won: boolean): Promis
   const order = await Order.findById(orderId);
   if (!order || order.status !== OrderStatus.DISPUTED) return;
 
-  assertTransition(order.status, OrderStatus.PAID);
-  order.status = OrderStatus.PAID;
-  order.statusHistory.push({ status: OrderStatus.PAID, at: new Date(), reason: "dispute_won" });
-  await order.save();
+  const moved = await applyOrderTransition({
+    orderId,
+    from: OrderStatus.DISPUTED,
+    to: OrderStatus.PAID,
+    actor: SYSTEM,
+    reason: "dispute_won",
+  });
+  if (!moved) return;
 
   await recordAudit({
     actorType: "system",

@@ -10,6 +10,7 @@ import {
 } from "../models/Order.js";
 import { Cart } from "../models/Cart.js";
 import { AppError } from "../utils/AppError.js";
+import { applyOrderTransition } from "./orderTransitionService.js";
 import { generatePublicId } from "../utils/publicId.js";
 import { idempotencyOwner, scopeIdempotencyKey } from "../utils/idempotency.js";
 import { resolveOrderLines, quoteTotals, type RequestedLine, type QuotedLine } from "./pricingService.js";
@@ -253,13 +254,13 @@ const createOrder = async (input: CreateOrderInput, ctx: OrderContext): Promise<
     });
   } catch (err) {
     await releaseReservation(orderId, "payment_setup_failed");
-    order.status = OrderStatus.CANCELLED;
-    order.statusHistory.push({
-      status: OrderStatus.CANCELLED,
-      at: new Date(),
+    await applyOrderTransition({
+      orderId: order._id,
+      from: OrderStatus.PENDING_PAYMENT,
+      to: OrderStatus.CANCELLED,
+      actor: { type: "system" },
       reason: "payment_setup_failed",
     });
-    await order.save();
     throw err;
   }
 

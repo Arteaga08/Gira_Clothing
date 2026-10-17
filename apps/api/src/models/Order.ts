@@ -59,6 +59,8 @@ interface OrderPayment {
 interface StatusHistoryEntry {
   status: OrderStatus;
   at: Date;
+  actorType: "user" | "system";
+  actorId?: Types.ObjectId;
   reason?: string;
 }
 
@@ -138,6 +140,9 @@ const statusHistorySchema = new Schema<StatusHistoryEntry>(
   {
     status: { type: String, enum: Object.values(OrderStatus), required: true },
     at: { type: Date, required: true },
+    // Defaulted so entries written before this field existed still validate.
+    actorType: { type: String, enum: ["user", "system"], default: "system" },
+    actorId: { type: Schema.Types.ObjectId, ref: "User" },
     reason: { type: String },
   },
   { _id: false },
@@ -180,6 +185,13 @@ orderSchema.index({ user: 1, createdAt: -1 });
 orderSchema.index({ status: 1, createdAt: 1 });
 // Admin search by customer.
 orderSchema.index({ "customer.email": 1, createdAt: -1 });
+// The webhook's only lookup. Unique => one payment can never be claimed by two
+// orders. Partial (not unique+sparse) so orders that have not reached the
+// provider yet are not all treated as duplicates of each other.
+orderSchema.index(
+  { "payment.intentId": 1 },
+  { unique: true, partialFilterExpression: { "payment.intentId": { $type: "string" } } },
+);
 // Timeseries aggregation scans the whole range by createdAt regardless of status.
 orderSchema.index({ createdAt: -1 });
 
