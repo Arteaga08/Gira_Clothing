@@ -264,9 +264,23 @@ const createOrder = async (input: CreateOrderInput, ctx: OrderContext): Promise<
     throw err;
   }
 
-  order.payment.intentId = payment.providerId;
-  order.payment.status = payment.status;
-  await order.save();
+  // Targeted writes, not order.save(): the webhook can already be paying this
+  // order (it finds it through metadata.orderId), and a whole-document save would
+  // overwrite the `payment.status = succeeded` it just wrote.
+  const attached = await Order.findOneAndUpdate(
+    { _id: order._id },
+    { $set: { "payment.intentId": payment.providerId } },
+    { new: true },
+  );
+  if (attached) order = attached;
+  if (payment.status !== PaymentStatus.REQUIRES_PAYMENT) {
+    const synced = await Order.findOneAndUpdate(
+      { _id: order._id, "payment.status": PaymentStatus.REQUIRES_PAYMENT },
+      { $set: { "payment.status": payment.status } },
+      { new: true },
+    );
+    if (synced) order = synced;
+  }
 
   if (input.useCart && ctx.userId) await clearCart(ctx.userId);
 

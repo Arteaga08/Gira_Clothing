@@ -82,7 +82,6 @@
   --status-cancelled: oklch(90% 0.005 162);
   --status-expired: oklch(88% 0.02 60);
   --status-refunded: oklch(88% 0.08 300);
-  --status-disputed: oklch(87% 0.1 25);
 
   /* ShipmentStatus — packages/shared/src/enums/shipment.ts */
   --ship-in_transit: oklch(88% 0.09 205);

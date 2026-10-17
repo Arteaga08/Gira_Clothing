@@ -3,6 +3,7 @@ import { StockReservation } from "../models/StockReservation.js";
 import { Order, type OrderDocument } from "../models/Order.js";
 import { releaseReservation } from "../services/reservationService.js";
 import { recordAudit } from "../services/auditService.js";
+import { flagForReview } from "../services/paymentAlertService.js";
 import { getPaymentProvider } from "../adapters/payment/index.js";
 import { applyOrderTransition } from "../services/orderTransitionService.js";
 import { logger } from "../config/logger.js";
@@ -29,16 +30,21 @@ const BATCH = 200;
  * back and the order already expired, so a provider outage must not undo any of
  * that — it only leaves an audit entry saying the intent is still live.
  */
-const cancelPendingCharge = async (intentId: string, publicId: string): Promise<void> => {
+const cancelPendingCharge = async (order: OrderDocument, intentId: string): Promise<void> => {
   try {
     await getPaymentProvider().cancelPayment(intentId);
   } catch (err) {
-    logger.error({ err, order: publicId }, "No se pudo cancelar el intent de una orden expirada");
-    await recordAudit({
-      actorType: "system",
-      action: AuditAction.PAYMENT_CANCEL_FAILED,
-      module: AuditModule.PAYMENTS,
-      targetId: publicId,
+    logger.error(
+      { err, order: order.publicId },
+      "No se pudo cancelar el intent de una orden expirada",
+    );
+    // The intent is still live: the customer can pay an order whose stock is back
+    // on sale. Audit + team alert. The alert deliberately skips the order's single
+    // `needs_review` slot — if that payment then lands, `payment_after_expiry` is
+    // the more serious alarm and must not be swallowed as a duplicate. The expire
+    // transition runs once per order, so this one cannot repeat.
+    await flagForReview(order, "payment_cancel_failed", AuditAction.PAYMENT_CANCEL_FAILED, {
+      dedupePerOrder: false,
     });
   }
 };
@@ -55,7 +61,7 @@ const expireAftermath = async (order: OrderDocument): Promise<void> => {
     targetId: order.publicId,
   });
   if (order.payment.intentId) {
-    await cancelPendingCharge(order.payment.intentId, order.publicId);
+    await cancelPendingCharge(order, order.payment.intentId);
   }
 };
 

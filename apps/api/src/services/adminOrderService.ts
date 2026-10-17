@@ -6,6 +6,7 @@ import {
   NotificationChannelKind,
   NotificationType,
   OrderStatus,
+  type DisputeStatus,
 } from "@gira/shared";
 import { Order, type OrderDocument } from "../models/Order.js";
 import { AppError } from "../utils/AppError.js";
@@ -26,14 +27,32 @@ import type { RequestContext } from "../utils/requestContext.js";
 interface PublicAdminOrder extends PublicOrder {
   user?: string;
   statusHistory: { status: OrderStatus; at: Date; reason?: string }[];
-  payment: { provider: string; intentId?: string; status: string; lastError?: string };
+  payment: {
+    provider: string;
+    intentId?: string;
+    status: string;
+    lastError?: string;
+    refundedAmount?: number;
+    refundedAt?: Date;
+  };
+  disputeStatus?: DisputeStatus;
+  disputedAt?: Date;
   updatedAt: Date;
 }
 
 interface AdminOrderLean extends OrderLean {
   user?: Types.ObjectId;
   statusHistory: { status: OrderStatus; at: Date; reason?: string }[];
-  payment: { provider: string; intentId?: string; status: string; lastError?: string };
+  payment: {
+    provider: string;
+    intentId?: string;
+    status: string;
+    lastError?: string;
+    refundedAmount?: number;
+    refundedAt?: Date;
+  };
+  disputeStatus?: DisputeStatus;
+  disputedAt?: Date;
   updatedAt: Date;
 }
 
@@ -42,6 +61,8 @@ const toPublicAdminOrder = (doc: AdminOrderLean): PublicAdminOrder => ({
   ...(doc.user ? { user: String(doc.user) } : {}),
   statusHistory: doc.statusHistory,
   payment: doc.payment,
+  ...(doc.disputeStatus ? { disputeStatus: doc.disputeStatus } : {}),
+  ...(doc.disputedAt ? { disputedAt: doc.disputedAt } : {}),
   updatedAt: doc.updatedAt,
 });
 
@@ -79,7 +100,7 @@ const getAdminOrder = async (id: string): Promise<PublicAdminOrder> => {
 };
 
 /**
- * Payment-driven states (paid, refunded, disputed, expired) are rejected here
+ * Payment-driven states (paid, refunded, expired) are rejected here
  * with 403 by assertAdminTransition — they belong to the webhook and the
  * reconciliation job, never to a human typing a status into a form.
  */
@@ -147,7 +168,6 @@ const REFUNDABLE_STATUSES = new Set<OrderStatus>([
   OrderStatus.PROCESSING,
   OrderStatus.SHIPPED,
   OrderStatus.DELIVERED,
-  OrderStatus.DISPUTED,
 ]);
 
 /**

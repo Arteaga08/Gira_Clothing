@@ -17,7 +17,6 @@ enum OrderStatus {
   CANCELLED = "cancelled",
   EXPIRED = "expired",
   REFUNDED = "refunded",
-  DISPUTED = "disputed",
 }
 
 /** Provider-side payment state, tracked independently of the order lifecycle. */
@@ -30,10 +29,23 @@ enum PaymentStatus {
   REFUNDED = "refunded",
 }
 
+/**
+ * Chargeback lifecycle, in OUR vocabulary (the payment adapter translates the
+ * provider's). It lives on the order as `disputeStatus` and is deliberately NOT
+ * an OrderStatus: a dispute does not move the sale through fulfillment, and a
+ * lost one is not a refund — the money left, the order was not reimbursed.
+ */
+enum DisputeStatus {
+  OPEN = "open",
+  WON = "won",
+  LOST = "lost",
+  WITHDRAWN = "withdrawn",
+}
+
 enum ReservationStatus {
   ACTIVE = "active",
   COMMITTED = "committed",
   RELEASED = "released",
 }
 
-export { OrderStatus, PaymentStatus, ReservationStatus };
+export { OrderStatus, PaymentStatus, DisputeStatus, ReservationStatus };

@@ -1,5 +1,5 @@
 import type { ClientSession, Types } from "mongoose";
-import { MAX_STATUS_HISTORY, type OrderStatus } from "@gira/shared";
+import { MAX_STATUS_HISTORY, OrderStatus } from "@gira/shared";
 import { Order, type OrderDocument } from "../models/Order.js";
 import { assertTransition } from "../utils/orderTransitions.js";
 
@@ -15,6 +15,13 @@ import { assertTransition } from "../utils/orderTransitions.js";
  * as "already handled" and must NOT run the transition's side effects.
  * An illegal pair throws 409 before any write.
  */
+
+/** Statuses that mean fulfillment began: past this point a refund must not restock. */
+const FULFILLMENT_STATUSES: ReadonlySet<OrderStatus> = new Set([
+  OrderStatus.PROCESSING,
+  OrderStatus.SHIPPED,
+  OrderStatus.DELIVERED,
+]);
 
 interface TransitionActor {
   type: "user" | "system";
@@ -40,6 +47,8 @@ const applyOrderTransition = async (input: TransitionInput): Promise<OrderDocume
     { _id: orderId, status: from },
     {
       $set: { ...set, status: to },
+      // Same atomic update as the status change, so no writer can skip it.
+      ...(FULFILLMENT_STATUSES.has(to) ? { $min: { fulfillmentStartedAt: new Date() } } : {}),
       $push: {
         statusHistory: {
           $each: [

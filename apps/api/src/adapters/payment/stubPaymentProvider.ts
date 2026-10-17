@@ -1,5 +1,5 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
-import { Currency, PaymentStatus } from "@gira/shared";
+import { Currency, DisputeStatus, PaymentStatus } from "@gira/shared";
 import { AppError } from "../../utils/AppError.js";
 import {
   ProviderEventType,
@@ -25,6 +25,10 @@ interface StubEventPayload {
   orderId: string;
   paymentId: string;
   amount?: number;
+  /** Cumulative refunded amount (simulates charge.refunded). */
+  amountRefunded?: number;
+  /** Simulates a dispute event: `dispute_opened`, or `dispute_closed` with this outcome. */
+  disputeStatus?: DisputeStatus;
   /** Decline reason, so a `failed` event can be simulated end to end without Stripe. */
   reason?: string;
 }
@@ -34,6 +38,8 @@ const STUB_EVENT_MAP: Record<string, ProviderEventType> = {
   failed: ProviderEventType.PAYMENT_FAILED,
   cancelled: ProviderEventType.PAYMENT_CANCELLED,
   refunded: ProviderEventType.PAYMENT_REFUNDED,
+  dispute_opened: ProviderEventType.DISPUTE_OPENED,
+  dispute_closed: ProviderEventType.DISPUTE_CLOSED,
 };
 
 /** Deterministic id: same key -> same id, so a retried create is idempotent even in the stub. */
@@ -85,6 +91,8 @@ const createStubPaymentProvider = (): PaymentProvider => {
       paymentId: payload.paymentId,
       orderId: payload.orderId,
       ...(payload.amount !== undefined ? { amount: payload.amount } : {}),
+      ...(payload.amountRefunded !== undefined ? { amountRefunded: payload.amountRefunded } : {}),
+      ...(payload.disputeStatus ? { disputeStatus: payload.disputeStatus } : {}),
       ...(payload.reason ? { reason: payload.reason } : {}),
       raw: payload,
     };

@@ -168,16 +168,28 @@ describe("orderPaymentService · notificaciones", () => {
     ).toBe(0);
   });
 
-  it("un fallo al encolar no impide que la orden quede en paid", async () => {
+  it("un fallo al encolar deja la orden en paid pero propaga el error; el reintento completa los avisos", async () => {
     const adminCookie = await loginAsAdmin(app);
     const order = await seedOrder(adminCookie, "N6");
-    vi.spyOn(Notification, "create").mockRejectedValue(new Error("db down"));
+    const spy = vi.spyOn(Notification, "create").mockRejectedValue(new Error("db down"));
 
+    try {
+      // Strict enqueue: a lost confirmation must fail the webhook so Stripe retries.
+      await expect(applyPaymentSucceeded(order._id)).rejects.toThrow("db down");
+    } finally {
+      spy.mockRestore();
+    }
+    expect((await Order.findById(order._id))?.status).toBe(OrderStatus.PAID);
+    expect(await Notification.countDocuments({ order: order._id })).toBe(0);
+
+    // The retry finds the order already paid and still finishes the job.
     await applyPaymentSucceeded(order._id);
-
-    const after = await Order.findById(order._id);
-    expect(after?.status).toBe(OrderStatus.PAID);
-    vi.restoreAllMocks();
+    expect(
+      await Notification.countDocuments({ order: order._id, type: NotificationType.ORDER_CONFIRMATION }),
+    ).toBe(1);
+    expect(
+      await Notification.countDocuments({ order: order._id, type: NotificationType.TEAM_ORDER_PAID }),
+    ).toBe(1);
   });
 });
 

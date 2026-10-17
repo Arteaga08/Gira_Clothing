@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import request from "supertest";
 import mongoose from "mongoose";
-import { Currency, OrderStatus, PaymentStatus, PriceRounding } from "@gira/shared";
+import { Currency, DisputeStatus, OrderStatus, PaymentStatus, PriceRounding } from "@gira/shared";
 import { buildApp } from "../../src/app.js";
 import { Order } from "../../src/models/Order.js";
 import { loginAsAdmin, loginAsCustomer } from "../helpers/auth.js";
@@ -376,9 +376,14 @@ describe("GET /admin/orders/stats · alertas (independientes del rango)", () => 
     expect(res.body.data.alerts.inTransitTooLong).toBe(1);
   });
 
-  it("una orden disputed cuenta en alerts.disputed", async () => {
+  it("alerts.disputed cuenta solo disputas abiertas, sea cual sea el estado de la orden", async () => {
     const adminCookie = await loginAsAdmin(app);
-    await seedStatsOrder({ status: OrderStatus.DISPUTED, total: 10000 });
+    const open = await seedStatsOrder({ status: OrderStatus.DELIVERED, total: 10000 });
+    const won = await seedStatsOrder({ status: OrderStatus.PAID, total: 10000 });
+    const lost = await seedStatsOrder({ status: OrderStatus.PAID, total: 10000 });
+    await Order.updateOne({ _id: open }, { $set: { disputeStatus: DisputeStatus.OPEN } });
+    await Order.updateOne({ _id: won }, { $set: { disputeStatus: DisputeStatus.WON } });
+    await Order.updateOne({ _id: lost }, { $set: { disputeStatus: DisputeStatus.LOST } });
 
     const res = await request(app).get(`${STATS_URL}?days=30`).set("Cookie", adminCookie);
 

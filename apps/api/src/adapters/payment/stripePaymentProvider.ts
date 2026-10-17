@@ -1,5 +1,5 @@
 import Stripe from "stripe";
-import { Currency, PaymentStatus } from "@gira/shared";
+import { Currency, DisputeStatus, PaymentStatus } from "@gira/shared";
 import type { StripeConfig } from "../../config/env.js";
 import { AppError } from "../../utils/AppError.js";
 import { logger } from "../../config/logger.js";
@@ -32,7 +32,12 @@ const EVENT_MAP: Partial<Record<string, ProviderEventType>> = {
   "payment_intent.payment_failed": ProviderEventType.PAYMENT_FAILED,
   "payment_intent.canceled": ProviderEventType.PAYMENT_CANCELLED,
   "charge.refunded": ProviderEventType.PAYMENT_REFUNDED,
-  "charge.dispute.created": ProviderEventType.DISPUTE_OPENED,
+};
+
+const DISPUTE_CLOSED_MAP: Partial<Record<string, DisputeStatus>> = {
+  won: DisputeStatus.WON,
+  lost: DisputeStatus.LOST,
+  warning_closed: DisputeStatus.WITHDRAWN,
 };
 
 const toPaymentView = (intent: Stripe.PaymentIntent): PaymentView => ({
@@ -59,6 +64,8 @@ interface EventObjectRef {
    */
   metadata?: Record<string, string>;
   amount?: number;
+  /** Charge events: cumulative refunded amount, minor units. */
+  amount_refunded?: number;
   status?: string;
   /** Decline reason on a PaymentIntent event. */
   last_payment_error?: { message?: string } | null;
@@ -69,7 +76,13 @@ interface EventObjectRef {
 /** Pulls the payment intent id and our own orderId (from metadata, if present) out of any event shape. */
 const extractRefs = (
   event: Stripe.Event,
-): { paymentId?: string; orderId?: string; amount?: number; reason?: string } => {
+): {
+  paymentId?: string;
+  orderId?: string;
+  amount?: number;
+  amountRefunded?: number;
+  reason?: string;
+} => {
   const obj = event.data.object as unknown as EventObjectRef;
   const paymentIntentRef = obj.payment_intent;
   const paymentId =
@@ -83,6 +96,7 @@ const extractRefs = (
     ...(paymentId ? { paymentId } : {}),
     ...(orderId ? { orderId } : {}),
     ...(obj.amount !== undefined ? { amount: obj.amount } : {}),
+    ...(obj.amount_refunded !== undefined ? { amountRefunded: obj.amount_refunded } : {}),
     ...(reason ? { reason } : {}),
   };
 };
@@ -159,13 +173,33 @@ const createStripePaymentProvider = (config: StripeConfig): PaymentProvider => {
     }
 
     // charge.dispute.closed carries the outcome in the payload, not the type.
+    // Stripe's vocabulary stops here: `warning_closed` (an inquiry closed without
+    // a chargeback) is "withdrawn", NOT a loss. Anything unrecognised is ignored
+    // rather than guessed — guessing "lost" is how a refund used to be invented.
     if (event.type === "charge.dispute.closed") {
       const dispute = event.data.object as unknown as EventObjectRef;
-      const type =
-        dispute.status === "won"
-          ? ProviderEventType.DISPUTE_CLOSED_WON
-          : ProviderEventType.DISPUTE_CLOSED_LOST;
-      return { id: event.id, type, ...extractRefs(event), raw: event };
+      const closedStatus = DISPUTE_CLOSED_MAP[dispute.status ?? ""];
+      if (!closedStatus) {
+        logger.warn({ eventId: event.id, status: dispute.status }, "Estado de disputa desconocido");
+        return { id: event.id, type: ProviderEventType.IGNORED, ...extractRefs(event), raw: event };
+      }
+      return {
+        id: event.id,
+        type: ProviderEventType.DISPUTE_CLOSED,
+        disputeStatus: closedStatus,
+        ...extractRefs(event),
+        raw: event,
+      };
+    }
+
+    if (event.type === "charge.dispute.created") {
+      return {
+        id: event.id,
+        type: ProviderEventType.DISPUTE_OPENED,
+        disputeStatus: DisputeStatus.OPEN,
+        ...extractRefs(event),
+        raw: event,
+      };
     }
 
     const type = EVENT_MAP[event.type] ?? ProviderEventType.IGNORED;

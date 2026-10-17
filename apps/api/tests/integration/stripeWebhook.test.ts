@@ -1,6 +1,13 @@
 import { describe, it, expect, vi } from "vitest";
 import request from "supertest";
-import { Currency, OrderStatus, PaymentStatus } from "@gira/shared";
+import {
+  Currency,
+  DisputeStatus,
+  NotificationType,
+  OrderStatus,
+  PaymentStatus,
+  ReservationStatus,
+} from "@gira/shared";
 import { loginAsAdmin, ORIGIN } from "../helpers/auth.js";
 
 const { mockCreate, mockRetrieve, mockRefundCreate } = vi.hoisted(() => ({
@@ -60,6 +67,9 @@ const { createOrder } = await import("../../src/services/orderService.js");
 const { Order } = await import("../../src/models/Order.js");
 const { Variant } = await import("../../src/models/Variant.js");
 const { WebhookEvent } = await import("../../src/models/WebhookEvent.js");
+const { StockReservation } = await import("../../src/models/StockReservation.js");
+const { Notification } = await import("../../src/models/Notification.js");
+const { applyOrderTransition } = await import("../../src/services/orderTransitionService.js");
 const RealStripe = (await import("stripe")).default;
 
 const app = buildApp();
@@ -319,98 +329,301 @@ describe("Stripe webhook · payment_intent.payment_failed / .canceled", () => {
   });
 });
 
+let eventCounter = 0;
+const nextEventId = (prefix: string): string => `evt_${prefix}_${(eventCounter += 1)}`;
+const send = (payload: string) => postWebhook(payload, sign(payload));
+
+/** A real order taken to `paid` through the webhook (reservation committed, stock decremented). */
+const seedPaidOrder = async (suffix: string, qty = 2, onHand = 10) => {
+  const adminCookie = await loginAsAdmin(app);
+  const seeded = await seedOrder(adminCookie, suffix, qty, onHand);
+  const id = nextEventId("paid");
+  await send(succeededPayload(id, seeded.order));
+  return { ...seeded, order: (await Order.findById(seeded.order._id))! };
+};
+
+const refundPayload = (
+  order: { total: number; payment: { intentId?: string } },
+  amountRefunded?: number,
+): string =>
+  JSON.stringify({
+    id: nextEventId("ref"),
+    type: "charge.refunded",
+    data: {
+      object: {
+        id: "ch_1",
+        payment_intent: order.payment.intentId,
+        amount: order.total,
+        ...(amountRefunded !== undefined ? { amount_refunded: amountRefunded } : {}),
+      },
+    },
+  });
+
+const disputePayload = (
+  type: "charge.dispute.created" | "charge.dispute.closed",
+  order: { payment: { intentId?: string } },
+  status?: string,
+): string =>
+  JSON.stringify({
+    id: nextEventId("dp"),
+    type,
+    data: {
+      object: { id: "dp_1", payment_intent: order.payment.intentId, ...(status ? { status } : {}) },
+    },
+  });
+
+const move = (orderId: unknown, from: OrderStatus, to: OrderStatus) =>
+  applyOrderTransition({
+    orderId: orderId as never,
+    from,
+    to,
+    actor: { type: "system" },
+  });
+
+const onHandOf = async (variantId: string) => (await Variant.findById(variantId).lean())?.onHand;
+
 describe("Stripe webhook · charge.refunded", () => {
-  it("sobre orden paid: repone stock", async () => {
-    const adminCookie = await loginAsAdmin(app);
-    const { order, variantId } = await seedOrder(adminCookie, "R1", 2, 10);
-    await postWebhook(succeededPayload("evt_r1a", order), sign(succeededPayload("evt_r1a", order)));
+  it("reembolso TOTAL de una orden paid: queda refunded y repone el stock descontado", async () => {
+    const { order, variantId } = await seedPaidOrder("R1", 2, 10);
+    expect(await onHandOf(variantId)).toBe(8);
 
-    const payload = JSON.stringify({
-      id: "evt_r1b",
-      type: "charge.refunded",
-      data: { object: { id: "ch_1", payment_intent: order.payment.intentId } },
-    });
-    const res = await postWebhook(payload, sign(payload));
+    const res = await send(refundPayload(order, order.total));
     expect(res.status).toBe(200);
 
     const updated = await Order.findById(order._id).lean();
     expect(updated?.status).toBe(OrderStatus.REFUNDED);
-
-    const variant = await Variant.findById(variantId).lean();
-    expect(variant?.onHand).toBe(10); // fully restored
+    expect(updated?.payment.status).toBe(PaymentStatus.REFUNDED);
+    expect(updated?.payment.refundedAmount).toBe(order.total);
+    expect(await onHandOf(variantId)).toBe(10);
   });
 
-  it("sobre orden shipped: NO repone stock", async () => {
-    const adminCookie = await loginAsAdmin(app);
-    const { order, variantId } = await seedOrder(adminCookie, "R2", 2, 10);
-    await postWebhook(succeededPayload("evt_r2a", order), sign(succeededPayload("evt_r2a", order)));
+  it("reembolso PARCIAL: guarda el monto, no cambia el estado ni repone stock", async () => {
+    const { order, variantId } = await seedPaidOrder("R2", 2, 10);
 
-    // Admin fulfillment moves the order past `paid` before the refund arrives.
-    const doc = await Order.findById(order._id);
-    doc!.status = OrderStatus.PROCESSING;
-    doc!.statusHistory.push({ status: OrderStatus.PROCESSING, at: new Date() });
-    await doc!.save();
-    doc!.status = OrderStatus.SHIPPED;
-    doc!.statusHistory.push({ status: OrderStatus.SHIPPED, at: new Date() });
-    await doc!.save();
-
-    const onHandBeforeRefund = (await Variant.findById(variantId).lean())?.onHand;
-
-    const payload = JSON.stringify({
-      id: "evt_r2b",
-      type: "charge.refunded",
-      data: { object: { id: "ch_2", payment_intent: order.payment.intentId } },
-    });
-    const res = await postWebhook(payload, sign(payload));
-    expect(res.status).toBe(200);
-
-    const updated = await Order.findById(order._id).lean();
-    expect(updated?.status).toBe(OrderStatus.REFUNDED);
-
-    const variant = await Variant.findById(variantId).lean();
-    expect(variant?.onHand).toBe(onHandBeforeRefund);
-  });
-});
-
-describe("Stripe webhook · disputas", () => {
-  it("charge.dispute.created deja la orden en disputed", async () => {
-    const adminCookie = await loginAsAdmin(app);
-    const { order } = await seedOrder(adminCookie, "D1", 1, 10);
-    await postWebhook(succeededPayload("evt_d1a", order), sign(succeededPayload("evt_d1a", order)));
-
-    const payload = JSON.stringify({
-      id: "evt_d1b",
-      type: "charge.dispute.created",
-      data: { object: { id: "dp_1", payment_intent: order.payment.intentId } },
-    });
-    const res = await postWebhook(payload, sign(payload));
-    expect(res.status).toBe(200);
-
-    const updated = await Order.findById(order._id).lean();
-    expect(updated?.status).toBe(OrderStatus.DISPUTED);
-  });
-
-  it("charge.dispute.closed ganada regresa la orden a paid", async () => {
-    const adminCookie = await loginAsAdmin(app);
-    const { order } = await seedOrder(adminCookie, "D2", 1, 10);
-    await postWebhook(succeededPayload("evt_d2a", order), sign(succeededPayload("evt_d2a", order)));
-    const openPayload = JSON.stringify({
-      id: "evt_d2b",
-      type: "charge.dispute.created",
-      data: { object: { id: "dp_2", payment_intent: order.payment.intentId } },
-    });
-    await postWebhook(openPayload, sign(openPayload));
-
-    const closePayload = JSON.stringify({
-      id: "evt_d2c",
-      type: "charge.dispute.closed",
-      data: { object: { id: "dp_2", status: "won", payment_intent: order.payment.intentId } },
-    });
-    const res = await postWebhook(closePayload, sign(closePayload));
+    const res = await send(refundPayload(order, Math.floor(order.total / 4)));
     expect(res.status).toBe(200);
 
     const updated = await Order.findById(order._id).lean();
     expect(updated?.status).toBe(OrderStatus.PAID);
+    expect(updated?.payment.status).toBe(PaymentStatus.SUCCEEDED);
+    expect(updated?.payment.refundedAmount).toBe(Math.floor(order.total / 4));
+    expect(await onHandOf(variantId)).toBe(8);
+  });
+
+  it("parcial y luego total: repone una sola vez, y reentregar el total no repone de nuevo", async () => {
+    const { order, variantId } = await seedPaidOrder("R3", 2, 10);
+
+    await send(refundPayload(order, Math.floor(order.total / 2)));
+    await send(refundPayload(order, order.total));
+    expect(await onHandOf(variantId)).toBe(10);
+
+    // A different event id for the same cumulative amount (Stripe re-sending it).
+    await send(refundPayload(order, order.total));
+    expect(await onHandOf(variantId)).toBe(10);
+
+    // An out-of-order, smaller cumulative amount never rewinds the record.
+    await send(refundPayload(order, Math.floor(order.total / 2)));
+    const updated = await Order.findById(order._id).lean();
+    expect(updated?.status).toBe(OrderStatus.REFUNDED);
+    expect(updated?.payment.refundedAmount).toBe(order.total);
+  });
+
+  it("total sobre una orden que ya salió del taller (shipped): NO repone stock", async () => {
+    const { order, variantId } = await seedPaidOrder("R4", 2, 10);
+    await move(order._id, OrderStatus.PAID, OrderStatus.PROCESSING);
+    await move(order._id, OrderStatus.PROCESSING, OrderStatus.SHIPPED);
+
+    await send(refundPayload(order, order.total));
+
+    const updated = await Order.findById(order._id).lean();
+    expect(updated?.status).toBe(OrderStatus.REFUNDED);
+    expect(updated?.fulfillmentStartedAt).toBeInstanceOf(Date);
+    expect(await onHandOf(variantId)).toBe(8);
+  });
+
+  it("total con la reserva ya liberada (stock nunca descontado): NO repone y avisa al equipo", async () => {
+    const { order, variantId } = await seedPaidOrder("R5", 2, 10);
+    // Simulate a paid order whose hold had been released before the commit: units
+    // are back on sale, the order never recorded a commit.
+    await Order.updateOne({ _id: order._id }, { $unset: { stockCommittedAt: 1 } });
+    await StockReservation.updateOne(
+      { order: order._id },
+      { $set: { status: ReservationStatus.RELEASED } },
+    );
+    const onHandBefore = await onHandOf(variantId);
+
+    await send(refundPayload(order, order.total));
+
+    expect((await Order.findById(order._id).lean())?.status).toBe(OrderStatus.REFUNDED);
+    expect(await onHandOf(variantId)).toBe(onHandBefore);
+    expect(
+      await Notification.countDocuments({
+        type: NotificationType.TEAM_PAYMENT_NEEDS_REVIEW,
+        "payload.reason": "refund_without_committed_stock",
+        "payload.publicId": order.publicId,
+      }),
+    ).toBe(1);
+  });
+
+  it("total con la reserva todavía ACTIVE (commit pendiente): libera el apartado y no repone", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { order, variantId } = await seedOrder(adminCookie, "R6", 2, 10);
+    // paid in the books, but commitReservation never ran (it threw / is pending retry)
+    await move(order._id, OrderStatus.PENDING_PAYMENT, OrderStatus.PAID);
+
+    await send(refundPayload(order, order.total));
+
+    expect((await Order.findById(order._id).lean())?.status).toBe(OrderStatus.REFUNDED);
+    const variant = await Variant.findById(variantId).lean();
+    expect(variant?.reserved).toBe(0);
+    expect(variant?.onHand).toBe(10);
+    expect((await StockReservation.findOne({ order: order._id }).lean())?.status).toBe(
+      ReservationStatus.RELEASED,
+    );
+  });
+
+  it("total con la reserva ya purgada pero stockCommittedAt presente: repone con las líneas de la orden", async () => {
+    const { order, variantId } = await seedPaidOrder("R7", 2, 10);
+    await StockReservation.deleteOne({ order: order._id }); // what the 30-day TTL does
+
+    await send(refundPayload(order, order.total));
+
+    expect(await onHandOf(variantId)).toBe(10);
+  });
+
+  it("total sobre una orden expirada (pago tardío devuelto): solo marca el pago, la orden sigue expired", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { order, variantId } = await seedOrder(adminCookie, "R8", 2, 10);
+    await move(order._id, OrderStatus.PENDING_PAYMENT, OrderStatus.EXPIRED);
+    await Order.updateOne({ _id: order._id }, { $set: { "payment.status": PaymentStatus.SUCCEEDED } });
+
+    const res = await send(refundPayload(order, order.total));
+    expect(res.status).toBe(200);
+
+    const updated = await Order.findById(order._id).lean();
+    expect(updated?.status).toBe(OrderStatus.EXPIRED);
+    expect(updated?.payment.status).toBe(PaymentStatus.REFUNDED);
+    expect(updated?.payment.refundedAmount).toBe(order.total);
+    expect((await Variant.findById(variantId).lean())?.onHand).toBe(10);
+  });
+
+  it("reembolso total que llega ANTES que el pago (orden aún pending_payment): falla para reintentarse, no se pierde", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { order, variantId } = await seedOrder(adminCookie, "R10", 2, 10);
+    const refund = refundPayload(order, order.total);
+
+    const early = await send(refund);
+    expect(early.status).toBeGreaterThanOrEqual(500);
+    expect((await Order.findById(order._id).lean())?.status).toBe(OrderStatus.PENDING_PAYMENT);
+
+    // The payment event catches up, then Stripe redelivers the SAME refund event.
+    await send(succeededPayload(nextEventId("late"), order));
+    const retry = await send(refund);
+    expect(retry.status).toBe(200);
+
+    expect((await Order.findById(order._id).lean())?.status).toBe(OrderStatus.REFUNDED);
+    expect(await onHandOf(variantId)).toBe(10);
+  });
+
+  it("un charge.refunded sin amount_refunded es terminal (ignored), no reembolsa nada", async () => {
+    const { order } = await seedPaidOrder("R9", 2, 10);
+
+    const payload = refundPayload(order);
+    const res = await send(payload);
+    expect(res.status).toBe(200);
+
+    expect((await Order.findById(order._id).lean())?.status).toBe(OrderStatus.PAID);
+    const event = await WebhookEvent.findOne({ eventId: JSON.parse(payload).id }).lean();
+    expect(event?.status).toBe("ignored");
+  });
+});
+
+describe("Stripe webhook · disputas (campos de la orden, no un estado)", () => {
+  const lostAlerts = (orderId: unknown) =>
+    Notification.countDocuments({ order: orderId, type: NotificationType.TEAM_DISPUTE_LOST });
+
+  it("charge.dispute.created marca disputeStatus open sin tocar el estado de la orden", async () => {
+    const { order } = await seedPaidOrder("D1", 1, 10);
+
+    const res = await send(disputePayload("charge.dispute.created", order));
+    expect(res.status).toBe(200);
+
+    const updated = await Order.findById(order._id).lean();
+    expect(updated?.status).toBe(OrderStatus.PAID);
+    expect(updated?.disputeStatus).toBe(DisputeStatus.OPEN);
+    expect(updated?.disputedAt).toBeInstanceOf(Date);
+  });
+
+  it("disputa ganada: won, la orden no se mueve y no hay alerta", async () => {
+    const { order } = await seedPaidOrder("D2", 1, 10);
+    await send(disputePayload("charge.dispute.created", order));
+
+    await send(disputePayload("charge.dispute.closed", order, "won"));
+
+    const updated = await Order.findById(order._id).lean();
+    expect(updated?.status).toBe(OrderStatus.PAID);
+    expect(updated?.disputeStatus).toBe(DisputeStatus.WON);
+    expect(await lostAlerts(order._id)).toBe(0);
+  });
+
+  it("disputa PERDIDA no es un reembolso: ni estado, ni pago, ni stock; solo alerta TEAM (una vez)", async () => {
+    const { order, variantId } = await seedPaidOrder("D3", 2, 10);
+    await send(disputePayload("charge.dispute.created", order));
+
+    await send(disputePayload("charge.dispute.closed", order, "lost"));
+    // Same outcome re-sent under a new event id must not alert twice.
+    await send(disputePayload("charge.dispute.closed", order, "lost"));
+
+    const updated = await Order.findById(order._id).lean();
+    expect(updated?.status).toBe(OrderStatus.PAID);
+    expect(updated?.payment.status).toBe(PaymentStatus.SUCCEEDED);
+    expect(updated?.payment.refundedAmount).toBeUndefined();
+    expect(updated?.disputeStatus).toBe(DisputeStatus.LOST);
+    expect(await onHandOf(variantId)).toBe(8);
+    expect(await lostAlerts(order._id)).toBe(1);
+  });
+
+  it("warning_closed es withdrawn, no una pérdida", async () => {
+    const { order } = await seedPaidOrder("D4", 1, 10);
+    await send(disputePayload("charge.dispute.created", order));
+
+    await send(disputePayload("charge.dispute.closed", order, "warning_closed"));
+
+    const updated = await Order.findById(order._id).lean();
+    expect(updated?.disputeStatus).toBe(DisputeStatus.WITHDRAWN);
+    expect(await lostAlerts(order._id)).toBe(0);
+  });
+
+  it("una disputa sobre una orden ya reembolsada se registra y no cambia el estado", async () => {
+    const { order } = await seedPaidOrder("D5", 1, 10);
+    await send(refundPayload(order, order.total));
+
+    await send(disputePayload("charge.dispute.created", order));
+
+    const updated = await Order.findById(order._id).lean();
+    expect(updated?.status).toBe(OrderStatus.REFUNDED);
+    expect(updated?.disputeStatus).toBe(DisputeStatus.OPEN);
+  });
+
+  it("closed llegando ANTES que created se registra igual, y un created tardío no lo reabre", async () => {
+    const { order } = await seedPaidOrder("D6", 1, 10);
+
+    await send(disputePayload("charge.dispute.closed", order, "lost"));
+    await send(disputePayload("charge.dispute.created", order));
+
+    const updated = await Order.findById(order._id).lean();
+    expect(updated?.disputeStatus).toBe(DisputeStatus.LOST);
+    expect(updated?.disputedAt).toBeInstanceOf(Date);
+    expect(await lostAlerts(order._id)).toBe(1);
+  });
+
+  it("un status de disputa desconocido no se interpreta: se ignora", async () => {
+    const { order } = await seedPaidOrder("D7", 1, 10);
+
+    const res = await send(disputePayload("charge.dispute.closed", order, "needs_response"));
+    expect(res.status).toBe(200);
+
+    expect((await Order.findById(order._id).lean())?.disputeStatus).toBeUndefined();
   });
 });
 

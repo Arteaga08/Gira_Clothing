@@ -1,5 +1,5 @@
 import type { Currency } from "../enums/money.js";
-import type { OrderStatus, PaymentStatus } from "../enums/orderStatus.js";
+import type { DisputeStatus, OrderStatus, PaymentStatus } from "../enums/orderStatus.js";
 
 interface OrderCustomer {
   email: string;
@@ -62,12 +62,17 @@ interface OrderPayment {
   intentId?: string;
   status: PaymentStatus;
   lastError?: string;
+  /** Cumulative amount returned by the provider, in minor units. */
+  refundedAmount?: number;
+  refundedAt?: Date;
 }
 
 interface AdminOrder extends PublicOrder {
   user?: string;
   statusHistory: StatusHistoryEntry[];
   payment: OrderPayment;
+  disputeStatus?: DisputeStatus;
+  disputedAt?: Date;
   updatedAt: Date;
 }
 

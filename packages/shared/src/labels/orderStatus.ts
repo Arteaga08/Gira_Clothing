@@ -1,4 +1,4 @@
-import { OrderStatus } from "../enums/orderStatus.js";
+import { DisputeStatus, OrderStatus } from "../enums/orderStatus.js";
 
 /**
  * Spanish labels for OrderStatus, single source shared between the API's
@@ -14,7 +14,14 @@ const ORDER_STATUS_LABELS: Readonly<Record<OrderStatus, string>> = Object.freeze
   [OrderStatus.CANCELLED]: "cancelada",
   [OrderStatus.EXPIRED]: "expirada",
   [OrderStatus.REFUNDED]: "reembolsada",
-  [OrderStatus.DISPUTED]: "en disputa",
 });
 
-export { ORDER_STATUS_LABELS };
+/** Spanish labels for DisputeStatus. Exhaustive Record: a new status breaks the typecheck. */
+const DISPUTE_STATUS_LABELS: Readonly<Record<DisputeStatus, string>> = Object.freeze({
+  [DisputeStatus.OPEN]: "abierta",
+  [DisputeStatus.WON]: "ganada",
+  [DisputeStatus.LOST]: "perdida",
+  [DisputeStatus.WITHDRAWN]: "retirada",
+});
+
+export { ORDER_STATUS_LABELS, DISPUTE_STATUS_LABELS };

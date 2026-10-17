@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { AuditAction, AuditModule, ReservationStatus } from "@gira/shared";
 import { Variant } from "../models/Variant.js";
+import { Order } from "../models/Order.js";
 import { StockReservation, PURGE_AFTER_DAYS, type ReservationLine } from "../models/StockReservation.js";
 import { AppError } from "../utils/AppError.js";
 import { recordAudit } from "./auditService.js";
@@ -112,6 +113,14 @@ const commitReservation = async (orderId: mongoose.Types.ObjectId): Promise<bool
           { session },
         );
       }
+      // Persisted on the order in the SAME transaction: the reservation is purged
+      // 30 days after it settles, and a late refund must still know whether the
+      // units really left stock.
+      await Order.updateOne(
+        { _id: orderId, stockCommittedAt: { $exists: false } },
+        { $set: { stockCommittedAt: new Date() } },
+        { session },
+      );
       applied = true;
     });
   } finally {

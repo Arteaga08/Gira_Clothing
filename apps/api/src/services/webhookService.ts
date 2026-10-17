@@ -134,16 +134,13 @@ const dispatchEffect = async (event: ProviderEvent, orderId: mongoose.Types.Obje
       await applyPaymentCancelled(orderId);
       break;
     case ProviderEventType.PAYMENT_REFUNDED:
-      await applyRefund(orderId);
+      await applyRefund(orderId, event.amountRefunded);
       break;
     case ProviderEventType.DISPUTE_OPENED:
       await applyDisputeOpened(orderId);
       break;
-    case ProviderEventType.DISPUTE_CLOSED_WON:
-      await applyDisputeClosed(orderId, true);
-      break;
-    case ProviderEventType.DISPUTE_CLOSED_LOST:
-      await applyDisputeClosed(orderId, false);
+    case ProviderEventType.DISPUTE_CLOSED:
+      await applyDisputeClosed(orderId, event.disputeStatus);
       break;
     default:
       break; // IGNORED

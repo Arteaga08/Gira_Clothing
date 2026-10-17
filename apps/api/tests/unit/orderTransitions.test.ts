@@ -33,8 +33,8 @@ describe("canTransition", () => {
       }
     }
   });
-  it("permite volver a paid cuando se gana una disputa", () => {
-    expect(canTransition(OrderStatus.DISPUTED, OrderStatus.PAID)).toBe(true);
+  it("ya no existe un estado `disputed`: la disputa vive en campos de la orden", () => {
+    expect(Object.values(OrderStatus)).not.toContain("disputed");
   });
   it("permite reembolsar una orden enviada sin pasar por delivered", () => {
     // A lost-in-transit shipment must be refundable without first marking it
@@ -55,11 +55,10 @@ describe("canTransition", () => {
 const S = OrderStatus;
 const EXPECTED: Record<OrderStatus, readonly OrderStatus[]> = {
   [S.PENDING_PAYMENT]: [S.PAID, S.CANCELLED, S.EXPIRED],
-  [S.PAID]: [S.PROCESSING, S.REFUNDED, S.DISPUTED],
-  [S.PROCESSING]: [S.SHIPPED, S.REFUNDED, S.DISPUTED],
-  [S.SHIPPED]: [S.DELIVERED, S.REFUNDED, S.DISPUTED],
-  [S.DELIVERED]: [S.REFUNDED, S.DISPUTED],
-  [S.DISPUTED]: [S.PAID, S.REFUNDED],
+  [S.PAID]: [S.PROCESSING, S.REFUNDED],
+  [S.PROCESSING]: [S.SHIPPED, S.REFUNDED],
+  [S.SHIPPED]: [S.DELIVERED, S.REFUNDED],
+  [S.DELIVERED]: [S.REFUNDED],
   [S.CANCELLED]: [],
   [S.EXPIRED]: [],
   [S.REFUNDED]: [],
@@ -129,8 +128,8 @@ describe("assertAdminTransition", () => {
       expect.objectContaining({ statusCode: 403 }),
     );
   });
-  it("prohíbe a la admin marcar reembolso o disputa a mano", () => {
-    for (const to of [OrderStatus.REFUNDED, OrderStatus.DISPUTED]) {
+  it("prohíbe a la admin marcar reembolso a mano", () => {
+    for (const to of [OrderStatus.REFUNDED]) {
       expect(() => assertAdminTransition(OrderStatus.PAID, to)).toThrow(
         expect.objectContaining({ statusCode: 403 }),
       );

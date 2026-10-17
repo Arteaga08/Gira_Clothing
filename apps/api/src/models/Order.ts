@@ -1,5 +1,5 @@
 import { Schema, model, type HydratedDocument, type Model, type Types } from "mongoose";
-import { Currency, PriceRounding, OrderStatus, PaymentStatus } from "@gira/shared";
+import { Currency, DisputeStatus, PriceRounding, OrderStatus, PaymentStatus } from "@gira/shared";
 import { imageSchema, type ImageAttrs } from "./schemas/image.js";
 
 /**
@@ -54,6 +54,9 @@ interface OrderPayment {
   intentId?: string;
   status: PaymentStatus;
   lastError?: string;
+  /** Cumulative amount the provider returned, minor units. Overwritten (never summed) from the provider. */
+  refundedAmount?: number;
+  refundedAt?: Date;
 }
 
 interface StatusHistoryEntry {
@@ -81,6 +84,24 @@ interface OrderAttrs {
   payment: OrderPayment;
   idempotencyKey: string;
   paidAt?: Date;
+  /**
+   * Chargeback lifecycle. Lives on the order, NOT in `status`: a dispute does
+   * not move the sale through fulfillment, and a lost one is not a refund.
+   */
+  disputeStatus?: DisputeStatus;
+  disputedAt?: Date;
+  /**
+   * Set once when the stock reservation is committed. Persisted because the
+   * reservation itself is purged 30 days after it settles, and a late refund
+   * must still know whether units really left stock.
+   */
+  stockCommittedAt?: Date;
+  /**
+   * Set once, by applyOrderTransition, the first time the order enters
+   * processing/shipped/delivered. statusHistory is capped, so it cannot answer
+   * "did this order ever leave the warehouse?" reliably.
+   */
+  fulfillmentStartedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -132,6 +153,8 @@ const orderPaymentSchema = new Schema<OrderPayment>(
     intentId: { type: String },
     status: { type: String, enum: Object.values(PaymentStatus), required: true },
     lastError: { type: String },
+    refundedAmount: { type: Number, min: 0 },
+    refundedAt: { type: Date },
   },
   { _id: false },
 );
@@ -171,6 +194,10 @@ const orderSchema = new Schema<OrderAttrs, OrderModel>(
     payment: { type: orderPaymentSchema, required: true },
     idempotencyKey: { type: String, required: true },
     paidAt: { type: Date },
+    disputeStatus: { type: String, enum: Object.values(DisputeStatus) },
+    disputedAt: { type: Date },
+    stockCommittedAt: { type: Date },
+    fulfillmentStartedAt: { type: Date },
   },
   { timestamps: true },
 );
@@ -191,6 +218,12 @@ orderSchema.index({ "customer.email": 1, createdAt: -1 });
 orderSchema.index(
   { "payment.intentId": 1 },
   { unique: true, partialFilterExpression: { "payment.intentId": { $type: "string" } } },
+);
+// Backs the "disputas abiertas" alert count. Partial: almost every order never
+// has a dispute, so the index stays tiny.
+orderSchema.index(
+  { disputeStatus: 1 },
+  { partialFilterExpression: { disputeStatus: { $type: "string" } } },
 );
 // Timeseries aggregation scans the whole range by createdAt regardless of status.
 orderSchema.index({ createdAt: -1 });

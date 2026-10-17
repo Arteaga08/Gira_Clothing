@@ -58,6 +58,13 @@ enum AuditAction {
   PAYMENT_CANCELLED = "payment_cancelled",
   PAYMENT_REFUNDED = "payment_refunded",
   PAYMENT_DISPUTED = "payment_disputed",
+  PAYMENT_DISPUTE_CLOSED = "payment_dispute_closed",
+  /** The provider returned part of the charge; the order keeps its status. */
+  PAYMENT_PARTIALLY_REFUNDED = "payment_partially_refunded",
+  /** Committing the stock reservation threw after the order was already paid. */
+  STOCK_COMMIT_FAILED = "stock_commit_failed",
+  /** Full refund of an order whose units were never taken out of stock. */
+  REFUND_WITHOUT_RESTOCK = "refund_without_restock",
   /** Money landed on an order that had already expired or been cancelled. */
   PAYMENT_AFTER_EXPIRY = "payment_after_expiry",
   /** An order went to paid but its hold was already gone: stock never left. */
