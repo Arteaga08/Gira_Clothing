@@ -1,7 +1,7 @@
 import { NotificationChannelKind, NotificationType } from "@gira/shared";
 import { getMailer } from "../adapters/mailer/index.js";
 import { getNotificationChannel } from "../adapters/notification/index.js";
-import { claimNextBatch, markSent, markFailed } from "../services/notificationService.js";
+import { claimNextBatch, markSent, markSkipped, markFailed } from "../services/notificationService.js";
 import {
   renderOrderConfirmation,
   renderOrderPreparing,
@@ -72,27 +72,35 @@ const renderTeam = (doc: NotificationDocument): TeamMessage => {
   }
 };
 
-const deliver = async (doc: NotificationDocument): Promise<void> => {
+/** What happened to a claimed message: delivered, or skipped because its channel is unconfigured. */
+const deliver = async (doc: NotificationDocument): Promise<"sent" | "skipped"> => {
   if (doc.channel === NotificationChannelKind.EMAIL) {
     const mail = renderEmail(doc);
     const { providerId } = await getMailer().send({ to: doc.to, ...mail });
     await markSent(doc._id, providerId);
-    return;
+    return "sent";
   }
 
-  await getNotificationChannel().notify(renderTeam(doc));
+  const { delivered } = await getNotificationChannel().notify(renderTeam(doc));
+  if (!delivered) {
+    await markSkipped(doc._id);
+    return "skipped";
+  }
   await markSent(doc._id, "team");
+  return "sent";
 };
 
-const dispatchNotifications = async (): Promise<{ sent: number; failed: number }> => {
+const dispatchNotifications = async (): Promise<{ sent: number; failed: number; skipped: number }> => {
   const claimed = await claimNextBatch(BATCH);
   let sent = 0;
   let failed = 0;
+  let skipped = 0;
 
   for (const doc of claimed) {
     try {
-      await deliver(doc);
-      sent += 1;
+      const outcome = await deliver(doc);
+      if (outcome === "sent") sent += 1;
+      else skipped += 1;
     } catch (err) {
       // One bad message must not stop the sweep.
       failed += 1;
@@ -102,7 +110,7 @@ const dispatchNotifications = async (): Promise<{ sent: number; failed: number }
     }
   }
 
-  return { sent, failed };
+  return { sent, failed, skipped };
 };
 
 export { dispatchNotifications };

@@ -10,8 +10,13 @@ interface TeamMessage {
   lines: string[];
 }
 
-interface NotificationChannel {
-  notify(message: TeamMessage): Promise<void>;
+/** `delivered: false` = nothing left the building (channel not configured); never count it as sent. */
+interface NotifyResult {
+  delivered: boolean;
 }
 
-export type { TeamMessage, NotificationChannel };
+interface NotificationChannel {
+  notify(message: TeamMessage): Promise<NotifyResult>;
+}
+
+export type { TeamMessage, NotifyResult, NotificationChannel };

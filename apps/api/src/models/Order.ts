@@ -102,6 +102,14 @@ interface OrderAttrs {
    * "did this order ever leave the warehouse?" reliably.
    */
   fulfillmentStartedAt?: Date;
+  /** Internal: the order was built from the customer's cart, which is emptied once it is PAID. */
+  fromCart?: boolean;
+  /**
+   * Set once every effect of a payment (stock commit, notifications, cart) has
+   * run. A paid order without it is one whose effects died halfway; the
+   * reconciliation job picks those up.
+   */
+  paidEffectsAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -198,6 +206,8 @@ const orderSchema = new Schema<OrderAttrs, OrderModel>(
     disputedAt: { type: Date },
     stockCommittedAt: { type: Date },
     fulfillmentStartedAt: { type: Date },
+    fromCart: { type: Boolean },
+    paidEffectsAt: { type: Date },
   },
   { timestamps: true },
 );

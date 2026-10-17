@@ -658,3 +658,199 @@ describe("escrituras de payment que no pisan al webhook", () => {
     expect(after?.payment.intentId).toBe("pi_fast_1");
   });
 });
+
+/**
+ * Una orden pagada cuyos efectos (commit, correos, carrito) fallaron a medias no
+ * la visita nadie más: ya no es `pending_payment`, así que el primer barrido la
+ * ignora. El segundo la recoge por `paidEffectsAt` ausente.
+ */
+describe("reconcilePayments · efectos post-pago pendientes", () => {
+  const ageOrder = async (orderId: mongoose.Types.ObjectId, minutesAgo: number): Promise<void> => {
+    await Order.collection.updateOne(
+      { _id: orderId },
+      { $set: { createdAt: new Date(Date.now() - minutesAgo * 60 * 1000) } },
+    );
+  };
+  const agePaidAt = async (orderId: mongoose.Types.ObjectId, minutesAgo: number): Promise<void> => {
+    await Order.collection.updateOne(
+      { _id: orderId },
+      { $set: { paidAt: new Date(Date.now() - minutesAgo * 60 * 1000) } },
+    );
+  };
+
+  it("un encolado estricto fallido deja la orden paid sin paidEffectsAt; la siguiente corrida lo completa una sola vez", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { order } = await seedOrder(adminCookie, "RE1", 1, 10);
+    await ageOrder(order._id, 30);
+    mockGetPayment.mockResolvedValue({
+      providerId: order.payment.intentId,
+      status: PaymentStatus.SUCCEEDED,
+      amount: 1,
+      currency: Currency.MXN,
+    });
+    const spy = vi.spyOn(Notification, "create").mockRejectedValueOnce(new Error("db down") as never);
+
+    await reconcilePayments();
+    spy.mockRestore();
+
+    const stuck = await Order.findById(order._id).lean();
+    expect(stuck?.status).toBe(OrderStatus.PAID);
+    expect(stuck?.paidEffectsAt).toBeUndefined();
+
+    await agePaidAt(order._id, 20);
+    await reconcilePayments();
+
+    const healed = await Order.findById(order._id).lean();
+    expect(healed?.paidEffectsAt).toBeInstanceOf(Date);
+    const confirmations = await Notification.countDocuments({
+      order: order._id,
+      type: "order_confirmation",
+    });
+    expect(confirmations).toBe(1);
+  });
+
+  it("una orden pagada hace más de 3 días sin flag (anterior a M8.2) no se reprocesa", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { order } = await seedOrder(adminCookie, "RE2", 1, 10);
+    await applyPaymentSucceeded(order._id);
+    await Order.collection.updateOne(
+      { _id: order._id },
+      { $unset: { paidEffectsAt: "" }, $set: { paidAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000) } },
+    );
+
+    await reconcilePayments();
+
+    expect((await Order.findById(order._id).lean())?.paidEffectsAt).toBeUndefined();
+  });
+
+  it("una orden pagada hace menos del período de gracia no se reprocesa todavía", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { order } = await seedOrder(adminCookie, "RE3", 1, 10);
+    await applyPaymentSucceeded(order._id);
+    await Order.collection.updateOne({ _id: order._id }, { $unset: { paidEffectsAt: "" } });
+
+    await reconcilePayments();
+
+    expect((await Order.findById(order._id).lean())?.paidEffectsAt).toBeUndefined();
+  });
+});
+
+describe("carrito · se vacía al pagar, no al crear la orden", () => {
+  const seedCartOrder = async (adminCookie: string, suffix: string, useCart: boolean) => {
+    const { setCartLine, getCart } = await import("../../src/services/cartService.js");
+    const variantId = await seedVariant(adminCookie, suffix, 10);
+    const userId = new mongoose.Types.ObjectId();
+    await setCartLine(userId, variantId, 2);
+    const result = await createOrder(
+      {
+        ...(useCart ? { useCart: true } : { lines: [{ variantId, qty: 2 }] }),
+        currency: Currency.MXN,
+        customer: validCustomer,
+        shipping: validShipping,
+        idempotencyKey: uniqueKey(),
+      },
+      { userId },
+    );
+    const order = await Order.findOne({ publicId: result.order.publicId });
+    return { order: order!, userId, getCart };
+  };
+
+  it("al pagar una orden que salió del carrito, el carrito queda vacío y paidEffectsAt fijado", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { order, userId, getCart } = await seedCartOrder(adminCookie, "CT1", true);
+    expect((await getCart(userId)).lines).toHaveLength(1);
+
+    await applyPaymentSucceeded(order._id);
+
+    expect((await getCart(userId)).lines).toEqual([]);
+    expect((await Order.findById(order._id).lean())?.paidEffectsAt).toBeInstanceOf(Date);
+  });
+
+  it("al pagar una compra directa el carrito no se toca", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { order, userId, getCart } = await seedCartOrder(adminCookie, "CT2", false);
+
+    await applyPaymentSucceeded(order._id);
+
+    expect((await getCart(userId)).lines).toHaveLength(1);
+  });
+
+  it("reentregar el pago no vuelve a vaciar lo que el cliente agregó después", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { order, userId, getCart } = await seedCartOrder(adminCookie, "CT3", true);
+    await applyPaymentSucceeded(order._id);
+    const { setCartLine } = await import("../../src/services/cartService.js");
+    const other = await seedVariant(adminCookie, "CT3B", 10);
+    await setCartLine(userId, other, 1);
+
+    await applyPaymentSucceeded(order._id);
+
+    expect((await getCart(userId)).lines).toHaveLength(1);
+  });
+});
+
+describe("expireReservations · aftermath antes de liberar", () => {
+  it("si liberar la reserva lanza, el intent ya quedó cancelado y la siguiente pasada libera", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { order, variantId } = await seedOrder(adminCookie, "AF1", 2, 10);
+    await backdateReservation(order._id);
+    const spy = vi
+      .spyOn(StockReservation, "findOneAndUpdate")
+      .mockRejectedValueOnce(new Error("db blip") as never);
+
+    await expireReservations();
+    spy.mockRestore();
+
+    expect(mockCancel).toHaveBeenCalledWith(order.payment.intentId);
+    expect((await Order.findById(order._id).lean())?.status).toBe(OrderStatus.EXPIRED);
+    expect((await Variant.findById(variantId).lean())?.reserved).toBe(2);
+
+    const second = await expireReservations();
+
+    expect(second.released).toBe(1);
+    expect((await Variant.findById(variantId).lean())?.reserved).toBe(0);
+    expect(mockCancel).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("flagForReview · auditoría sin duplicados", () => {
+  it("repetir la misma alerta por orden deja una sola auditoría", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { order } = await seedOrder(adminCookie, "FR1", 1, 10);
+    const { flagForReview } = await import("../../src/services/paymentAlertService.js");
+    const { AuditAction } = await import("@gira/shared");
+
+    await flagForReview(order, "stock_commit_missed", AuditAction.STOCK_COMMIT_MISSED);
+    await flagForReview(order, "stock_commit_missed", AuditAction.STOCK_COMMIT_MISSED);
+
+    expect(
+      await AuditLog.countDocuments({ action: AuditAction.STOCK_COMMIT_MISSED, targetId: order.publicId }),
+    ).toBe(1);
+    expect(await Notification.countDocuments({ order: order._id })).toBe(1);
+  });
+
+  it("una razón distinta sobre la misma orden (slot ocupado) sí deja su propia auditoría", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { order } = await seedOrder(adminCookie, "FR2", 1, 10);
+    const { flagForReview } = await import("../../src/services/paymentAlertService.js");
+    const { AuditAction } = await import("@gira/shared");
+
+    await flagForReview(order, "stock_commit_failed", AuditAction.STOCK_COMMIT_FAILED);
+    await flagForReview(order, "payment_after_expiry", AuditAction.PAYMENT_AFTER_EXPIRY);
+
+    expect(await AuditLog.countDocuments({ action: AuditAction.PAYMENT_AFTER_EXPIRY, targetId: order.publicId })).toBe(1);
+  });
+
+  it("si el encolado no estricto falla, la auditoría se escribe de todos modos", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { order } = await seedOrder(adminCookie, "FR3", 1, 10);
+    const { flagForReview } = await import("../../src/services/paymentAlertService.js");
+    const { AuditAction } = await import("@gira/shared");
+    const spy = vi.spyOn(Notification, "create").mockRejectedValueOnce(new Error("db down") as never);
+
+    await flagForReview(order, "stock_commit_failed", AuditAction.STOCK_COMMIT_FAILED);
+    spy.mockRestore();
+
+    expect(await AuditLog.countDocuments({ action: AuditAction.STOCK_COMMIT_FAILED, targetId: order.publicId })).toBe(1);
+  });
+});

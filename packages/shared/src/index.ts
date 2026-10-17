@@ -35,6 +35,7 @@ import type {
   ImageAttrs,
   OrderLine,
   PublicOrder,
+  CustomerOrder,
   StatusHistoryEntry,
   OrderPayment,
   AdminOrder,
@@ -46,6 +47,7 @@ import type {
   Measurements,
   Product,
   Variant,
+  PublicVariant,
 } from "./types/catalog.js";
 import type { PublicUser, AdminUser } from "./types/user.js";
 import type {
@@ -96,6 +98,7 @@ export type {
   ImageAttrs,
   OrderLine,
   PublicOrder,
+  CustomerOrder,
   StatusHistoryEntry,
   OrderPayment,
   AdminOrder,
@@ -105,6 +108,7 @@ export type {
   Measurements,
   Product,
   Variant,
+  PublicVariant,
   PublicUser,
   AdminUser,
   ShipmentEvent,

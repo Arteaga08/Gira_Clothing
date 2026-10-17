@@ -58,4 +58,13 @@ interface Variant {
   isActive: boolean;
 }
 
-export type { PrintFamily, ProductCategory, Print, Measurements, Product, Variant };
+/** Storefront view of a variant: a signal, never the stock figures. */
+interface PublicVariant {
+  id: string;
+  sku: string;
+  images: ImageAttrs[];
+  priceOverride?: number;
+  isAvailable: boolean;
+}
+
+export type { PrintFamily, ProductCategory, Print, Measurements, Product, Variant, PublicVariant };

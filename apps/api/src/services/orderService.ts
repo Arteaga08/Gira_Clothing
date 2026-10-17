@@ -1,6 +1,6 @@
 import mongoose, { Types } from "mongoose";
 import { AuditAction, AuditModule, OrderStatus, PaymentStatus } from "@gira/shared";
-import type { ApiMeta, Currency } from "@gira/shared";
+import type { ApiMeta, Currency, CustomerOrder } from "@gira/shared";
 import {
   Order,
   type OrderDocument,
@@ -18,7 +18,6 @@ import { reserveStock, releaseReservation } from "./reservationService.js";
 import { getSettings } from "./settingsService.js";
 import { getPaymentProvider, type PaymentView } from "../adapters/payment/index.js";
 import { recordAudit } from "./auditService.js";
-import { clearCart } from "./cartService.js";
 import { parseListQuery, buildMeta, type ListQueryConfig, type RawListQuery } from "../utils/parseListQuery.js";
 import type { ImageAttrs } from "../models/schemas/image.js";
 
@@ -86,6 +85,7 @@ interface CreatedOrder {
 }
 
 interface OrderLean {
+  _id: Types.ObjectId;
   publicId: string;
   status: OrderStatus;
   customer: OrderCustomer;
@@ -101,9 +101,9 @@ interface OrderLean {
 }
 
 /**
- * DTO for anything sent OUTSIDE the admin panel (public order lookup, "my
- * orders"). Deliberately excludes idempotencyKey, payment.intentId, user, and
- * the Mongo _id — none of that is this endpoint's business to reveal.
+ * DTO for the public lookup by `publicId` (a capability URL) and the checkout
+ * response. Deliberately excludes idempotencyKey, payment.intentId, user, and
+ * the Mongo _id — whoever holds the publicId must not learn anything else.
  */
 const toPublicOrder = (doc: OrderLean): PublicOrder => ({
   publicId: doc.publicId,
@@ -125,6 +125,16 @@ const toPublicOrder = (doc: OrderLean): PublicOrder => ({
   total: doc.total,
   createdAt: doc.createdAt,
   ...(doc.paidAt ? { paidAt: doc.paidAt } : {}),
+});
+
+/**
+ * DTO for the OWNING customer ("my orders"): the public view plus the internal
+ * id, which the account screens need to open an order. Ownership is enforced in
+ * the query filter, so handing the id back to its owner reveals nothing.
+ */
+const toCustomerOrder = (doc: OrderLean): CustomerOrder => ({
+  id: String(doc._id),
+  ...toPublicOrder(doc),
 });
 
 const isDuplicateKeyError = (err: unknown): boolean =>
@@ -227,6 +237,7 @@ const createOrder = async (input: CreateOrderInput, ctx: OrderContext): Promise<
       statusHistory: [{ status: OrderStatus.PENDING_PAYMENT, at: new Date() }],
       payment: { provider: "stripe", status: PaymentStatus.REQUIRES_PAYMENT },
       idempotencyKey,
+      ...(input.useCart && ctx.userId ? { fromCart: true } : {}),
     });
   } catch (err) {
     await releaseReservation(orderId, "order_creation_failed");
@@ -282,8 +293,6 @@ const createOrder = async (input: CreateOrderInput, ctx: OrderContext): Promise<
     if (synced) order = synced;
   }
 
-  if (input.useCart && ctx.userId) await clearCart(ctx.userId);
-
   await recordAudit({
     actorId: ctx.userId,
     actorType: ctx.userId ? "user" : "system",
@@ -322,7 +331,7 @@ const getOrderByPublicId = async (publicId: string): Promise<PublicOrder> => {
 const listMyOrders = async (
   userId: Types.ObjectId,
   query: RawListQuery,
-): Promise<{ items: PublicOrder[]; meta: ApiMeta }> => {
+): Promise<{ items: CustomerOrder[]; meta: ApiMeta }> => {
   const { filter, sort, skip, limit, page } = parseListQuery(query, MY_ORDERS_LIST_CONFIG, {
     user: userId,
   });
@@ -330,7 +339,7 @@ const listMyOrders = async (
     Order.find(filter).sort(sort).skip(skip).limit(limit).lean(),
     Order.countDocuments(filter),
   ]);
-  return { items: docs.map(toPublicOrder), meta: buildMeta(total, { page, limit }) };
+  return { items: docs.map(toCustomerOrder), meta: buildMeta(total, { page, limit }) };
 };
 
 /**
@@ -338,11 +347,11 @@ const listMyOrders = async (
  * checked after the fact. An order that exists but belongs to someone else
  * returns 404, never 403: confirming existence would leak information.
  */
-const getMyOrder = async (userId: Types.ObjectId, id: string): Promise<PublicOrder> => {
+const getMyOrder = async (userId: Types.ObjectId, id: string): Promise<CustomerOrder> => {
   const doc = await Order.findOne({ _id: id, user: userId }).lean();
   if (!doc) throw new AppError("La orden no existe.", 404);
-  return toPublicOrder(doc);
+  return toCustomerOrder(doc);
 };
 
 export type { CreateOrderInput, OrderContext, CreatedOrder, PublicOrder, PublicOrderLine, OrderLean };
-export { createOrder, toPublicOrder, getOrderByPublicId, listMyOrders, getMyOrder };
+export { createOrder, toPublicOrder, toCustomerOrder, getOrderByPublicId, listMyOrders, getMyOrder };

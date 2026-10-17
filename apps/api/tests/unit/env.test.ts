@@ -188,7 +188,7 @@ describe("loadEnv", () => {
   });
 
   describe("loadEnv · Telegram", () => {
-    it("deja telegram en null cuando no hay credenciales, incluso en producción", () => {
+    const productionSource = (): Record<string, string | undefined> => {
       const source = validSource();
       source.NODE_ENV = "production";
       source.CLIENT_URL = "https://gira.mx";
@@ -199,8 +199,22 @@ describe("loadEnv", () => {
       source.STRIPE_WEBHOOK_SECRET = "whsec_x";
       source.RESEND_API_KEY = "re_test_x";
       source.MAIL_FROM = "hola@giraclothing.mx";
-      const env = loadEnv(source);
-      expect(env.telegram).toBeNull();
+      return source;
+    };
+
+    it("en producción exige TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID (fail-fast)", () => {
+      expect(() => loadEnv(productionSource())).toThrow(/TELEGRAM_BOT_TOKEN/);
+    });
+
+    it("en producción con Telegram completo arranca", () => {
+      const source = productionSource();
+      source.TELEGRAM_BOT_TOKEN = "123:abc";
+      source.TELEGRAM_CHAT_ID = "-100";
+      expect(loadEnv(source).telegram).toEqual({ botToken: "123:abc", chatId: "-100" });
+    });
+
+    it("fuera de producción deja telegram en null cuando no hay credenciales", () => {
+      expect(loadEnv(validSource()).telegram).toBeNull();
     });
 
     it("rechaza una configuración a medias", () => {

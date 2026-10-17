@@ -17,6 +17,7 @@ import { applyOrderTransition } from "./orderTransitionService.js";
 import { recordAudit } from "./auditService.js";
 import { enqueueNotification } from "./notificationService.js";
 import { flagForReview } from "./paymentAlertService.js";
+import { clearCart } from "./cartService.js";
 import { AppError } from "../utils/AppError.js";
 import { logger } from "../config/logger.js";
 
@@ -148,8 +149,10 @@ const fulfillmentStarted = (order: {
 
 /**
  * Everything that must follow a payment, derived from persisted state so a
- * retry after a crash finishes the job: commit the held units, then queue the
- * notifications. Each step is idempotent on its own.
+ * retry after a crash finishes the job: commit the held units, queue the
+ * notifications, empty the cart the order was built from. Each step is
+ * idempotent on its own, and `paidEffectsAt` is stamped only when all of them
+ * ran, so the reconciliation job can find an order that stopped halfway.
  */
 const runPaidEffects = async (order: OrderDocument): Promise<void> => {
   let committed: boolean;
@@ -180,6 +183,17 @@ const runPaidEffects = async (order: OrderDocument): Promise<void> => {
   }
 
   await queueOrderPaidNotifications(order);
+
+  // The cart is emptied when the order is PAID, not when it is created: an
+  // abandoned or failed checkout must not cost the customer their cart. Emptied
+  // fully (the order lists everything that was in it) and only once — the stamp
+  // below stops a redelivery from wiping what they added afterwards.
+  if (order.fromCart && order.user && !order.paidEffectsAt) await clearCart(order.user);
+
+  await Order.updateOne(
+    { _id: order._id, paidEffectsAt: { $exists: false } },
+    { $set: { paidEffectsAt: new Date() } },
+  );
 };
 
 const applyPaymentSucceeded = async (orderId: Types.ObjectId): Promise<void> => {
@@ -542,6 +556,7 @@ const applyDisputeClosed = async (
 };
 
 export {
+  PAID_AND_ALIVE,
   applyPaymentSucceeded,
   applyPaymentFailed,
   applyPaymentCancelled,

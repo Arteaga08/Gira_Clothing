@@ -216,7 +216,7 @@ describe("Catálogo público · filtro cruzado por print y por family", () => {
 });
 
 describe("Catálogo público · detalle de producto", () => {
-  it("devuelve variantes activas con available y sin onHand/reserved", async () => {
+  it("devuelve variantes activas con isAvailable y sin available/onHand/reserved", async () => {
     const cookie = await loginAsAdmin(app);
     const family = await createFamily(cookie, "Familia Detalle");
     const print = await createPrint(cookie, family.id, "Print Detalle", "SKU-DETALLE");
@@ -229,7 +229,8 @@ describe("Catálogo público · detalle de producto", () => {
     expect(res.status).toBe(200);
     expect(res.body.data.product.variants).toHaveLength(1);
     const publicVariant = res.body.data.product.variants[0];
-    expect(publicVariant.available).toBe(8);
+    expect(publicVariant.isAvailable).toBe(true);
+    expect(publicVariant).not.toHaveProperty("available");
     expect(publicVariant).not.toHaveProperty("onHand");
     expect(publicVariant).not.toHaveProperty("reserved");
   });

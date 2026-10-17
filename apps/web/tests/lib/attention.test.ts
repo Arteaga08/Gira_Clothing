@@ -14,6 +14,7 @@ const health = {
   sending: 0,
   failed: 0,
   sent: 0,
+  skipped: 0,
   stale: 0,
   oldestPendingAt: null,
   failedSample: [],

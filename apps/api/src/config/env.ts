@@ -67,7 +67,7 @@ interface Env {
   stripe: StripeConfig | null;
   /** null outside production when no provider is configured -> stub mailer. */
   mail: MailConfig | null;
-  /** null whenever credentials are absent — including production. Internal channel. */
+  /** null only outside production when credentials are absent -> stub channel. */
   telegram: TelegramConfig | null;
 }
 
@@ -213,17 +213,25 @@ const loadEnv = (source: NodeJS.ProcessEnv = process.env): Readonly<Env> => {
     }
   }
 
-  // Telegram is the INTERNAL channel: optional in every environment (spec:
-  // "stub si no hay credenciales"). An internal ping is never worth blocking boot.
+  // Telegram is the INTERNAL channel. Required in production (a deliberate step
+  // past the baseline standard): the team alerts are how money/stock mismatches
+  // reach a human, and a stub there would only ever log them. Outside production
+  // it stays optional and the stub records messages as skipped.
   let telegram: TelegramConfig | null = null;
-  const botToken = source.TELEGRAM_BOT_TOKEN?.trim();
-  const chatId = source.TELEGRAM_CHAT_ID?.trim();
-  if (botToken && chatId) {
-    telegram = { botToken, chatId };
-  } else if (botToken || chatId) {
-    errors.push(
-      "Configuración de Telegram incompleta: define TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID, o ninguna.",
-    );
+  if (nodeEnv === "production") {
+    const botToken = requireVar(source, "TELEGRAM_BOT_TOKEN", errors);
+    const chatId = requireVar(source, "TELEGRAM_CHAT_ID", errors);
+    if (botToken && chatId) telegram = { botToken, chatId };
+  } else {
+    const botToken = source.TELEGRAM_BOT_TOKEN?.trim();
+    const chatId = source.TELEGRAM_CHAT_ID?.trim();
+    if (botToken && chatId) {
+      telegram = { botToken, chatId };
+    } else if (botToken || chatId) {
+      errors.push(
+        "Configuración de Telegram incompleta: define TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID, o ninguna.",
+      );
+    }
   }
 
   if (errors.length > 0) {

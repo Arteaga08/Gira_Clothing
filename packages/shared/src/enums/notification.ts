@@ -40,6 +40,8 @@ enum NotificationStatus {
   SENT = "sent",
   /** Gave up after MAX_ATTEMPTS. Visible in the admin audit trail. */
   FAILED = "failed",
+  /** Channel not configured (stub, dev/test only): nothing was delivered, so it is not `sent`. */
+  SKIPPED = "skipped",
 }
 
 export { NotificationChannelKind, NotificationType, NotificationStatus };

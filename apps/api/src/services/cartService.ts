@@ -35,7 +35,7 @@ interface CartLineView {
   image?: ImageAttrs;
   qty: number;
   unitPriceMxn: number;
-  available: number;
+  /** Can the cart's quantity be served right now. The stock figure itself never leaves. */
   isAvailable: boolean;
 }
 
@@ -80,8 +80,7 @@ const buildCartView = async (lines: CartLine[]): Promise<CartView> => {
       ...(variant.images[0] ? { image: variant.images[0] } : {}),
       qty: line.qty,
       unitPriceMxn: variant.priceOverride ?? product.basePrice,
-      available,
-      isAvailable: available > 0,
+      isAvailable: available >= line.qty,
     });
   }
   return { lines: views };

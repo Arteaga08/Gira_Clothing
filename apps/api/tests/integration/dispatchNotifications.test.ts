@@ -42,7 +42,7 @@ describe("dispatchNotifications", () => {
 
     const result = await dispatchNotifications();
 
-    expect(result).toEqual({ sent: 2, failed: 0 });
+    expect(result).toEqual({ sent: 2, failed: 0, skipped: 0 });
     const docs = await Notification.find({ status: NotificationStatus.SENT });
     expect(docs).toHaveLength(2);
     for (const doc of docs) {
@@ -53,7 +53,7 @@ describe("dispatchNotifications", () => {
 
   it("despacha un aviso de equipo por el NotificationChannel, no por el mailer", async () => {
     const mailerSpy = vi.spyOn(getMailer(), "send");
-    const channelSpy = vi.spyOn(getNotificationChannel(), "notify").mockResolvedValue(undefined);
+    const channelSpy = vi.spyOn(getNotificationChannel(), "notify").mockResolvedValue({ delivered: true });
 
     await enqueueNotification({
       channel: NotificationChannelKind.TEAM,
@@ -64,7 +64,7 @@ describe("dispatchNotifications", () => {
 
     const result = await dispatchNotifications();
 
-    expect(result).toEqual({ sent: 1, failed: 0 });
+    expect(result).toEqual({ sent: 1, failed: 0, skipped: 0 });
     expect(channelSpy).toHaveBeenCalledOnce();
     expect(mailerSpy).not.toHaveBeenCalled();
   });
@@ -81,7 +81,7 @@ describe("dispatchNotifications", () => {
     });
 
     const first = await dispatchNotifications();
-    expect(first).toEqual({ sent: 0, failed: 1 });
+    expect(first).toEqual({ sent: 0, failed: 1, skipped: 0 });
 
     const doc = await Notification.findOne({});
     expect(doc?.status).toBe(NotificationStatus.PENDING);
@@ -91,7 +91,7 @@ describe("dispatchNotifications", () => {
 
     // Immediately re-running must not re-claim it: nextAttemptAt is in the future.
     const second = await dispatchNotifications();
-    expect(second).toEqual({ sent: 0, failed: 0 });
+    expect(second).toEqual({ sent: 0, failed: 0, skipped: 0 });
   });
 
   it("agota los intentos y deja el mensaje en failed", async () => {
@@ -108,7 +108,7 @@ describe("dispatchNotifications", () => {
 
     const result = await dispatchNotifications();
 
-    expect(result).toEqual({ sent: 0, failed: 1 });
+    expect(result).toEqual({ sent: 0, failed: 1, skipped: 0 });
     const doc = await Notification.findOne({});
     expect(doc?.status).toBe(NotificationStatus.FAILED);
   });
@@ -132,7 +132,7 @@ describe("dispatchNotifications", () => {
 
     const result = await dispatchNotifications();
 
-    expect(result).toEqual({ sent: 2, failed: 1 });
+    expect(result).toEqual({ sent: 2, failed: 1, skipped: 0 });
     expect(await Notification.countDocuments({ status: NotificationStatus.SENT })).toBe(2);
     expect(await Notification.countDocuments({ status: NotificationStatus.PENDING })).toBe(1);
   });
@@ -143,7 +143,7 @@ describe("dispatchNotifications", () => {
 
     const result = await dispatchNotifications();
 
-    expect(result).toEqual({ sent: 0, failed: 0 });
+    expect(result).toEqual({ sent: 0, failed: 0, skipped: 0 });
     expect(mailerSpy).not.toHaveBeenCalled();
     expect(channelSpy).not.toHaveBeenCalled();
   });
@@ -160,9 +160,30 @@ describe("dispatchNotifications", () => {
 
     const result = await dispatchNotifications();
 
-    expect(result).toEqual({ sent: 0, failed: 1 });
+    expect(result).toEqual({ sent: 0, failed: 1, skipped: 0 });
     const doc = await Notification.findOne({});
     expect(doc?.status).toBe(NotificationStatus.PENDING);
     expect(doc?.lastError).toBeTruthy();
+  });
+});
+
+describe("dispatchNotifications · canal sin configurar", () => {
+  it("un aviso de equipo con el stub queda skipped, no sent", async () => {
+    vi.spyOn(getNotificationChannel(), "notify").mockResolvedValue({ delivered: false });
+    await enqueueNotification({
+      channel: NotificationChannelKind.TEAM,
+      type: NotificationType.TEAM_ORDER_PAID,
+      to: "team",
+      order: orderId(),
+      payload: { publicId: "abc123", total: 1000, currency: "MXN", itemCount: 1 },
+    });
+
+    const result = await dispatchNotifications();
+
+    expect(result).toEqual({ sent: 0, failed: 0, skipped: 1 });
+    const doc = await Notification.findOne({});
+    expect(doc?.status).toBe(NotificationStatus.SKIPPED);
+    expect(doc?.providerId).toBeUndefined();
+    expect(doc?.purgeAt).toBeInstanceOf(Date);
   });
 });
