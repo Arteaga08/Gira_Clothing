@@ -25,6 +25,12 @@ enum NotificationType {
    * reconciliation job re-runs.
    */
   TEAM_PAYMENT_NEEDS_REVIEW = "team_payment_needs_review",
+  /**
+   * A chargeback was lost. Its own type (not needs_review) because the outbox
+   * allows ONE message per (order, type): sharing the slot would let this alert
+   * swallow, or be swallowed by, an unrelated review on the same order.
+   */
+  TEAM_DISPUTE_LOST = "team_dispute_lost",
 }
 
 enum NotificationStatus {

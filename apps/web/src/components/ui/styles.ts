@@ -59,7 +59,7 @@ const NB_PRESSABLE =
 /**
  * One entry per enum member. `Record<OrderStatus, string>` is the point: drop
  * a status here and tsc fails the build. The CSS attribute-selector version
- * of this map (`.chip[data-status="disputed"]`) fails silently instead — a
+ * of this map (`.chip[data-status="refunded"]`) fails silently instead — a
  * colourless chip nobody notices until a customer does.
  */
 const ORDER_STATUS_BG: Record<OrderStatus, string> = {
@@ -71,7 +71,6 @@ const ORDER_STATUS_BG: Record<OrderStatus, string> = {
   [OrderStatus.CANCELLED]: "bg-[var(--status-cancelled)]",
   [OrderStatus.EXPIRED]: "bg-[var(--status-expired)]",
   [OrderStatus.REFUNDED]: "bg-[var(--status-refunded)]",
-  [OrderStatus.DISPUTED]: "bg-[var(--status-disputed)]",
 };
 
 const SHIPMENT_STATUS_BG: Record<ShipmentStatus, string> = {

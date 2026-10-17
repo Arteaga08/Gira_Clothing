@@ -1,4 +1,4 @@
-import { Currency, OrderStatus } from "@gira/shared";
+import { Currency, DisputeStatus, OrderStatus } from "@gira/shared";
 import { Order } from "../models/Order.js";
 import { parseStatsRange, type StatsRangeQuery } from "../utils/parseStatsRange.js";
 
@@ -182,7 +182,7 @@ const getOrderStats = async (query: StatsRangeQuery): Promise<OrderStats> => {
           status: OrderStatus.SHIPPED,
           updatedAt: { $lt: hoursAgo(IN_TRANSIT_DAYS * 24) },
         }),
-        Order.countDocuments({ status: OrderStatus.DISPUTED }),
+        Order.countDocuments({ disputeStatus: DisputeStatus.OPEN }),
         Order.countDocuments({ status: OrderStatus.PENDING_PAYMENT }),
       ]),
     ]);

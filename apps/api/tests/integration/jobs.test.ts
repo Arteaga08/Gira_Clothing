@@ -1,7 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import request from "supertest";
 import mongoose from "mongoose";
-import { Currency, OrderStatus, PaymentStatus, ReservationStatus } from "@gira/shared";
+import {
+  Currency,
+  NotificationType,
+  OrderStatus,
+  PaymentStatus,
+  ReservationStatus,
+} from "@gira/shared";
 import { loginAsAdmin, ORIGIN } from "../helpers/auth.js";
 
 const { mockGetPayment, mockCreate, mockCancel } = vi.hoisted(() => ({
@@ -46,7 +52,10 @@ const { Variant } = await import("../../src/models/Variant.js");
 const { StockReservation } = await import("../../src/models/StockReservation.js");
 const { AuditLog } = await import("../../src/models/AuditLog.js");
 const { Notification } = await import("../../src/models/Notification.js");
-const { applyPaymentSucceeded } = await import("../../src/services/orderPaymentService.js");
+const { applyPaymentSucceeded, applyPaymentFailed } = await import(
+  "../../src/services/orderPaymentService.js"
+);
+const { applyOrderTransition } = await import("../../src/services/orderTransitionService.js");
 const { releaseReservation } = await import("../../src/services/reservationService.js");
 
 const app = buildApp();
@@ -486,5 +495,166 @@ describe("carrera entre la expiración y el cobro", () => {
     expect(variant?.onHand).toBe(10);
     expect(variant?.reserved).toBe(0);
     void qty;
+  });
+});
+
+describe("expireReservations · alerta cuando no se puede cerrar el cobro", () => {
+  it("cancelPendingCharge fallido: alerta TEAM sin ocupar el slot de needs_review de la orden", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { order } = await seedOrder(adminCookie, "CANCEL3");
+    await backdateReservation(order._id);
+    mockCancel.mockRejectedValue(new Error("provider outage"));
+
+    await expireReservations();
+
+    const alert = await Notification.findOne({
+      type: NotificationType.TEAM_PAYMENT_NEEDS_REVIEW,
+      "payload.reason": "payment_cancel_failed",
+    }).lean();
+    expect(alert).not.toBeNull();
+    expect(alert?.order).toBeUndefined();
+
+    // The customer then pays the still-live intent: the MORE serious alarm must
+    // not be swallowed as a duplicate of the cancel failure.
+    await applyPaymentSucceeded(order._id);
+    const late = await Notification.findOne({
+      type: NotificationType.TEAM_PAYMENT_NEEDS_REVIEW,
+      order: order._id,
+    }).lean();
+    expect(late?.payload.reason).toBe("payment_after_expiry");
+  });
+
+  it("un pago sobre una orden expirada queda registrado en la orden (payment.status y paidAt) sin revivirla", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { order } = await seedOrder(adminCookie, "LATE1");
+    await backdateReservation(order._id);
+    await expireReservations();
+
+    await applyPaymentSucceeded(order._id);
+    await applyPaymentSucceeded(order._id); // retry: still one alert, still expired
+
+    const after = await Order.findById(order._id).lean();
+    expect(after?.status).toBe(OrderStatus.EXPIRED);
+    expect(after?.payment.status).toBe(PaymentStatus.SUCCEEDED);
+    expect(after?.paidAt).toBeInstanceOf(Date);
+    expect(
+      await Notification.countDocuments({
+        order: order._id,
+        type: NotificationType.TEAM_PAYMENT_NEEDS_REVIEW,
+      }),
+    ).toBe(1);
+  });
+});
+
+describe("expireReservations vs. un pago concurrente", () => {
+  it("orden ya pagada con la reserva vencida y aún ACTIVE: el job no toca ni la orden ni la reserva", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { order, variantId } = await seedOrder(adminCookie, "CONC1");
+    // The webhook won the race and moved the order to paid, but its commit has not run yet.
+    await applyOrderTransition({
+      orderId: order._id,
+      from: OrderStatus.PENDING_PAYMENT,
+      to: OrderStatus.PAID,
+      actor: { type: "system" },
+    });
+    await backdateReservation(order._id);
+
+    const { released } = await expireReservations();
+
+    expect(released).toBe(0);
+    expect((await Order.findById(order._id).lean())?.status).toBe(OrderStatus.PAID);
+    expect((await StockReservation.findOne({ order: order._id }).lean())?.status).toBe(
+      ReservationStatus.ACTIVE,
+    );
+    expect((await Variant.findById(variantId).lean())?.reserved).toBe(2);
+
+    // And the pending commit still lands afterwards, with no false alert.
+    await applyPaymentSucceeded(order._id);
+    const variant = await Variant.findById(variantId).lean();
+    expect(variant?.onHand).toBe(8);
+    expect(variant?.reserved).toBe(0);
+    expect(await AuditLog.countDocuments({ action: "stock_commit_missed" })).toBe(0);
+  });
+});
+
+describe("applyPaymentSucceeded · efectos posteriores a PAID son re-ejecutables", () => {
+  it("si commitReservation lanza tras pasar a paid: alerta, propaga, y el reintento completa commit y avisos", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { order, variantId } = await seedOrder(adminCookie, "RETRY1");
+    const spy = vi
+      .spyOn(StockReservation, "findOneAndUpdate")
+      .mockRejectedValueOnce(new Error("mongo down"));
+
+    try {
+      await expect(applyPaymentSucceeded(order._id)).rejects.toThrow("mongo down");
+    } finally {
+      spy.mockRestore();
+    }
+    expect((await Order.findById(order._id).lean())?.status).toBe(OrderStatus.PAID);
+    expect(await AuditLog.countDocuments({ action: "stock_commit_failed" })).toBe(1);
+    expect((await Variant.findById(variantId).lean())?.onHand).toBe(10);
+
+    // Stripe redelivers: the order is already paid, and the job still gets finished.
+    await applyPaymentSucceeded(order._id);
+
+    const variant = await Variant.findById(variantId).lean();
+    expect(variant?.onHand).toBe(8);
+    expect(variant?.reserved).toBe(0);
+    expect((await Order.findById(order._id).lean())?.stockCommittedAt).toBeInstanceOf(Date);
+    expect(
+      await Notification.countDocuments({ order: order._id, type: NotificationType.ORDER_CONFIRMATION }),
+    ).toBe(1);
+    expect(
+      await Notification.countDocuments({ order: order._id, type: NotificationType.TEAM_ORDER_PAID }),
+    ).toBe(1);
+    // The retry found the stock committed: no false "commit missed" alarm.
+    expect(await AuditLog.countDocuments({ action: "stock_commit_missed" })).toBe(0);
+  });
+});
+
+describe("escrituras de payment que no pisan al webhook", () => {
+  it("payment_failed sobre una orden que ya está paid no toca payment.status", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { order } = await seedOrder(adminCookie, "FAIL1");
+    await applyPaymentSucceeded(order._id);
+
+    await applyPaymentFailed(order._id, "card_declined");
+
+    const after = await Order.findById(order._id).lean();
+    expect(after?.status).toBe(OrderStatus.PAID);
+    expect(after?.payment.status).toBe(PaymentStatus.SUCCEEDED);
+    expect(after?.payment.lastError).toBeUndefined();
+  });
+
+  it("createOrder: un webhook que paga antes de que termine el alta no es pisado por la escritura final", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const variantId = await seedVariant(adminCookie, "FAST1", 10);
+    // The provider call returns only after the webhook already paid the order.
+    mockCreate.mockImplementationOnce(async (input: { metadata: { orderId: string } }) => {
+      await applyPaymentSucceeded(new mongoose.Types.ObjectId(input.metadata.orderId));
+      return {
+        providerId: "pi_fast_1",
+        status: PaymentStatus.REQUIRES_PAYMENT,
+        amount: 1,
+        currency: Currency.MXN,
+        clientSecret: "secret_stub",
+      };
+    });
+
+    const result = await createOrder(
+      {
+        lines: [{ variantId, qty: 1 }],
+        currency: Currency.MXN,
+        customer: validCustomer,
+        shipping: validShipping,
+        idempotencyKey: uniqueKey(),
+      },
+      {},
+    );
+
+    const after = await Order.findOne({ publicId: result.order.publicId }).lean();
+    expect(after?.status).toBe(OrderStatus.PAID);
+    expect(after?.payment.status).toBe(PaymentStatus.SUCCEEDED);
+    expect(after?.payment.intentId).toBe("pi_fast_1");
   });
 });

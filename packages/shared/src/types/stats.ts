@@ -39,6 +39,7 @@ interface OrderStatsAlerts {
   awaitingPreparation: number;
   stuckInProcessing: number;
   inTransitTooLong: number;
+  /** Orders with a chargeback still open (disputeStatus = open). */
   disputed: number;
   pendingPayment: number;
 }

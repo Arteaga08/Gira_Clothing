@@ -2,17 +2,23 @@ import mongoose, { type Types } from "mongoose";
 import {
   AuditAction,
   AuditModule,
+  DisputeStatus,
   NotificationChannelKind,
   NotificationType,
   OrderStatus,
   PaymentStatus,
+  ReservationStatus,
 } from "@gira/shared";
 import { Order, type OrderDocument } from "../models/Order.js";
+import { StockReservation } from "../models/StockReservation.js";
 import { commitReservation, releaseReservation } from "./reservationService.js";
 import { restockUnits } from "./inventoryService.js";
 import { applyOrderTransition } from "./orderTransitionService.js";
 import { recordAudit } from "./auditService.js";
 import { enqueueNotification } from "./notificationService.js";
+import { flagForReview } from "./paymentAlertService.js";
+import { AppError } from "../utils/AppError.js";
+import { logger } from "../config/logger.js";
 
 /**
  * The effects of a payment outcome on an order. Lives apart from
@@ -21,59 +27,78 @@ import { enqueueNotification } from "./notificationService.js";
  * would drift, and the drift would only show up as a stock discrepancy weeks
  * later.
  *
- * Every function here is idempotent — it checks the order's current status
- * and no-ops if the effect already landed. That is what makes a re-delivered
- * Stripe webhook (or a job that runs twice) harmless.
+ * Every function here is idempotent AND re-runnable: it derives what is left to
+ * do from the order's persisted state, not from "did I just make the
+ * transition". That is what lets a webhook whose effect threw halfway be
+ * retried to completion, and a re-delivered one be harmless.
  */
 
 /**
  * Notifications are queued, never sent here. Two reasons this is not a detail:
  * a Resend timeout inside applyPaymentSucceeded would delay committing the
- * stock reservation, and this function runs twice by design (webhook +
- * reconciliation job) — the outbox's unique index is what keeps the customer
- * from getting two confirmations.
+ * stock reservation, and this function runs more than once by design (webhook
+ * retries + reconciliation job) — the outbox's unique index on (order, type) is
+ * what keeps the customer, and the team, from getting two of each.
+ *
+ * Queued STRICTLY: a lost enqueue must fail the webhook so the provider retries,
+ * instead of leaving a paid order that nobody was told about.
  *
  * The payload is a FLAT SNAPSHOT of what the email says, frozen now: the order
  * is immutable, but the template must not re-read anything at delivery time.
  */
 const queueOrderPaidNotifications = async (order: OrderDocument): Promise<void> => {
-  await enqueueNotification({
-    channel: NotificationChannelKind.EMAIL,
-    type: NotificationType.ORDER_CONFIRMATION,
-    to: order.customer.email,
-    order: order._id,
-    payload: {
-      publicId: order.publicId,
-      customerName: order.customer.name,
-      currency: order.currency,
-      subtotal: order.subtotal,
-      shippingCost: order.shippingCost,
-      total: order.total,
-      lines: order.lines.map((line) => ({
-        productName: line.productName,
-        printName: line.printName,
-        qty: line.qty,
-        lineTotal: line.lineTotal,
-      })),
+  await enqueueNotification(
+    {
+      channel: NotificationChannelKind.EMAIL,
+      type: NotificationType.ORDER_CONFIRMATION,
+      to: order.customer.email,
+      order: order._id,
+      payload: {
+        publicId: order.publicId,
+        customerName: order.customer.name,
+        currency: order.currency,
+        subtotal: order.subtotal,
+        shippingCost: order.shippingCost,
+        total: order.total,
+        lines: order.lines.map((line) => ({
+          productName: line.productName,
+          printName: line.printName,
+          qty: line.qty,
+          lineTotal: line.lineTotal,
+        })),
+      },
     },
-  });
+    { strict: true },
+  );
 
-  // No `order` field: team pings are not subject to the one-per-order index,
-  // and the channel id is the recipient, not a person.
-  await enqueueNotification({
-    channel: NotificationChannelKind.TEAM,
-    type: NotificationType.TEAM_ORDER_PAID,
-    to: "team",
-    payload: {
-      publicId: order.publicId,
-      total: order.total,
-      currency: order.currency,
-      itemCount: order.lines.reduce((sum, line) => sum + line.qty, 0),
+  // Carries `order` so the same index dedupes it across retries; the channel id
+  // is the recipient, not a person.
+  await enqueueNotification(
+    {
+      channel: NotificationChannelKind.TEAM,
+      type: NotificationType.TEAM_ORDER_PAID,
+      to: "team",
+      order: order._id,
+      payload: {
+        publicId: order.publicId,
+        total: order.total,
+        currency: order.currency,
+        itemCount: order.lines.reduce((sum, line) => sum + line.qty, 0),
+      },
     },
-  });
+    { strict: true },
+  );
 };
 
-/** Statuses reached only once fulfillment started — the restock boundary. */
+/** Statuses where the sale is paid and alive: the effects of paying apply here. */
+const PAID_AND_ALIVE = new Set<OrderStatus>([
+  OrderStatus.PAID,
+  OrderStatus.PROCESSING,
+  OrderStatus.SHIPPED,
+  OrderStatus.DELIVERED,
+]);
+
+/** Statuses reached only once fulfillment started — the restock boundary (legacy fallback). */
 const LEFT_THE_WAREHOUSE = new Set<OrderStatus>([
   OrderStatus.PROCESSING,
   OrderStatus.SHIPPED,
@@ -83,115 +108,158 @@ const LEFT_THE_WAREHOUSE = new Set<OrderStatus>([
 /** Terminal statuses that mean the order is dead but the money still arrived. */
 const DEAD_ON_ARRIVAL = new Set<OrderStatus>([OrderStatus.EXPIRED, OrderStatus.CANCELLED]);
 
+const SYSTEM = { type: "system" } as const;
+
 /**
- * Raises the one alarm a human must act on. The order is NOT moved: what to do
- * with money that landed on a dead order (surtir si queda stock, o reembolsar)
- * is a business call, and guessing it in code would be worse than asking.
- *
- * The audit entry and the alert both carry only the folio and a short internal
- * reason code — no customer data reaches the Telegram group.
+ * Money landed on an order that is already expired/cancelled. The order is NOT
+ * moved: what to do with it (surtir si queda stock, o reembolsar) is a business
+ * call. But the order must SAY the money arrived — payment.status/paidAt — or
+ * the panel shows a dead order with no trace of the charge.
  */
-const flagForReview = async (
-  order: OrderDocument,
-  reason: string,
-  action: AuditAction,
-): Promise<void> => {
-  await recordAudit({
-    actorType: "system",
-    action,
-    module: AuditModule.PAYMENTS,
-    targetId: order.publicId,
-    after: { reason, status: order.status },
-  });
-  await enqueueNotification({
-    channel: NotificationChannelKind.TEAM,
-    type: NotificationType.TEAM_PAYMENT_NEEDS_REVIEW,
-    to: "team",
-    order: order._id,
-    payload: { publicId: order.publicId, reason },
+const handleDeadOnArrival = async (order: OrderDocument): Promise<void> => {
+  await Order.updateOne(
+    {
+      _id: order._id,
+      status: { $in: [...DEAD_ON_ARRIVAL] },
+      "payment.status": { $nin: [PaymentStatus.SUCCEEDED, PaymentStatus.REFUNDED] },
+    },
+    { $set: { "payment.status": PaymentStatus.SUCCEEDED, paidAt: new Date() } },
+  );
+  await flagForReview(order, "payment_after_expiry", AuditAction.PAYMENT_AFTER_EXPIRY, {
+    strict: true,
   });
 };
 
-const SYSTEM = { type: "system" } as const;
+/** True when the units really left stock: the order says so, or its reservation still does. */
+const stockWasCommitted = (
+  order: { stockCommittedAt?: Date | undefined },
+  reservationStatus: ReservationStatus | undefined,
+): boolean => Boolean(order.stockCommittedAt) || reservationStatus === ReservationStatus.COMMITTED;
 
-/** Money landed on an order that is already expired/cancelled: raise the alarm, move nothing. */
-const flagIfDeadOnArrival = async (order: OrderDocument): Promise<void> => {
-  if (DEAD_ON_ARRIVAL.has(order.status)) {
-    await flagForReview(order, "payment_after_expiry", AuditAction.PAYMENT_AFTER_EXPIRY);
+/** True when fulfillment began: the flag, or (orders from before the flag) the status/history. */
+const fulfillmentStarted = (order: {
+  status: OrderStatus;
+  fulfillmentStartedAt?: Date | undefined;
+  statusHistory: readonly { status: OrderStatus }[];
+}): boolean =>
+  Boolean(order.fulfillmentStartedAt) ||
+  LEFT_THE_WAREHOUSE.has(order.status) ||
+  order.statusHistory.some((h) => LEFT_THE_WAREHOUSE.has(h.status));
+
+/**
+ * Everything that must follow a payment, derived from persisted state so a
+ * retry after a crash finishes the job: commit the held units, then queue the
+ * notifications. Each step is idempotent on its own.
+ */
+const runPaidEffects = async (order: OrderDocument): Promise<void> => {
+  let committed: boolean;
+  try {
+    committed = await commitReservation(order._id);
+  } catch (err) {
+    // Money taken, stock not decremented, and the order already says `paid`: the
+    // retry re-enters here, but a human should know NOW that it is stuck.
+    await flagForReview(order, "stock_commit_failed", AuditAction.STOCK_COMMIT_FAILED).catch(
+      (flagErr: unknown) => logger.error({ err: flagErr }, "No se pudo alertar stock_commit_failed"),
+    );
+    throw err;
   }
+
+  if (!committed) {
+    // `false` is either "an earlier attempt already committed it" (a retry — say
+    // nothing) or "the hold was released before payment arrived" (units back on
+    // sale, order paid — somebody has to look). Persisted state tells them apart.
+    const [fresh, reservation] = await Promise.all([
+      Order.findById(order._id).select("stockCommittedAt").lean(),
+      StockReservation.findOne({ order: order._id }).select("status").lean(),
+    ]);
+    if (!stockWasCommitted(fresh ?? {}, reservation?.status)) {
+      await flagForReview(order, "stock_commit_missed", AuditAction.STOCK_COMMIT_MISSED, {
+        strict: true,
+      });
+    }
+  }
+
+  await queueOrderPaidNotifications(order);
 };
 
 const applyPaymentSucceeded = async (orderId: Types.ObjectId): Promise<void> => {
   const current = await Order.findById(orderId);
   if (!current) return;
-  if (current.status !== OrderStatus.PENDING_PAYMENT) {
-    // Already paid/shipped/refunded: genuinely idempotent, nothing to say.
-    // Expired or cancelled is NOT the same thing — the charging window was
-    // supposed to be closed and the customer was charged anyway. Returning
-    // quietly here is how an order used to dead-end with the money taken, no
-    // email, no stock movement and no trace.
-    await flagIfDeadOnArrival(current);
+
+  if (DEAD_ON_ARRIVAL.has(current.status)) {
+    // The charging window was supposed to be closed and the customer was charged
+    // anyway. Returning quietly here is how an order used to dead-end with the
+    // money taken, no email, no stock movement and no trace.
+    await handleDeadOnArrival(current);
     return;
   }
 
-  // Atomic against the expiry sweep: the filter pins `pending_payment`, so if
-  // the sweep got there first this returns null instead of overwriting it.
-  const order = await applyOrderTransition({
-    orderId,
-    from: OrderStatus.PENDING_PAYMENT,
-    to: OrderStatus.PAID,
-    actor: SYSTEM,
-    set: { paidAt: new Date(), "payment.status": PaymentStatus.SUCCEEDED },
-  });
-  if (!order) {
-    // Lost the race. If the sweep expired it, the customer was still charged.
+  if (current.status === OrderStatus.PENDING_PAYMENT) {
+    // Atomic against the expiry sweep: the filter pins `pending_payment`, so if
+    // the sweep got there first this returns null instead of overwriting it.
+    const paid = await applyOrderTransition({
+      orderId,
+      from: OrderStatus.PENDING_PAYMENT,
+      to: OrderStatus.PAID,
+      actor: SYSTEM,
+      set: { paidAt: new Date(), "payment.status": PaymentStatus.SUCCEEDED },
+    });
+    if (paid) {
+      await recordAudit({
+        actorType: "system",
+        action: AuditAction.PAYMENT_SUCCEEDED,
+        module: AuditModule.PAYMENTS,
+        targetId: paid.publicId,
+      });
+      await runPaidEffects(paid);
+      return;
+    }
+    // Lost the race: re-read and fall through to whatever the order became.
     const latest = await Order.findById(orderId);
-    if (latest) await flagIfDeadOnArrival(latest);
+    if (!latest) return;
+    if (DEAD_ON_ARRIVAL.has(latest.status)) await handleDeadOnArrival(latest);
+    else if (PAID_AND_ALIVE.has(latest.status)) await runPaidEffects(latest);
     return;
   }
 
-  // Only now do the held units leave the warehouse for good. Idempotent by design.
-  // A `false` here means the hold was already released (the expiry sweep won the
-  // race): the order is paid but its units went back on sale, so somebody has to
-  // look. Discarding this boolean is what made that outcome invisible.
-  const committed = await commitReservation(order._id);
-  if (!committed) {
-    await flagForReview(order, "stock_commit_missed", AuditAction.STOCK_COMMIT_MISSED);
-  }
-
-  await queueOrderPaidNotifications(order);
-
-  await recordAudit({
-    actorType: "system",
-    action: AuditAction.PAYMENT_SUCCEEDED,
-    module: AuditModule.PAYMENTS,
-    targetId: order.publicId,
-  });
+  // Already paid (a webhook retry whose effects threw, or a duplicate): finish
+  // whatever is left. Refunded: nothing to do.
+  if (PAID_AND_ALIVE.has(current.status)) await runPaidEffects(current);
 };
 
 /**
  * Order STAYS pending_payment: Stripe lets the customer retry the same intent
  * with another card, and releasing the hold here would sell the item out from
  * under someone who is one tap away from paying.
+ *
+ * Pinned to `pending_payment` IN THE FILTER: a read-then-save here used to
+ * overwrite `payment.status` of an order the webhook had just marked paid.
  */
 const applyPaymentFailed = async (orderId: Types.ObjectId, reason?: string): Promise<void> => {
-  const order = await Order.findById(orderId);
+  const order = await Order.findOneAndUpdate(
+    { _id: orderId, status: OrderStatus.PENDING_PAYMENT },
+    {
+      $set: {
+        "payment.status": PaymentStatus.FAILED,
+        ...(reason ? { "payment.lastError": reason } : {}),
+      },
+    },
+    { new: true },
+  );
   if (!order) return;
-  if (order.status !== OrderStatus.PENDING_PAYMENT) return;
-
-  order.payment.status = PaymentStatus.FAILED;
-  if (reason) order.payment.lastError = reason;
-  await order.save();
 
   // No email here — Stripe's own Payment Element already tells the customer
   // the card was declined. The team gets pinged because a failed payment on a
   // retryable order is exactly the kind of thing that needs a human glance.
-  await enqueueNotification({
-    channel: NotificationChannelKind.TEAM,
-    type: NotificationType.TEAM_PAYMENT_FAILED,
-    to: "team",
-    payload: { publicId: order.publicId, ...(reason ? { reason } : {}) },
-  });
+  await enqueueNotification(
+    {
+      channel: NotificationChannelKind.TEAM,
+      type: NotificationType.TEAM_PAYMENT_FAILED,
+      to: "team",
+      payload: { publicId: order.publicId, ...(reason ? { reason } : {}) },
+    },
+    { strict: true },
+  );
 
   await recordAudit({
     actorType: "system",
@@ -224,21 +292,103 @@ const applyPaymentCancelled = async (orderId: Types.ObjectId): Promise<void> => 
 };
 
 /**
- * Restock ONLY if nothing ever left the workshop. Past that boundary the
- * goods are gone or in transit, and putting them back would invent units that
- * do not exist — the audit entry tells the admin to adjust by hand if the
- * return physically arrives. Checked against the FULL statusHistory, not just
- * the current status: a dispute can detour an order through DISPUTED before
- * landing back here, and the current status alone would lose that context.
+ * `charge.refunded` reports the CUMULATIVE amount returned, so a partial and a
+ * total refund are told apart by comparing it with the order total:
+ *
+ *  - partial: record the amount and audit it; status and stock stay put (the
+ *    customer kept part of the goods or the money simply came back in pieces).
+ *  - total on a paid order: the order becomes `refunded`, and units go back to
+ *    stock ONLY if they really left it (reservation committed) and nothing was
+ *    handed to the workshop yet. Past that boundary the goods are gone or in
+ *    transit, and putting them back would invent units that do not exist.
+ *  - total on an expired/cancelled order (the late payment a human decided to
+ *    return): only the payment is marked refunded. The order stays dead and no
+ *    stock moves — the reservation was already released.
+ *
+ * The recorded amount is OVERWRITTEN from the provider (never summed) and only
+ * ever grows, so a re-delivered or out-of-order event cannot double-count.
  */
-const applyRefund = async (orderId: Types.ObjectId): Promise<void> => {
-  // The status change and the restock are ONE unit of work. Before, the order
-  // was saved first and the lines were reposted afterwards in a bare loop: a
-  // throw on line 2 of 3 left the order refunded with the inventory permanently
-  // half-corrected, and nothing retried it — webhookService had already claimed
-  // the event, so the redelivery was discarded as a duplicate.
+const applyRefund = async (orderId: Types.ObjectId, amountRefunded?: number): Promise<void> => {
+  if (amountRefunded === undefined || !Number.isInteger(amountRefunded) || amountRefunded <= 0) {
+    // Deterministic: redelivering the same payload cannot fix it.
+    throw new AppError("El reembolso no trae un monto devuelto válido.", 422);
+  }
+
+  const grew = await Order.findOneAndUpdate(
+    {
+      _id: orderId,
+      $or: [
+        { "payment.refundedAmount": { $exists: false } },
+        { "payment.refundedAmount": { $lt: amountRefunded } },
+      ],
+    },
+    { $set: { "payment.refundedAmount": amountRefunded, "payment.refundedAt": new Date() } },
+    { new: true },
+  );
+  const order = grew ?? (await Order.findById(orderId));
+  if (!order) return;
+
+  if (amountRefunded < order.total) {
+    if (grew) {
+      await recordAudit({
+        actorType: "system",
+        action: AuditAction.PAYMENT_PARTIALLY_REFUNDED,
+        module: AuditModule.PAYMENTS,
+        targetId: order.publicId,
+        after: { amountRefunded },
+      });
+    }
+    return;
+  }
+
+  if (DEAD_ON_ARRIVAL.has(order.status)) {
+    const marked = await Order.updateOne(
+      {
+        _id: orderId,
+        status: { $in: [...DEAD_ON_ARRIVAL] },
+        "payment.status": { $ne: PaymentStatus.REFUNDED },
+      },
+      { $set: { "payment.status": PaymentStatus.REFUNDED } },
+    );
+    if (marked.modifiedCount > 0) {
+      await recordAudit({
+        actorType: "system",
+        action: AuditAction.PAYMENT_REFUNDED,
+        module: AuditModule.PAYMENTS,
+        targetId: order.publicId,
+        after: { status: order.status },
+      });
+    }
+    return;
+  }
+
+  if (order.status === OrderStatus.PENDING_PAYMENT) {
+    // The refund overtook the payment event (it is being retried, or events
+    // arrived out of order). Swallowing it would let the payment land later and
+    // commit stock for money that already went back. A plain Error (not 4xx) fails
+    // the webhook so the provider redelivers once the order has caught up.
+    throw new Error("refund_before_payment_applied");
+  }
+
+  if (order.status === OrderStatus.REFUNDED) {
+    // A previous attempt moved the order but may have died before settling the
+    // hold: closing it is idempotent, so a retry always finishes the job.
+    await releaseReservation(orderId, "refunded");
+    return;
+  }
+
+  await refundPaidOrder(orderId);
+};
+
+/** Total refund of a paid order: the status change and the restock are ONE unit of work. */
+const refundPaidOrder = async (orderId: Types.ObjectId): Promise<void> => {
+  // Before, the order was saved first and the lines were reposted afterwards in
+  // a bare loop: a throw on line 2 of 3 left the order refunded with the
+  // inventory permanently half-corrected.
   let publicId = "";
   let restocked = false;
+  let reservationWasActive = false;
+  let unaccountedStock = false;
 
   const session = await mongoose.startSession();
   try {
@@ -246,13 +396,18 @@ const applyRefund = async (orderId: Types.ObjectId): Promise<void> => {
       // Reset per attempt: withTransaction retries its callback on transient errors.
       publicId = "";
       restocked = false;
+      reservationWasActive = false;
+      unaccountedStock = false;
 
       const before = await Order.findById(orderId).session(session);
       if (!before || before.status === OrderStatus.REFUNDED) return;
+      // Expired/cancelled/pending mid-flight: abort so the redelivery re-evaluates.
+      if (!PAID_AND_ALIVE.has(before.status)) throw new Error("order_status_changed_during_refund");
 
-      const everLeftTheWarehouse = before.statusHistory.some((h) =>
-        LEFT_THE_WAREHOUSE.has(h.status),
-      );
+      const reservation = await StockReservation.findOne({ order: orderId }).session(session);
+      const committed = stockWasCommitted(before, reservation?.status);
+      const started = fulfillmentStarted(before);
+
       const order = await applyOrderTransition({
         orderId,
         from: before.status,
@@ -265,18 +420,26 @@ const applyRefund = async (orderId: Types.ObjectId): Promise<void> => {
       // attempt; the redelivered webhook re-evaluates from the new state.
       if (!order) throw new Error("order_status_changed_during_refund");
 
-      if (!everLeftTheWarehouse) {
-        await restockUnits(order.lines, session);
+      if (committed && !started) {
+        // The reservation is the record of what was ACTUALLY taken out; the
+        // order lines are the fallback once it has been purged.
+        await restockUnits(reservation?.lines ?? order.lines, session);
         restocked = true;
       }
+      reservationWasActive = reservation?.status === ReservationStatus.ACTIVE;
+      unaccountedStock = !committed && !reservationWasActive;
       publicId = order.publicId;
     });
   } finally {
     await session.endSession();
   }
 
-  // Nothing moved (already refunded, or the order is gone) -> nothing to audit.
+  // Nothing moved (the order is gone or was no longer paid) -> nothing to audit.
   if (!publicId) return;
+
+  // The commit never happened (webhook retry pending) but the money is already
+  // back: the hold must not stay `reserved` forever.
+  if (reservationWasActive) await releaseReservation(orderId, "refunded");
 
   // Audited only after the transaction committed: an entry for a write that was
   // rolled back is worse than no entry at all.
@@ -295,19 +458,35 @@ const applyRefund = async (orderId: Types.ObjectId): Promise<void> => {
     module: AuditModule.PAYMENTS,
     targetId: publicId,
   });
+
+  if (unaccountedStock) {
+    // Refunded money, but the stock was never taken out (hold released before
+    // payment): nothing to put back, and somebody should confirm the books.
+    await flagForReview(
+      { _id: orderId, publicId, status: OrderStatus.REFUNDED },
+      "refund_without_committed_stock",
+      AuditAction.REFUND_WITHOUT_RESTOCK,
+      // Fires once per refund transition; it must not share (or lose to) the
+      // order's single needs_review slot taken by an earlier commit alert.
+      { dedupePerOrder: false },
+    );
+  }
 };
 
+/**
+ * Disputes are fields of the order, not a status: a chargeback does not move the
+ * sale through fulfillment, it can arrive on an order in ANY state, and a lost
+ * one is NOT a refund (the money left, the order was not reimbursed — and the
+ * goods are gone, so nothing goes back to stock). `warning_closed` reaches here
+ * as `withdrawn`, which is not a loss either.
+ */
 const applyDisputeOpened = async (orderId: Types.ObjectId): Promise<void> => {
-  const order = await Order.findById(orderId);
-  if (!order || order.status === OrderStatus.DISPUTED) return;
-
-  const moved = await applyOrderTransition({
-    orderId,
-    from: order.status,
-    to: OrderStatus.DISPUTED,
-    actor: SYSTEM,
-  });
-  if (!moved) throw new Error("order_status_changed_during_dispute");
+  const order = await Order.findOneAndUpdate(
+    { _id: orderId, disputeStatus: { $exists: false } },
+    { $set: { disputeStatus: DisputeStatus.OPEN, disputedAt: new Date() } },
+    { new: true },
+  );
+  if (!order) return; // already tracked (re-delivery, or `closed` arrived first)
 
   await recordAudit({
     actorType: "system",
@@ -317,31 +496,49 @@ const applyDisputeOpened = async (orderId: Types.ObjectId): Promise<void> => {
   });
 };
 
-/** A dispute closed in the merchant's favour returns the order to paid; a loss is a refund. */
-const applyDisputeClosed = async (orderId: Types.ObjectId, won: boolean): Promise<void> => {
-  if (!won) {
-    await applyRefund(orderId);
-    return;
+const CLOSED_DISPUTE = [DisputeStatus.WON, DisputeStatus.LOST, DisputeStatus.WITHDRAWN];
+
+const applyDisputeClosed = async (
+  orderId: Types.ObjectId,
+  outcome?: DisputeStatus,
+): Promise<void> => {
+  if (!outcome || outcome === DisputeStatus.OPEN) {
+    throw new AppError("La disputa cerrada no trae un resultado válido.", 422);
   }
 
-  const order = await Order.findById(orderId);
-  if (!order || order.status !== OrderStatus.DISPUTED) return;
+  // `$nin` also matches an order that never saw the `created` event, so a
+  // `closed` that arrives first is still recorded.
+  const closed = await Order.findOneAndUpdate(
+    { _id: orderId, disputeStatus: { $nin: CLOSED_DISPUTE } },
+    { $set: { disputeStatus: outcome }, $min: { disputedAt: new Date() } },
+    { new: true },
+  );
+  if (closed) {
+    await recordAudit({
+      actorType: "system",
+      action: AuditAction.PAYMENT_DISPUTE_CLOSED,
+      module: AuditModule.PAYMENTS,
+      targetId: closed.publicId,
+      after: { disputeStatus: outcome },
+    });
+  }
 
-  const moved = await applyOrderTransition({
-    orderId,
-    from: OrderStatus.DISPUTED,
-    to: OrderStatus.PAID,
-    actor: SYSTEM,
-    reason: "dispute_won",
-  });
-  if (!moved) return;
-
-  await recordAudit({
-    actorType: "system",
-    action: AuditAction.PAYMENT_SUCCEEDED,
-    module: AuditModule.PAYMENTS,
-    targetId: order.publicId,
-  });
+  // Decided from the PERSISTED outcome, not from "did I write it": if the first
+  // attempt recorded the loss and then died before queueing the alert, the retry
+  // still raises it. The (order, type) index keeps it to one.
+  const order = closed ?? (await Order.findById(orderId));
+  if (order?.disputeStatus === DisputeStatus.LOST) {
+    await enqueueNotification(
+      {
+        channel: NotificationChannelKind.TEAM,
+        type: NotificationType.TEAM_DISPUTE_LOST,
+        to: "team",
+        order: order._id,
+        payload: { publicId: order.publicId },
+      },
+      { strict: true },
+    );
+  }
 };
 
 export {

@@ -87,4 +87,37 @@ describe("applyOrderTransition", () => {
     expect(updated?.statusHistory).toHaveLength(MAX_STATUS_HISTORY);
     expect(updated?.statusHistory.at(-1)?.status).toBe(OrderStatus.PROCESSING);
   });
+
+  it("fija fulfillmentStartedAt al entrar a processing, una sola vez, y no antes", async () => {
+    const id = await seedOrder({ status: OrderStatus.PAID, total: 1000, createdAt: new Date() });
+    expect((await Order.findById(id).lean())?.fulfillmentStartedAt).toBeUndefined();
+
+    const processing = await applyOrderTransition({
+      orderId: id,
+      from: OrderStatus.PAID,
+      to: OrderStatus.PROCESSING,
+      actor: system,
+    });
+    const firstStamp = processing?.fulfillmentStartedAt;
+    expect(firstStamp).toBeInstanceOf(Date);
+
+    const shipped = await applyOrderTransition({
+      orderId: id,
+      from: OrderStatus.PROCESSING,
+      to: OrderStatus.SHIPPED,
+      actor: system,
+    });
+    expect(shipped?.fulfillmentStartedAt).toEqual(firstStamp);
+  });
+
+  it("pagar o reembolsar no marca el arranque de surtido", async () => {
+    const id = await seedOrder({ status: OrderStatus.PENDING_PAYMENT, total: 1000, createdAt: new Date() });
+    const paid = await applyOrderTransition({
+      orderId: id,
+      from: OrderStatus.PENDING_PAYMENT,
+      to: OrderStatus.PAID,
+      actor: system,
+    });
+    expect(paid?.fulfillmentStartedAt).toBeUndefined();
+  });
 });

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createHmac } from "node:crypto";
-import { Currency, PaymentStatus } from "@gira/shared";
+import { Currency, DisputeStatus, PaymentStatus } from "@gira/shared";
 
 const { mockCreate, mockRetrieve, mockRefundCreate } = vi.hoisted(() => ({
   mockCreate: vi.fn(),
@@ -219,23 +219,59 @@ describe("stripePaymentProvider · parseWebhookEvent", () => {
     });
   });
 
-  it("mapea charge.dispute.closed ganada/perdida según el status del payload", () => {
-    const won = JSON.stringify({
-      id: "evt_6",
+  it("mapea charge.dispute.closed a DISPUTE_CLOSED con nuestro vocabulario", () => {
+    const closed = (id: string, status: string) =>
+      JSON.stringify({
+        id,
+        type: "charge.dispute.closed",
+        data: { object: { id: "dp_1", status, payment_intent: "pi_6" } },
+      });
+    const parse = (payload: string) => provider.parseWebhookEvent(Buffer.from(payload), sign(payload));
+    for (const [stripeStatus, ours] of [
+      ["won", DisputeStatus.WON],
+      ["lost", DisputeStatus.LOST],
+      ["warning_closed", DisputeStatus.WITHDRAWN],
+    ] as const) {
+      expect(parse(closed(`evt_${stripeStatus}`, stripeStatus))).toMatchObject({
+        type: ProviderEventType.DISPUTE_CLOSED,
+        disputeStatus: ours,
+      });
+    }
+  });
+
+  it("un status de disputa desconocido se ignora en vez de adivinarlo", () => {
+    const payload = JSON.stringify({
+      id: "evt_unk",
       type: "charge.dispute.closed",
-      data: { object: { id: "dp_1", status: "won", payment_intent: "pi_6" } },
+      data: { object: { id: "dp_9", status: "needs_response", payment_intent: "pi_9" } },
     });
-    const lost = JSON.stringify({
-      id: "evt_7",
-      type: "charge.dispute.closed",
-      data: { object: { id: "dp_2", status: "lost", payment_intent: "pi_7" } },
+    expect(provider.parseWebhookEvent(Buffer.from(payload), sign(payload)).type).toBe(
+      ProviderEventType.IGNORED,
+    );
+  });
+
+  it("charge.dispute.created llega como DISPUTE_OPENED con status open", () => {
+    const payload = JSON.stringify({
+      id: "evt_open",
+      type: "charge.dispute.created",
+      data: { object: { id: "dp_1", payment_intent: "pi_6" } },
     });
-    expect(provider.parseWebhookEvent(Buffer.from(won), sign(won)).type).toBe(
-      ProviderEventType.DISPUTE_CLOSED_WON,
-    );
-    expect(provider.parseWebhookEvent(Buffer.from(lost), sign(lost)).type).toBe(
-      ProviderEventType.DISPUTE_CLOSED_LOST,
-    );
+    expect(provider.parseWebhookEvent(Buffer.from(payload), sign(payload))).toMatchObject({
+      type: ProviderEventType.DISPUTE_OPENED,
+      disputeStatus: DisputeStatus.OPEN,
+    });
+  });
+
+  it("charge.refunded expone amount_refunded como amountRefunded", () => {
+    const payload = JSON.stringify({
+      id: "evt_ref",
+      type: "charge.refunded",
+      data: { object: { id: "ch_1", payment_intent: "pi_5", amount: 10000, amount_refunded: 2500 } },
+    });
+    expect(provider.parseWebhookEvent(Buffer.from(payload), sign(payload))).toMatchObject({
+      type: ProviderEventType.PAYMENT_REFUNDED,
+      amountRefunded: 2500,
+    });
   });
 });
 

@@ -47,8 +47,20 @@ interface EnqueueInput {
   payload: Record<string, unknown>;
 }
 
-/** Returns false when the message was already queued (duplicate) or failed to queue. */
-const enqueueNotification = async (input: EnqueueInput): Promise<boolean> => {
+interface EnqueueOptions {
+  /**
+   * Rethrow a failure to queue (anything but a duplicate). Webhook effects pass
+   * this so a lost enqueue leaves the event `failed` and the provider retries;
+   * best-effort callers keep the default and never block their own work.
+   */
+  strict?: boolean;
+}
+
+/** Returns false when the message was already queued (duplicate) or, unless strict, failed to queue. */
+const enqueueNotification = async (
+  input: EnqueueInput,
+  options: EnqueueOptions = {},
+): Promise<boolean> => {
   try {
     await Notification.create({
       channel: input.channel,
@@ -64,6 +76,7 @@ const enqueueNotification = async (input: EnqueueInput): Promise<boolean> => {
   } catch (err) {
     // Already queued for this (order, type): the effect already landed.
     if (isDuplicateKeyError(err)) return false;
+    if (options.strict) throw err;
     logger.error({ err, type: input.type }, "No se pudo encolar la notificación");
     return false;
   }

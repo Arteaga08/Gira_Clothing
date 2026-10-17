@@ -9,19 +9,17 @@ import { AppError } from "./AppError.js";
  * Two layers, deliberately:
  *  - `assertTransition` answers "is this move legal at all?"
  *  - `assertAdminTransition` answers "may a HUMAN make this move?" — narrower.
- *    Payment-driven states (paid, refunded, disputed, expired) are owned by the
+ *    Payment-driven states (paid, refunded, expired) are owned by the
  *    webhook and the reconciliation job. An admin who could type "paid" could
  *    ship unpaid goods, and the audit trail would show it as a legitimate move.
  */
 
 const TRANSITIONS: Readonly<Record<OrderStatus, readonly OrderStatus[]>> = Object.freeze({
   [OrderStatus.PENDING_PAYMENT]: [OrderStatus.PAID, OrderStatus.CANCELLED, OrderStatus.EXPIRED],
-  [OrderStatus.PAID]: [OrderStatus.PROCESSING, OrderStatus.REFUNDED, OrderStatus.DISPUTED],
-  [OrderStatus.PROCESSING]: [OrderStatus.SHIPPED, OrderStatus.REFUNDED, OrderStatus.DISPUTED],
-  [OrderStatus.SHIPPED]: [OrderStatus.DELIVERED, OrderStatus.REFUNDED, OrderStatus.DISPUTED],
-  [OrderStatus.DELIVERED]: [OrderStatus.REFUNDED, OrderStatus.DISPUTED],
-  // A dispute closed in the merchant's favour returns the order to paid.
-  [OrderStatus.DISPUTED]: [OrderStatus.PAID, OrderStatus.REFUNDED],
+  [OrderStatus.PAID]: [OrderStatus.PROCESSING, OrderStatus.REFUNDED],
+  [OrderStatus.PROCESSING]: [OrderStatus.SHIPPED, OrderStatus.REFUNDED],
+  [OrderStatus.SHIPPED]: [OrderStatus.DELIVERED, OrderStatus.REFUNDED],
+  [OrderStatus.DELIVERED]: [OrderStatus.REFUNDED],
   [OrderStatus.CANCELLED]: [],
   [OrderStatus.EXPIRED]: [],
   [OrderStatus.REFUNDED]: [],

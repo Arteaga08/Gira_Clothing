@@ -1,4 +1,4 @@
-import type { Currency, PaymentStatus } from "@gira/shared";
+import type { Currency, DisputeStatus, PaymentStatus } from "@gira/shared";
 
 /**
  * Narrow, domain-owned payment interface. No Stripe type crosses this boundary,
@@ -32,8 +32,8 @@ enum ProviderEventType {
   PAYMENT_CANCELLED = "payment_cancelled",
   PAYMENT_REFUNDED = "payment_refunded",
   DISPUTE_OPENED = "dispute_opened",
-  DISPUTE_CLOSED_WON = "dispute_closed_won",
-  DISPUTE_CLOSED_LOST = "dispute_closed_lost",
+  /** Outcome travels in `ProviderEvent.disputeStatus`, already in OUR vocabulary. */
+  DISPUTE_CLOSED = "dispute_closed",
   /** Anything we deliberately do not act on. Acknowledged with 200, never processed. */
   IGNORED = "ignored",
 }
@@ -45,6 +45,10 @@ interface ProviderEvent {
   paymentId?: string;
   orderId?: string;
   amount?: number;
+  /** Cumulative amount refunded on the charge so far, minor units (charge.refunded). */
+  amountRefunded?: number;
+  /** Set on dispute events only. */
+  disputeStatus?: DisputeStatus;
   reason?: string;
   raw: unknown;
 }

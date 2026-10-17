@@ -1,7 +1,7 @@
 import type { ApiStatus, ApiMeta, ApiResponse } from "./types/apiResponse.js";
 import { UserRole } from "./enums/userRole.js";
 import { AuditModule, AuditAction } from "./enums/auditAction.js";
-import { OrderStatus, PaymentStatus, ReservationStatus } from "./enums/orderStatus.js";
+import { OrderStatus, PaymentStatus, DisputeStatus, ReservationStatus } from "./enums/orderStatus.js";
 import { Currency, PriceRounding } from "./enums/money.js";
 import { ShipmentStatus } from "./enums/shipment.js";
 import {
@@ -17,6 +17,7 @@ export {
   AuditAction,
   OrderStatus,
   PaymentStatus,
+  DisputeStatus,
   ReservationStatus,
   Currency,
   PriceRounding,
@@ -80,7 +81,7 @@ import { PERIOD_PRESETS, STATS_GRANULARITIES, MAX_STATS_DAYS } from "./constants
 import { MAX_STATUS_HISTORY } from "./constants/order.js";
 import type { AuditLogEntry } from "./types/audit.js";
 import type { LoginRequest, LoginResponse, MeResponse, ApiErrorBody } from "./types/auth.js";
-import { ORDER_STATUS_LABELS } from "./labels/orderStatus.js";
+import { ORDER_STATUS_LABELS, DISPUTE_STATUS_LABELS } from "./labels/orderStatus.js";
 import { SHIPMENT_STATUS_LABELS } from "./labels/shipmentStatus.js";
 import {
   TWO_FACTOR_REQUIRED_MESSAGE,
@@ -134,5 +135,5 @@ export type { StatsGranularity, PeriodPreset };
 export { STATS_GRANULARITIES, MAX_STATS_DAYS, PERIOD_PRESETS };
 export { MAX_STATUS_HISTORY };
 export type { LoginRequest, LoginResponse, MeResponse, ApiErrorBody };
-export { ORDER_STATUS_LABELS, SHIPMENT_STATUS_LABELS };
+export { ORDER_STATUS_LABELS, DISPUTE_STATUS_LABELS, SHIPMENT_STATUS_LABELS };
 export { TWO_FACTOR_REQUIRED_MESSAGE, TWO_FACTOR_INVALID_MESSAGE, INVALID_CREDENTIALS_MESSAGE };

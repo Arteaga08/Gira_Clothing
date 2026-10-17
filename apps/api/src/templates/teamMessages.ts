@@ -36,6 +36,12 @@ const renderTeamPaymentFailed = (publicId: string, reason?: string): TeamMessage
  */
 const REVIEW_REASONS: Readonly<Record<string, string>> = Object.freeze({
   payment_after_expiry: "Se cobró un pedido que ya había expirado. Revisa si hay stock para surtirlo o reembolsa.",
+  stock_commit_failed:
+    "El pedido quedó pagado pero falló el descuento de stock. Se reintenta solo; si el aviso se repite, revisa el inventario.",
+  payment_cancel_failed:
+    "No se pudo cancelar el cobro de un pedido expirado: el cliente aún podría pagarlo. Cancela el intent en Stripe.",
+  refund_without_committed_stock:
+    "Se reembolsó un pedido cuyo stock nunca se descontó: no se repuso nada. Confirma el inventario.",
   stock_commit_missed: "El pedido quedó pagado pero su apartado ya se había liberado: el stock NO se descontó.",
 });
 
@@ -44,6 +50,14 @@ const renderTeamPaymentNeedsReview = (publicId: string, reason: string): TeamMes
   lines: [
     `Folio: ${publicId}`,
     REVIEW_REASONS[reason] ?? `Motivo: ${reason}`,
+  ],
+});
+
+const renderTeamDisputeLost = (publicId: string): TeamMessage => ({
+  title: "⚖️ Disputa perdida",
+  lines: [
+    `Folio: ${publicId}`,
+    "El banco resolvió a favor del cliente: el dinero salió, pero el pedido NO se reembolsó ni se repuso stock.",
   ],
 });
 
@@ -61,5 +75,6 @@ export {
   renderTeamOrderPaid,
   renderTeamPaymentFailed,
   renderTeamPaymentNeedsReview,
+  renderTeamDisputeLost,
   renderTeamShipmentIncident,
 };
