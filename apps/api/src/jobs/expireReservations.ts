@@ -35,7 +35,7 @@ const cancelPendingCharge = async (order: OrderDocument, intentId: string): Prom
     await getPaymentProvider().cancelPayment(intentId);
   } catch (err) {
     logger.error(
-      { err, order: order.publicId },
+      { err, order: order.orderNumber },
       "No se pudo cancelar el intent de una orden expirada",
     );
     // The intent is still live: the customer can pay an order whose stock is back
@@ -58,7 +58,7 @@ const expireAftermath = async (order: OrderDocument): Promise<void> => {
     actorType: "system",
     action: AuditAction.ORDER_EXPIRED,
     module: AuditModule.ORDERS,
-    targetId: order.publicId,
+    targetId: String(order._id),
   });
   if (order.payment.intentId) {
     await cancelPendingCharge(order, order.payment.intentId);

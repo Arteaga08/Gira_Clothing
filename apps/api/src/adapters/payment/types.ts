@@ -26,6 +26,14 @@ interface PaymentView {
   lastError?: string;
 }
 
+/** What the provider knows about the charge behind a payment. All of it is optional: reading it is best-effort. */
+interface ChargeDetails {
+  /** When the provider took the money. */
+  capturedAt?: Date;
+  /** Brand + last4 ONLY (PCI SAQ-A): nothing here is enough to charge the card again. */
+  card?: { brand: string; last4: string };
+}
+
 enum ProviderEventType {
   PAYMENT_SUCCEEDED = "payment_succeeded",
   PAYMENT_FAILED = "payment_failed",
@@ -57,6 +65,11 @@ interface PaymentProvider {
   createPayment(input: CreatePaymentInput): Promise<PaymentView>;
   getPayment(providerId: string): Promise<PaymentView>;
   /**
+   * Charge-level facts (card brand/last4, capture time). Webhook payloads do not
+   * carry them expanded, so they are read back from the provider on demand.
+   */
+  getChargeDetails(providerId: string): Promise<ChargeDetails>;
+  /**
    * Closes the charging window. Called when an order expires: the hold is gone
    * and the price and the stock behind it may both have moved, so the customer
    * must not be able to confirm that intent minutes or hours later.
@@ -67,5 +80,5 @@ interface PaymentProvider {
   parseWebhookEvent(rawBody: Buffer, signature: string): ProviderEvent;
 }
 
-export type { CreatePaymentInput, PaymentView, ProviderEvent, PaymentProvider };
+export type { CreatePaymentInput, PaymentView, ChargeDetails, ProviderEvent, PaymentProvider };
 export { ProviderEventType };

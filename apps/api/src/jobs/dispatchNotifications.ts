@@ -54,16 +54,16 @@ const renderTeam = (doc: NotificationDocument): TeamMessage => {
       return renderTeamOrderPaid(payload as unknown as TeamOrderSnapshot);
     case NotificationType.TEAM_PAYMENT_FAILED:
       return renderTeamPaymentFailed(
-        String(payload.publicId),
+        String(payload.orderNumber),
         typeof payload.reason === "string" ? payload.reason : undefined,
       );
     case NotificationType.TEAM_PAYMENT_NEEDS_REVIEW:
-      return renderTeamPaymentNeedsReview(String(payload.publicId), String(payload.reason));
+      return renderTeamPaymentNeedsReview(String(payload.orderNumber), String(payload.reason));
     case NotificationType.TEAM_DISPUTE_LOST:
-      return renderTeamDisputeLost(String(payload.publicId));
+      return renderTeamDisputeLost(String(payload.orderNumber));
     case NotificationType.TEAM_SHIPMENT_INCIDENT:
       return renderTeamShipmentIncident(
-        String(payload.publicId),
+        String(payload.orderNumber),
         String(payload.status),
         String(payload.carrier),
       );

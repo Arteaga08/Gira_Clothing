@@ -7,6 +7,7 @@ import {
   ProviderEventType,
   type CreatePaymentInput,
   type PaymentView,
+  type ChargeDetails,
   type PaymentProvider,
   type ProviderEvent,
 } from "./types.js";
@@ -133,6 +134,25 @@ const createStripePaymentProvider = (config: StripeConfig): PaymentProvider => {
     }
   };
 
+  const getChargeDetails = async (providerId: string): Promise<ChargeDetails> => {
+    try {
+      // Stripe does not expand objects on webhook deliveries, so the charge is read back here.
+      const intent = await client.paymentIntents.retrieve(providerId, {
+        expand: ["latest_charge"],
+      });
+      const charge = typeof intent.latest_charge === "object" ? intent.latest_charge : null;
+      if (!charge) return {};
+      const card = charge.payment_method_details?.card;
+      return {
+        capturedAt: new Date(charge.created * 1000),
+        ...(card?.brand && card.last4 ? { card: { brand: card.brand, last4: card.last4 } } : {}),
+      };
+    } catch (err) {
+      logger.error({ err }, "Stripe getChargeDetails failed");
+      throw new AppError("No se pudo consultar el cargo del pago.", 502);
+    }
+  };
+
   const cancelPayment = async (providerId: string): Promise<void> => {
     try {
       await client.paymentIntents.cancel(providerId);
@@ -206,7 +226,14 @@ const createStripePaymentProvider = (config: StripeConfig): PaymentProvider => {
     return { id: event.id, type, ...extractRefs(event), raw: event };
   };
 
-  return { createPayment, getPayment, cancelPayment, refundPayment, parseWebhookEvent };
+  return {
+    createPayment,
+    getPayment,
+    getChargeDetails,
+    cancelPayment,
+    refundPayment,
+    parseWebhookEvent,
+  };
 };
 
 export { createStripePaymentProvider };

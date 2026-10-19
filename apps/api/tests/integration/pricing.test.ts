@@ -287,3 +287,31 @@ describe("pricingService · quoteTotals · snapshot", () => {
     expect(quote.rounding).toBe(PriceRounding.UP_TO_UNIT);
   });
 });
+
+describe("pricingService · quoteTotals · IVA incluido", () => {
+  it("desglosa el IVA del total, congela la tasa y deja descuento en 0", async () => {
+    const cookie = await loginAsAdmin(app);
+    const { variantId } = await seedVariant(cookie, "TAX1", { basePrice: 10000 });
+    const lines = await resolveOrderLines([{ variantId, qty: 1 }]);
+
+    const quote = await quoteTotals(lines, { currency: Currency.MXN, destinationCountry: "MX" });
+
+    expect(quote.discount).toBe(0);
+    expect(quote.taxRateBps).toBe(1600);
+    expect(quote.total).toBe(quote.subtotal - quote.discount + quote.shippingCost);
+    const net = Math.round((quote.total * 10000) / 11600);
+    expect(quote.tax).toBe(quote.total - net);
+    expect(quote.tax).toBeGreaterThan(0);
+  });
+
+  it("el desglose se calcula en la moneda de cobro (USD)", async () => {
+    const cookie = await loginAsAdmin(app);
+    const { variantId } = await seedVariant(cookie, "TAX2", { basePrice: 20000 });
+    const lines = await resolveOrderLines([{ variantId, qty: 2 }]);
+
+    const quote = await quoteTotals(lines, { currency: Currency.USD, destinationCountry: "MX" });
+
+    const net = Math.round((quote.total * 10000) / 11600);
+    expect(quote.tax).toBe(quote.total - net);
+  });
+});

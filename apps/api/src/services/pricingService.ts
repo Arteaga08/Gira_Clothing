@@ -4,6 +4,7 @@ import type { PriceRounding } from "@gira/shared";
 import { Variant } from "../models/Variant.js";
 import { AppError } from "../utils/AppError.js";
 import { convertFromMxn } from "../utils/money.js";
+import { splitTax } from "../utils/orderTax.js";
 import { getSettings } from "./settingsService.js";
 import type { ImageAttrs } from "../models/schemas/image.js";
 
@@ -50,7 +51,13 @@ interface Quote {
   lines: QuotedLine[];
   subtotalMxn: number;
   subtotal: number;
+  /** Always 0 until coupons land (M12a); it travels now so the accounting identity is fixed. */
+  discount: number;
   shippingCost: number;
+  /** Rate used to derive `tax`, frozen on the order. */
+  taxRateBps: number;
+  /** IVA included in `total` (a breakdown, not an addition). */
+  tax: number;
   total: number;
 }
 
@@ -142,6 +149,11 @@ const quoteTotals = async (lines: ResolvedLine[], input: QuoteInput): Promise<Qu
     ? 0
     : convertFromMxn(feeMxn, input.currency, mxnPerUsdCents, rounding);
 
+  const discount = 0;
+  const total = Math.max(0, subtotal - discount + shippingCost);
+  const taxRateBps = settings.tax.rateBps;
+  const { tax } = splitTax(total, taxRateBps);
+
   return {
     currency: input.currency,
     exchangeRate: mxnPerUsdCents,
@@ -149,8 +161,11 @@ const quoteTotals = async (lines: ResolvedLine[], input: QuoteInput): Promise<Qu
     lines: quotedLines,
     subtotalMxn,
     subtotal,
+    discount,
     shippingCost,
-    total: subtotal + shippingCost,
+    taxRateBps,
+    tax,
+    total,
   };
 };
 

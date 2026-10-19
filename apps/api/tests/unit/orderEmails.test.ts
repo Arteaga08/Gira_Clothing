@@ -9,6 +9,7 @@ import {
 
 const snapshot = {
   publicId: "abc123",
+  orderNumber: "GC-7KQ2M9XA",
   customerName: "Ana",
   currency: Currency.MXN,
   subtotal: 120000,
@@ -32,8 +33,14 @@ describe("formatMoney", () => {
 describe("renderOrderConfirmation", () => {
   const mail = renderOrderConfirmation(snapshot);
 
-  it("escribe el asunto en español y sin el publicId", () => {
-    expect(mail.subject).toBe("Confirmamos tu compra en Gira Clothing");
+  it("escribe el asunto en español con el folio y sin el publicId", () => {
+    expect(mail.subject).toBe("Confirmamos tu compra GC-7KQ2M9XA en Gira Clothing");
+    expect(mail.subject).not.toContain("abc123");
+  });
+  it("muestra el folio en el cuerpo (html y texto) y el publicId solo en el enlace", () => {
+    expect(mail.html).toContain("GC-7KQ2M9XA");
+    expect(mail.text).toContain("Folio: GC-7KQ2M9XA");
+    expect(mail.html.replace("/orden/abc123", "")).not.toContain("abc123");
   });
   it("incluye las líneas, el total y el enlace a la orden", () => {
     expect(mail.html).toContain("Tote");
@@ -55,6 +62,8 @@ describe("renderOrderPreparing", () => {
   it("anuncia la preparación sin prometer fecha de entrega", () => {
     const mail = renderOrderPreparing(snapshot);
     expect(mail.subject).toContain("preparando");
+    expect(mail.subject).toContain("GC-7KQ2M9XA");
+    expect(mail.html).toContain("GC-7KQ2M9XA");
     expect(mail.html).toContain("/orden/abc123");
   });
 });

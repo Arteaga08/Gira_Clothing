@@ -22,7 +22,10 @@ interface OrderEmailLine {
 }
 
 interface OrderEmailSnapshot {
+  /** The credential: used ONLY to build the link to the order page. */
   publicId: string;
+  /** The folio the customer reads and quotes. */
+  orderNumber: string;
   customerName: string;
   currency: Currency;
   subtotal: number;
@@ -49,6 +52,9 @@ const formatMoney = (minorUnits: number, currency: Currency): string => {
 const orderUrl = (publicId: string): string => `${env.clientUrl}/orden/${publicId}`;
 const trackingUrl = (publicId: string): string => `${orderUrl(publicId)}/seguimiento`;
 
+const folioHtml = (snapshot: OrderEmailSnapshot): string =>
+  `<p>Folio: <strong>${escapeHtml(snapshot.orderNumber)}</strong></p>`;
+
 const renderLinesHtml = (lines: OrderEmailLine[], currency: Currency): string =>
   lines
     .map(
@@ -74,44 +80,47 @@ const totalsHtml = (snapshot: OrderEmailSnapshot): string =>
   `<strong>Total: ${formatMoney(snapshot.total, snapshot.currency)}</strong></p>`;
 
 const renderOrderConfirmation = (snapshot: OrderEmailSnapshot): RenderedMail => ({
-  subject: "Confirmamos tu compra en Gira Clothing",
+  subject: `Confirmamos tu compra ${snapshot.orderNumber} en Gira Clothing`,
   html: layout(
     `¡Gracias por tu compra, ${snapshot.customerName}!`,
     `<p>Ya recibimos tu pago. Te avisamos en cuanto empecemos a preparar tu pedido.</p>` +
+      folioHtml(snapshot) +
       `<table width="100%">${renderLinesHtml(snapshot.lines, snapshot.currency)}</table>` +
       totalsHtml(snapshot) +
       `<p><a href="${orderUrl(snapshot.publicId)}">Ver mi pedido</a></p>`,
   ),
   text:
     `¡Gracias por tu compra, ${snapshot.customerName}!\n\n` +
-    `Ya recibimos tu pago.\n\n${renderLinesText(snapshot.lines, snapshot.currency)}\n\n` +
+    `Ya recibimos tu pago.\nFolio: ${snapshot.orderNumber}\n\n${renderLinesText(snapshot.lines, snapshot.currency)}\n\n` +
     `Total: ${formatMoney(snapshot.total, snapshot.currency)}\n\n` +
     `Ver mi pedido: ${orderUrl(snapshot.publicId)}`,
 });
 
 const renderOrderPreparing = (snapshot: OrderEmailSnapshot): RenderedMail => ({
-  subject: "Estamos preparando tu pedido",
+  subject: `Estamos preparando tu pedido ${snapshot.orderNumber}`,
   html: layout(
     `${snapshot.customerName}, ya estamos en eso`,
     `<p>Tu pedido está en preparación. Te mandamos el número de guía en cuanto salga del taller.</p>` +
+      folioHtml(snapshot) +
       `<p><a href="${orderUrl(snapshot.publicId)}">Ver mi pedido</a></p>`,
   ),
   text:
-    `${snapshot.customerName}, ya estamos preparando tu pedido.\n\n` +
+    `${snapshot.customerName}, ya estamos preparando tu pedido.\nFolio: ${snapshot.orderNumber}\n\n` +
     `Te mandamos el número de guía en cuanto salga del taller.\n\n` +
     `Ver mi pedido: ${orderUrl(snapshot.publicId)}`,
 });
 
 const renderOrderShipped = (snapshot: ShippedEmailSnapshot): RenderedMail => ({
-  subject: "Tu pedido va en camino",
+  subject: `Tu pedido ${snapshot.orderNumber} va en camino`,
   html: layout(
     `${snapshot.customerName}, tu pedido ya salió`,
-    `<p>Paquetería: <strong>${escapeHtml(snapshot.carrier)}</strong><br>` +
+    folioHtml(snapshot) +
+      `<p>Paquetería: <strong>${escapeHtml(snapshot.carrier)}</strong><br>` +
       `Número de guía: <strong>${escapeHtml(snapshot.trackingNumber)}</strong></p>` +
       `<p><a href="${trackingUrl(snapshot.publicId)}">Seguir mi envío</a></p>`,
   ),
   text:
-    `${snapshot.customerName}, tu pedido ya salió.\n\n` +
+    `${snapshot.customerName}, tu pedido ya salió.\nFolio: ${snapshot.orderNumber}\n\n` +
     `Paquetería: ${snapshot.carrier}\nNúmero de guía: ${snapshot.trackingNumber}\n\n` +
     `Seguir mi envío: ${trackingUrl(snapshot.publicId)}`,
 });

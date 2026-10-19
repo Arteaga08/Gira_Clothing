@@ -1,5 +1,13 @@
 import { Schema, model, type HydratedDocument, type Model, type Types } from "mongoose";
-import { Currency, DisputeStatus, PriceRounding, OrderStatus, PaymentStatus } from "@gira/shared";
+import {
+  CANCEL_REASON_MAX,
+  Currency,
+  DisputeStatus,
+  OrderPriority,
+  PriceRounding,
+  OrderStatus,
+  PaymentStatus,
+} from "@gira/shared";
 import { imageSchema, type ImageAttrs } from "./schemas/image.js";
 
 /**
@@ -57,6 +65,10 @@ interface OrderPayment {
   /** Cumulative amount the provider returned, minor units. Overwritten (never summed) from the provider. */
   refundedAmount?: number;
   refundedAt?: Date;
+  /** When the provider took the money. */
+  capturedAt?: Date;
+  /** Brand + last4 ONLY (PCI SAQ-A): nothing here is enough to charge the card again. */
+  card?: { brand: string; last4: string };
 }
 
 interface StatusHistoryEntry {
@@ -69,6 +81,8 @@ interface StatusHistoryEntry {
 
 interface OrderAttrs {
   publicId: string;
+  /** Human folio ("GC-7KQ2M9XA"). The credential is publicId; this is only a label. */
+  orderNumber: string;
   user?: Types.ObjectId;
   customer: OrderCustomer;
   shipping: ShippingAddress;
@@ -77,12 +91,23 @@ interface OrderAttrs {
   exchangeRate: number;
   rounding: PriceRounding;
   subtotal: number;
+  discount: number;
   shippingCost: number;
+  /** IVA included in `total` (a breakdown, not an addition). */
+  tax: number;
+  /** Rate used to derive `tax`, frozen so a later Settings change never rewrites a past order. */
+  taxRateBps: number;
   total: number;
   status: OrderStatus;
   statusHistory: StatusHistoryEntry[];
   payment: OrderPayment;
   idempotencyKey: string;
+  /** Server-stamped when checkout is accepted. Admin-only: never in a customer DTO. */
+  termsAcceptedAt: Date;
+  /** Why the order was cancelled: a system code or the admin's free-text reason. */
+  cancelReason?: string;
+  /** Triage only: never conditions a transition, only where the order sorts in the queue. */
+  priority: OrderPriority;
   paidAt?: Date;
   /**
    * Chargeback lifecycle. Lives on the order, NOT in `status`: a dispute does
@@ -163,6 +188,16 @@ const orderPaymentSchema = new Schema<OrderPayment>(
     lastError: { type: String },
     refundedAmount: { type: Number, min: 0 },
     refundedAt: { type: Date },
+    capturedAt: { type: Date },
+    card: {
+      type: new Schema(
+        {
+          brand: { type: String, trim: true, maxlength: 30, required: true },
+          last4: { type: String, trim: true, match: /^\d{4}$/, required: true },
+        },
+        { _id: false },
+      ),
+    },
   },
   { _id: false },
 );
@@ -182,6 +217,7 @@ const statusHistorySchema = new Schema<StatusHistoryEntry>(
 const orderSchema = new Schema<OrderAttrs, OrderModel>(
   {
     publicId: { type: String, required: true },
+    orderNumber: { type: String, required: true, uppercase: true, trim: true },
     user: { type: Schema.Types.ObjectId, ref: "User" },
     customer: { type: orderCustomerSchema, required: true },
     shipping: { type: shippingAddressSchema, required: true },
@@ -190,7 +226,10 @@ const orderSchema = new Schema<OrderAttrs, OrderModel>(
     exchangeRate: { type: Number, required: true, min: 1 },
     rounding: { type: String, enum: Object.values(PriceRounding), required: true },
     subtotal: { type: Number, required: true, min: 0 },
+    discount: { type: Number, required: true, min: 0, default: 0 },
     shippingCost: { type: Number, required: true, min: 0 },
+    tax: { type: Number, required: true, min: 0 },
+    taxRateBps: { type: Number, required: true, min: 0, max: 10000 },
     total: { type: Number, required: true, min: 0 },
     status: {
       type: String,
@@ -201,6 +240,9 @@ const orderSchema = new Schema<OrderAttrs, OrderModel>(
     statusHistory: { type: [statusHistorySchema], default: [] },
     payment: { type: orderPaymentSchema, required: true },
     idempotencyKey: { type: String, required: true },
+    termsAcceptedAt: { type: Date, required: true },
+    cancelReason: { type: String, trim: true, maxlength: CANCEL_REASON_MAX },
+    priority: { type: String, enum: Object.values(OrderPriority), default: OrderPriority.NORMAL },
     paidAt: { type: Date },
     disputeStatus: { type: String, enum: Object.values(DisputeStatus) },
     disputedAt: { type: Date },
@@ -214,6 +256,10 @@ const orderSchema = new Schema<OrderAttrs, OrderModel>(
 
 // The capability lookup: GET /orders/:publicId.
 orderSchema.index({ publicId: 1 }, { unique: true });
+// The human folio: exact lookup from the panel and the unique guard against collisions.
+orderSchema.index({ orderNumber: 1 }, { unique: true });
+// Operator queue: priority first, then status, newest first.
+orderSchema.index({ priority: 1, status: 1, createdAt: -1 });
 // Idempotent creation: the unique index IS the guarantee, not the pre-check.
 orderSchema.index({ idempotencyKey: 1 }, { unique: true });
 // "My orders" panel.

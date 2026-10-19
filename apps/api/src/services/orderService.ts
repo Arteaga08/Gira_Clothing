@@ -12,6 +12,7 @@ import { Cart } from "../models/Cart.js";
 import { AppError } from "../utils/AppError.js";
 import { applyOrderTransition } from "./orderTransitionService.js";
 import { generatePublicId } from "../utils/publicId.js";
+import { generateOrderNumber } from "../utils/orderNumber.js";
 import { idempotencyOwner, scopeIdempotencyKey } from "../utils/idempotency.js";
 import { resolveOrderLines, quoteTotals, type RequestedLine, type QuotedLine } from "./pricingService.js";
 import { reserveStock, releaseReservation } from "./reservationService.js";
@@ -48,6 +49,8 @@ interface CreateOrderInput {
   customer: OrderCustomer;
   shipping: ShippingAddress;
   idempotencyKey: string;
+  /** Checkout consent. Validated by Joi; the service only stamps `termsAcceptedAt`. */
+  termsAccepted: true;
 }
 
 interface OrderContext {
@@ -67,13 +70,17 @@ interface PublicOrderLine {
 
 interface PublicOrder {
   publicId: string;
+  orderNumber: string;
   status: OrderStatus;
   customer: OrderCustomer;
   shipping: ShippingAddress;
   lines: PublicOrderLine[];
   currency: Currency;
   subtotal: number;
+  discount: number;
   shippingCost: number;
+  tax: number;
+  taxRateBps: number;
   total: number;
   createdAt: Date;
   paidAt?: Date;
@@ -87,13 +94,17 @@ interface CreatedOrder {
 interface OrderLean {
   _id: Types.ObjectId;
   publicId: string;
+  orderNumber: string;
   status: OrderStatus;
   customer: OrderCustomer;
   shipping: ShippingAddress;
   lines: OrderLineSnapshot[];
   currency: Currency;
   subtotal: number;
+  discount: number;
   shippingCost: number;
+  tax: number;
+  taxRateBps: number;
   total: number;
   createdAt: Date;
   paidAt?: Date;
@@ -107,6 +118,7 @@ interface OrderLean {
  */
 const toPublicOrder = (doc: OrderLean): PublicOrder => ({
   publicId: doc.publicId,
+  orderNumber: doc.orderNumber,
   status: doc.status,
   customer: doc.customer,
   shipping: doc.shipping,
@@ -121,7 +133,10 @@ const toPublicOrder = (doc: OrderLean): PublicOrder => ({
   })),
   currency: doc.currency,
   subtotal: doc.subtotal,
+  discount: doc.discount,
   shippingCost: doc.shippingCost,
+  tax: doc.tax,
+  taxRateBps: doc.taxRateBps,
   total: doc.total,
   createdAt: doc.createdAt,
   ...(doc.paidAt ? { paidAt: doc.paidAt } : {}),
@@ -136,6 +151,13 @@ const toCustomerOrder = (doc: OrderLean): CustomerOrder => ({
   id: String(doc._id),
   ...toPublicOrder(doc),
 });
+
+const ORDER_NUMBER_ATTEMPTS = 3;
+
+const isOrderNumberCollision = (err: unknown): boolean => {
+  const e = err as { code?: number; keyPattern?: Record<string, unknown> };
+  return e.code === 11000 && e.keyPattern !== undefined && "orderNumber" in e.keyPattern;
+};
 
 const isDuplicateKeyError = (err: unknown): boolean =>
   typeof err === "object" &&
@@ -218,41 +240,54 @@ const createOrder = async (input: CreateOrderInput, ctx: OrderContext): Promise<
     { actorId: ctx.userId, ip: ctx.ip },
   );
 
-  let order: OrderDocument;
-  try {
-    order = await Order.create({
-      _id: orderId,
-      publicId: generatePublicId(),
-      ...(ctx.userId ? { user: ctx.userId } : {}),
-      customer: input.customer,
-      shipping: input.shipping,
-      lines: quote.lines.map(toLineSnapshot),
-      currency: quote.currency,
-      exchangeRate: quote.exchangeRate,
-      rounding: quote.rounding,
-      subtotal: quote.subtotal,
-      shippingCost: quote.shippingCost,
-      total: quote.total,
-      status: OrderStatus.PENDING_PAYMENT,
-      statusHistory: [{ status: OrderStatus.PENDING_PAYMENT, at: new Date() }],
-      payment: { provider: "stripe", status: PaymentStatus.REQUIRES_PAYMENT },
-      idempotencyKey,
-      ...(input.useCart && ctx.userId ? { fromCart: true } : {}),
-    });
-  } catch (err) {
-    await releaseReservation(orderId, "order_creation_failed");
-    // A racing request with the same key won: return ITS order, not an error.
-    if (isDuplicateKeyError(err)) {
-      const winner = await Order.findOne({ idempotencyKey }).lean();
-      if (winner) {
-        return toCreatedOrder(
-          toPublicOrder(winner),
-          await refreshClientSecret(winner.payment.intentId),
-        );
+  let order: OrderDocument | undefined;
+  for (let attempt = 1; attempt <= ORDER_NUMBER_ATTEMPTS && !order; attempt += 1) {
+    try {
+      order = await Order.create({
+        _id: orderId,
+        publicId: generatePublicId(),
+        orderNumber: generateOrderNumber(),
+        ...(ctx.userId ? { user: ctx.userId } : {}),
+        customer: input.customer,
+        shipping: input.shipping,
+        lines: quote.lines.map(toLineSnapshot),
+        currency: quote.currency,
+        exchangeRate: quote.exchangeRate,
+        rounding: quote.rounding,
+        subtotal: quote.subtotal,
+        discount: quote.discount,
+        shippingCost: quote.shippingCost,
+        tax: quote.tax,
+        taxRateBps: quote.taxRateBps,
+        total: quote.total,
+        termsAcceptedAt: new Date(),
+        status: OrderStatus.PENDING_PAYMENT,
+        statusHistory: [{ status: OrderStatus.PENDING_PAYMENT, at: new Date() }],
+        payment: { provider: "stripe", status: PaymentStatus.REQUIRES_PAYMENT },
+        idempotencyKey,
+        ...(input.useCart && ctx.userId ? { fromCart: true } : {}),
+      });
+    } catch (err) {
+      // A folio collision is retried with a fresh folio: nothing was inserted.
+      if (isOrderNumberCollision(err) && attempt < ORDER_NUMBER_ATTEMPTS) continue;
+      await releaseReservation(orderId, "order_creation_failed");
+      if (isOrderNumberCollision(err)) {
+        throw new AppError("No se pudo generar el folio de la orden. Intenta de nuevo.", 503);
       }
+      // A racing request with the same key won: return ITS order, not an error.
+      if (isDuplicateKeyError(err)) {
+        const winner = await Order.findOne({ idempotencyKey }).lean();
+        if (winner) {
+          return toCreatedOrder(
+            toPublicOrder(winner),
+            await refreshClientSecret(winner.payment.intentId),
+          );
+        }
+      }
+      throw err;
     }
-    throw err;
   }
+  if (!order) throw new AppError("No se pudo generar el folio de la orden.", 500);
 
   let payment: PaymentView;
   try {
@@ -271,6 +306,7 @@ const createOrder = async (input: CreateOrderInput, ctx: OrderContext): Promise<
       to: OrderStatus.CANCELLED,
       actor: { type: "system" },
       reason: "payment_setup_failed",
+      set: { cancelReason: "payment_setup_failed" },
     });
     throw err;
   }
@@ -298,7 +334,7 @@ const createOrder = async (input: CreateOrderInput, ctx: OrderContext): Promise<
     actorType: ctx.userId ? "user" : "system",
     action: AuditAction.ORDER_CREATED,
     module: AuditModule.ORDERS,
-    targetId: order.publicId,
+    targetId: String(order._id),
     ip: ctx.ip,
   });
   await recordAudit({
@@ -306,7 +342,7 @@ const createOrder = async (input: CreateOrderInput, ctx: OrderContext): Promise<
     actorType: ctx.userId ? "user" : "system",
     action: AuditAction.PAYMENT_INTENT_CREATED,
     module: AuditModule.PAYMENTS,
-    targetId: order.publicId,
+    targetId: String(order._id),
     ip: ctx.ip,
   });
 

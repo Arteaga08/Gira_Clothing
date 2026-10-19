@@ -1,7 +1,14 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import request from "supertest";
 import mongoose from "mongoose";
-import { AuditAction, Currency, OrderStatus, ReservationStatus } from "@gira/shared";
+import { randomUUID } from "node:crypto";
+import {
+  AuditAction,
+  Currency,
+  ORDER_NUMBER_PATTERN,
+  OrderStatus,
+  ReservationStatus,
+} from "@gira/shared";
 import { Variant } from "../../src/models/Variant.js";
 import { Product } from "../../src/models/Product.js";
 import { Order } from "../../src/models/Order.js";
@@ -18,6 +25,25 @@ const { getFailFlag, setShouldFail } = vi.hoisted(() => {
       shouldFail = value;
     },
   };
+});
+
+// Lets a test force folio collisions: queued values are served first, then the real generator.
+const { queueOrderNumbers, clearOrderNumbers, nextQueued } = vi.hoisted(() => {
+  const queue: string[] = [];
+  return {
+    queueOrderNumbers: (...values: string[]) => {
+      queue.push(...values);
+    },
+    clearOrderNumbers: () => {
+      queue.length = 0;
+    },
+    nextQueued: () => queue.shift(),
+  };
+});
+
+vi.mock("../../src/utils/orderNumber.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/utils/orderNumber.js")>();
+  return { ...actual, generateOrderNumber: () => nextQueued() ?? actual.generateOrderNumber() };
 });
 
 // Only createPayment is intercepted, and only when a test opts in via
@@ -124,6 +150,7 @@ const uniqueKey = (): string => `key-${Date.now()}-${Math.random().toString(36).
 
 afterEach(() => {
   setShouldFail(false);
+  clearOrderNumbers();
 });
 
 describe("orderService.createOrder · camino feliz", () => {
@@ -416,6 +443,7 @@ describe("orderService.createOrder · fallo del proveedor", () => {
 
     const order = await Order.findOne({}).sort({ createdAt: -1 }).lean();
     expect(order?.status).toBe(OrderStatus.CANCELLED);
+    expect(order?.cancelReason).toBe("payment_setup_failed");
   });
 });
 
@@ -431,19 +459,123 @@ describe("orderService.createOrder · auditoría", () => {
         customer: validCustomer,
         shipping: validShipping,
         idempotencyKey: uniqueKey(),
+        termsAccepted: true,
       },
       {},
     );
 
+    const stored = await Order.findOne({ publicId: result.order.publicId });
+    const targetId = String(stored!._id);
     const created = await AuditLog.countDocuments({
       action: AuditAction.ORDER_CREATED,
-      targetId: result.order.publicId,
+      targetId,
     });
     const paymentCreated = await AuditLog.countDocuments({
       action: AuditAction.PAYMENT_INTENT_CREATED,
-      targetId: result.order.publicId,
+      targetId,
     });
     expect(created).toBe(1);
     expect(paymentCreated).toBe(1);
+  });
+});
+
+describe("M9a · checkout por HTTP", () => {
+  const checkoutBody = (variantId: string, extra: Record<string, unknown> = {}) => ({
+    lines: [{ variantId, qty: 1 }],
+    currency: Currency.MXN,
+    customer: validCustomer,
+    shipping: validShipping,
+    ...extra,
+  });
+
+  const postOrder = (body: Record<string, unknown>) =>
+    request(app)
+      .post("/api/v1/orders")
+      .set("Origin", ORIGIN)
+      .set("Idempotency-Key", randomUUID())
+      .send(body);
+
+  it("devuelve folio y desglose de IVA, y sella termsAcceptedAt sin exponerlo", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { variantId } = await seedVariant(adminCookie, "M9A1");
+
+    const res = await postOrder(checkoutBody(variantId, { termsAccepted: true }));
+
+    expect(res.status).toBe(201);
+    const order = res.body.data.order as Record<string, unknown>;
+    expect(order.orderNumber).toMatch(ORDER_NUMBER_PATTERN);
+    expect(order.discount).toBe(0);
+    expect(order.taxRateBps).toBe(1600);
+    expect(order.tax as number).toBeGreaterThan(0);
+    expect(order).not.toHaveProperty("termsAcceptedAt");
+
+    const doc = await Order.findOne({ orderNumber: order.orderNumber as string });
+    expect(doc?.termsAcceptedAt).toBeInstanceOf(Date);
+  });
+
+  it("rechaza con 400 si no se aceptan los términos y no persiste nada", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { variantId } = await seedVariant(adminCookie, "M9A2");
+
+    const res = await postOrder(checkoutBody(variantId));
+
+    expect(res.status).toBe(400);
+    expect(await Order.countDocuments()).toBe(0);
+    expect(await StockReservation.countDocuments()).toBe(0);
+  });
+
+  it("termsAccepted:false también se rechaza", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { variantId } = await seedVariant(adminCookie, "M9A3");
+
+    const res = await postOrder(checkoutBody(variantId, { termsAccepted: false }));
+
+    expect(res.status).toBe(400);
+  });
+});
+
+describe("M9a · folio orderNumber", () => {
+  const create = (variantId: string) =>
+    createOrder(
+      {
+        lines: [{ variantId, qty: 1 }],
+        currency: Currency.MXN,
+        customer: validCustomer,
+        shipping: validShipping,
+        idempotencyKey: uniqueKey(),
+        termsAccepted: true,
+      },
+      {},
+    );
+
+  it("reintenta con otro folio si el primero ya existe", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { variantId } = await seedVariant(adminCookie, "FOL1", { onHand: 10 });
+    const first = await create(variantId);
+
+    queueOrderNumbers(first.order.orderNumber, first.order.orderNumber);
+    const second = await create(variantId);
+
+    expect(second.order.orderNumber).not.toBe(first.order.orderNumber);
+    expect(second.order.orderNumber).toMatch(ORDER_NUMBER_PATTERN);
+    expect(await Order.countDocuments()).toBe(2);
+  });
+
+  it("tras 3 colisiones seguidas falla y libera la reserva", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { variantId } = await seedVariant(adminCookie, "FOL2", { onHand: 10 });
+    const first = await create(variantId);
+
+    queueOrderNumbers(
+      first.order.orderNumber,
+      first.order.orderNumber,
+      first.order.orderNumber,
+    );
+    await expect(create(variantId)).rejects.toMatchObject({ statusCode: 503 });
+
+    expect(await Order.countDocuments()).toBe(1);
+    expect(
+      await StockReservation.countDocuments({ status: ReservationStatus.RELEASED }),
+    ).toBe(1);
   });
 });

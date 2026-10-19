@@ -2,6 +2,7 @@ import type { ApiStatus, ApiMeta, ApiResponse } from "./types/apiResponse.js";
 import { UserRole } from "./enums/userRole.js";
 import { AuditModule, AuditAction } from "./enums/auditAction.js";
 import { OrderStatus, PaymentStatus, DisputeStatus, ReservationStatus } from "./enums/orderStatus.js";
+import { OrderPriority } from "./enums/orderPriority.js";
 import { Currency, PriceRounding } from "./enums/money.js";
 import { ShipmentStatus } from "./enums/shipment.js";
 import {
@@ -19,6 +20,7 @@ export {
   PaymentStatus,
   DisputeStatus,
   ReservationStatus,
+  OrderPriority,
   Currency,
   PriceRounding,
   ShipmentStatus,
@@ -39,6 +41,10 @@ import type {
   StatusHistoryEntry,
   OrderPayment,
   AdminOrder,
+  OrderSummary,
+  OrderActivityEntry,
+  BulkStatusOutcome,
+  BulkStatusResult,
 } from "./types/order.js";
 import type {
   PrintFamily,
@@ -80,7 +86,24 @@ import type {
 } from "./types/stats.js";
 import type { PeriodPreset, StatsGranularity } from "./constants/stats.js";
 import { PERIOD_PRESETS, STATS_GRANULARITIES, MAX_STATS_DAYS } from "./constants/stats.js";
-import { MAX_STATUS_HISTORY } from "./constants/order.js";
+import {
+  MAX_STATUS_HISTORY,
+  ORDER_NUMBER_ALPHABET,
+  ORDER_NUMBER_PREFIX,
+  ORDER_NUMBER_BODY_LENGTH,
+  ORDER_NUMBER_PATTERN,
+  DEFAULT_TAX_RATE_BPS,
+  CANCEL_REASON_MIN,
+  CANCEL_REASON_MAX,
+  MAX_BULK_ORDERS,
+  MAX_ORDER_ACTIVITY,
+} from "./constants/order.js";
+import type { OrderStatusGroup } from "./constants/orderStatusGroups.js";
+import {
+  ORDER_STATUS_TO_GROUP,
+  ORDER_STATUS_GROUPS,
+  matchStatusGroup,
+} from "./constants/orderStatusGroups.js";
 import { PASSWORD_MIN_LENGTH, PASSWORD_MAX_BYTES } from "./constants/password.js";
 import type { AuditLogEntry } from "./types/audit.js";
 import type {
@@ -95,7 +118,12 @@ import type {
   MeResponse,
   ApiErrorBody,
 } from "./types/auth.js";
-import { ORDER_STATUS_LABELS, DISPUTE_STATUS_LABELS } from "./labels/orderStatus.js";
+import {
+  ORDER_STATUS_LABELS,
+  DISPUTE_STATUS_LABELS,
+  ORDER_PRIORITY_LABELS,
+  ORDER_STATUS_GROUP_LABELS,
+} from "./labels/orderStatus.js";
 import { SHIPMENT_STATUS_LABELS } from "./labels/shipmentStatus.js";
 import {
   TWO_FACTOR_INVALID_MESSAGE,
@@ -113,6 +141,10 @@ export type {
   StatusHistoryEntry,
   OrderPayment,
   AdminOrder,
+  OrderSummary,
+  OrderActivityEntry,
+  BulkStatusOutcome,
+  BulkStatusResult,
   PrintFamily,
   ProductCategory,
   Print,
@@ -148,7 +180,22 @@ export type {
 };
 export type { StatsGranularity, PeriodPreset };
 export { STATS_GRANULARITIES, MAX_STATS_DAYS, PERIOD_PRESETS };
-export { MAX_STATUS_HISTORY };
+export type { OrderStatusGroup };
+export {
+  MAX_STATUS_HISTORY,
+  ORDER_NUMBER_ALPHABET,
+  ORDER_NUMBER_PREFIX,
+  ORDER_NUMBER_BODY_LENGTH,
+  ORDER_NUMBER_PATTERN,
+  DEFAULT_TAX_RATE_BPS,
+  CANCEL_REASON_MIN,
+  CANCEL_REASON_MAX,
+  MAX_BULK_ORDERS,
+  MAX_ORDER_ACTIVITY,
+  ORDER_STATUS_TO_GROUP,
+  ORDER_STATUS_GROUPS,
+  matchStatusGroup,
+};
 export { PASSWORD_MIN_LENGTH, PASSWORD_MAX_BYTES };
 export type {
   RegisterRequest,
@@ -162,5 +209,11 @@ export type {
   MeResponse,
   ApiErrorBody,
 };
-export { ORDER_STATUS_LABELS, DISPUTE_STATUS_LABELS, SHIPMENT_STATUS_LABELS };
+export {
+  ORDER_STATUS_LABELS,
+  DISPUTE_STATUS_LABELS,
+  ORDER_PRIORITY_LABELS,
+  ORDER_STATUS_GROUP_LABELS,
+  SHIPMENT_STATUS_LABELS,
+};
 export { TWO_FACTOR_INVALID_MESSAGE, INVALID_CREDENTIALS_MESSAGE };

@@ -90,6 +90,7 @@ const queueShippedEmail = async (
     order: order._id,
     payload: {
       publicId: order.publicId,
+      orderNumber: order.orderNumber,
       customerName: order.customer.name,
       currency: order.currency,
       subtotal: order.subtotal,
@@ -159,7 +160,7 @@ const createShipment = async (
     actorType: "user",
     action: AuditAction.SHIPMENT_CREATED,
     module: AuditModule.SHIPPING,
-    targetId: order.publicId,
+    targetId: String(order._id),
     // Carrier + guide are operational data, not PII.
     after: { carrier: shipment.carrier, trackingNumber: shipment.trackingNumber },
     ip: ctx.ip,
@@ -207,12 +208,13 @@ const addShipmentEvent = async (
   }
 
   if (INCIDENT_STATUSES.has(input.status)) {
+    const folio = await Order.findById(orderId).select("orderNumber").lean();
     await enqueueNotification({
       channel: NotificationChannelKind.TEAM,
       type: NotificationType.TEAM_SHIPMENT_INCIDENT,
       to: "team",
       payload: {
-        publicId: shipment.orderPublicId,
+        orderNumber: folio?.orderNumber ?? "",
         status: input.status,
         carrier: shipment.carrier,
       },
@@ -224,7 +226,7 @@ const addShipmentEvent = async (
     actorType: "user",
     action: AuditAction.SHIPMENT_STATUS_CHANGED,
     module: AuditModule.SHIPPING,
-    targetId: shipment.orderPublicId,
+    targetId: String(shipment.order),
     before: { status: before },
     after: { status: input.status },
     ip: ctx.ip,

@@ -460,7 +460,7 @@ describe("Stripe webhook · charge.refunded", () => {
       await Notification.countDocuments({
         type: NotificationType.TEAM_PAYMENT_NEEDS_REVIEW,
         "payload.reason": "refund_without_committed_stock",
-        "payload.publicId": order.publicId,
+        "payload.orderNumber": order.orderNumber,
       }),
     ).toBe(1);
   });
@@ -648,5 +648,43 @@ describe("Stripe webhook · eventos ignorados o sin orden resoluble", () => {
     });
     const res = await postWebhook(payload, sign(payload));
     expect(res.status).toBe(200);
+  });
+});
+
+describe("Stripe webhook · detalle del cargo (M9a)", () => {
+  it("guarda capturedAt y la tarjeta (brand + last4) al confirmarse el pago", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { order } = await seedOrder(adminCookie, "CHG1");
+    mockRetrieve.mockResolvedValueOnce({
+      id: order.payment.intentId,
+      status: "succeeded",
+      latest_charge: {
+        created: 1_760_000_000,
+        payment_method_details: { type: "card", card: { brand: "visa", last4: "4242" } },
+      },
+    });
+
+    const res = await send(succeededPayload(nextEventId("chg"), order));
+    expect(res.status).toBe(200);
+
+    const paid = await Order.findById(order._id).lean();
+    expect(paid?.status).toBe(OrderStatus.PAID);
+    expect(paid?.payment.capturedAt).toEqual(new Date(1_760_000_000 * 1000));
+    expect(paid?.payment.card).toEqual({ brand: "visa", last4: "4242" });
+  });
+
+  it("si la consulta del cargo falla, la orden igual queda pagada (capturedAt = ahora, sin tarjeta)", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { order } = await seedOrder(adminCookie, "CHG2");
+    mockRetrieve.mockRejectedValueOnce(new Error("stripe down"));
+    const before = Date.now();
+
+    const res = await send(succeededPayload(nextEventId("chg"), order));
+    expect(res.status).toBe(200);
+
+    const paid = await Order.findById(order._id).lean();
+    expect(paid?.status).toBe(OrderStatus.PAID);
+    expect(paid?.payment.card).toBeUndefined();
+    expect(paid?.payment.capturedAt?.getTime()).toBeGreaterThanOrEqual(before - 1000);
   });
 });

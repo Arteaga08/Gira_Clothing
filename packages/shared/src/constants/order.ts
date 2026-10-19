@@ -7,4 +7,33 @@
  */
 const MAX_STATUS_HISTORY = 50;
 
-export { MAX_STATUS_HISTORY };
+/** Alphabet without I/O/0/1: the folio is dictated over the phone. */
+const ORDER_NUMBER_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+const ORDER_NUMBER_PREFIX = "GC-";
+const ORDER_NUMBER_BODY_LENGTH = 8;
+const ORDER_NUMBER_PATTERN = new RegExp(
+  `^${ORDER_NUMBER_PREFIX}[${ORDER_NUMBER_ALPHABET}]{${String(ORDER_NUMBER_BODY_LENGTH)}}$`,
+);
+
+/** IVA included in catalog prices, in basis points (1600 = 16%). Lives in Settings; this is its default. */
+const DEFAULT_TAX_RATE_BPS = 1600;
+
+const CANCEL_REASON_MIN = 5;
+const CANCEL_REASON_MAX = 300;
+/** Upper bound of a bulk status change: one request must not fan out unbounded writes. */
+const MAX_BULK_ORDERS = 50;
+/** Activity feed cap (the audit log can grow without limit; the panel needs the latest). */
+const MAX_ORDER_ACTIVITY = 100;
+
+export {
+  MAX_STATUS_HISTORY,
+  ORDER_NUMBER_ALPHABET,
+  ORDER_NUMBER_PREFIX,
+  ORDER_NUMBER_BODY_LENGTH,
+  ORDER_NUMBER_PATTERN,
+  DEFAULT_TAX_RATE_BPS,
+  CANCEL_REASON_MIN,
+  CANCEL_REASON_MAX,
+  MAX_BULK_ORDERS,
+  MAX_ORDER_ACTIVITY,
+};

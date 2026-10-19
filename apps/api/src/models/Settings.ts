@@ -1,5 +1,5 @@
 import { Schema, model, type HydratedDocument, type Model } from "mongoose";
-import { Currency, PriceRounding } from "@gira/shared";
+import { Currency, DEFAULT_TAX_RATE_BPS, PriceRounding } from "@gira/shared";
 
 /**
  * Business configuration singleton (ECOMMERCE_ARCHITECTURE_GUIDELINES,
@@ -40,12 +40,18 @@ interface InventorySettings {
   lowStockThreshold: number;
 }
 
+interface TaxSettings {
+  /** IVA already included in catalog prices, in basis points (1600 = 16%). */
+  rateBps: number;
+}
+
 interface SettingsAttrs {
   key: string;
   shipping: ShippingSettings;
   currency: CurrencySettings;
   reservation: ReservationSettings;
   inventory: InventorySettings;
+  tax: TaxSettings;
 }
 
 type SettingsModel = Model<SettingsAttrs>;
@@ -98,6 +104,16 @@ const settingsSchema = new Schema<SettingsAttrs, SettingsModel>(
         default: 3,
       },
     },
+    tax: {
+      rateBps: {
+        type: Number,
+        required: true,
+        min: 0,
+        max: 10000,
+        validate: { validator: Number.isInteger, message: "La tasa debe ser un entero en puntos base." },
+        default: DEFAULT_TAX_RATE_BPS,
+      },
+    },
   },
   { timestamps: true },
 );
@@ -111,5 +127,6 @@ export type {
   CurrencySettings,
   ReservationSettings,
   InventorySettings,
+  TaxSettings,
 };
 export { Settings, SINGLETON_KEY };

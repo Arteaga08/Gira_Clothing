@@ -40,6 +40,9 @@ const auditLogSchema = new Schema<AuditLogAttrs, AuditLogModel>(
   },
 );
 
+// Per-order activity feed: entries of one target, newest first.
+auditLogSchema.index({ targetId: 1, createdAt: -1 });
+
 const AuditLog = model<AuditLogAttrs, AuditLogModel>("AuditLog", auditLogSchema);
 
 export type { AuditLogAttrs };
