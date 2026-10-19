@@ -6,6 +6,7 @@ import { User, type UserDocument } from "../models/User.js";
 import { AppError } from "../utils/AppError.js";
 import { encryptSecret, decryptSecret } from "../utils/crypto.js";
 import { recordAudit } from "./auditService.js";
+import { purgeSessions, revokeAllSessions } from "./sessionService.js";
 
 /**
  * Second factor (TOTP) for admin accounts (BACKEND_SECURITY_GUIDELINES §2).
@@ -177,6 +178,7 @@ const completeEnrollment = async (
   if (!enabled) {
     throw new AppError("La verificación en dos pasos ya está activa.", 409);
   }
+  await purgeSessions(enabled._id);
   await audit(AuditAction.TWO_FACTOR_ENABLED, enabled._id, ctx);
   return enabled;
 };
@@ -192,9 +194,9 @@ const clearTwoFactor = async (userId: Types.ObjectId | string): Promise<void> =>
         "twoFactor.lastUsedStep": "",
         "twoFactor.lockedUntil": "",
       },
-      $inc: { tokenVersion: 1 },
     },
   );
+  await revokeAllSessions(userId);
 };
 
 /**

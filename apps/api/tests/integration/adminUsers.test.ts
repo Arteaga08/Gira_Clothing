@@ -20,7 +20,7 @@ describe("GET /admin/users", () => {
 
   it("lista con meta de paginación", async () => {
     const cookie = await loginAsAdmin(app);
-    await User.create({ name: "Cliente Uno", email: "uno@example.com", password: "Clave1234" });
+    await User.create({ firstName: "Cliente", lastName: "Uno", email: "uno@example.com", password: "Clave12345" });
     const res = await request(app).get(`${URL}?limit=5`).set("cookie", cookie);
     expect(res.status).toBe(200);
     expect(res.body.data.users.length).toBeGreaterThan(0);
@@ -38,7 +38,9 @@ describe("GET /admin/users", () => {
       expect(user).toEqual(
         expect.objectContaining({
           id: expect.any(String),
-          name: expect.any(String),
+          firstName: expect.any(String),
+          lastName: expect.any(String),
+          emailVerified: expect.any(Boolean),
           email: expect.any(String),
           role: expect.any(String),
           isActive: expect.any(Boolean),
@@ -48,13 +50,17 @@ describe("GET /admin/users", () => {
     }
   });
 
-  it("busca por nombre y por email", async () => {
+  it("busca por nombre, por apellido y por email", async () => {
     const cookie = await loginAsAdmin(app);
-    await User.create({ name: "Zoe Mendoza", email: "zoe.m@example.com", password: "Clave1234" });
+    await User.create({ firstName: "Zoe", lastName: "Mendoza", email: "zoe.m@example.com", password: "Clave12345" });
     const byName = await request(app).get(`${URL}?search=Zoe`).set("cookie", cookie);
+    const byLastName = await request(app).get(`${URL}?search=Mendoza`).set("cookie", cookie);
     const byEmail = await request(app).get(`${URL}?search=zoe.m@`).set("cookie", cookie);
     expect(
       byName.body.data.users.some((u: { email: string }) => u.email === "zoe.m@example.com"),
+    ).toBe(true);
+    expect(
+      byLastName.body.data.users.some((u: { email: string }) => u.email === "zoe.m@example.com"),
     ).toBe(true);
     expect(
       byEmail.body.data.users.some((u: { email: string }) => u.email === "zoe.m@example.com"),

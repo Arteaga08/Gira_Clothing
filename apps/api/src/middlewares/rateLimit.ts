@@ -34,6 +34,12 @@ const stores: MemoryStore[] = [];
 
 const ipKey = (req: Request): string => ipKeyGenerator(req.ip ?? "", IPV6_SUBNET);
 
+/** Limiters run before `validate`, so the email is normalised here the same way Joi will. */
+const normalizedEmail = (req: Request): string => {
+  const raw = (req.body as { email?: unknown } | undefined)?.email;
+  return typeof raw === "string" ? raw.trim().toLowerCase() : "";
+};
+
 const createLimiter = ({
   windowMs,
   limit,
@@ -73,17 +79,12 @@ const globalLimiter = createLimiter({
 
 // Brute force on ONE account: 5 failures per email+IP pair. Keying by the pair
 // (not the email alone) means nobody can lock someone else's account from
-// another address. Runs before `validate`, so the email is normalised here the
-// same way Joi will (trim + lowercase).
+// another address.
 const loginLimiter = createLimiter({
   windowMs: FIFTEEN_MIN,
   limit: 5,
   skipSuccessfulRequests: true,
-  keyGenerator: (req) => {
-    const raw = (req.body as { email?: unknown } | undefined)?.email;
-    const email = typeof raw === "string" ? raw.trim().toLowerCase() : "";
-    return `${ipKey(req)}|${email}`;
-  },
+  keyGenerator: (req) => `${ipKey(req)}|${normalizedEmail(req)}`,
   message: "Demasiados intentos de inicio de sesión. Intenta de nuevo más tarde.",
 });
 
@@ -105,11 +106,33 @@ const twoFactorLimiter = createLimiter({
   message: "Demasiados intentos de verificación desde esta dirección. Intenta más tarde.",
 });
 
-const registerLimiter = createLimiter({
+// Account actions (register, verify, resend, forgot, reset) share ONE per-IP
+// bucket: the same instance is mounted on every route, so its counter is common.
+const authActionLimiter = createLimiter({
   windowMs: FIFTEEN_MIN,
-  limit: 10,
-  message: "Demasiados registros desde esta dirección. Intenta de nuevo más tarde.",
+  limit: 20,
+  message: "Demasiadas solicitudes desde esta dirección. Intenta de nuevo más tarde.",
 });
+
+// Per-mailbox ceilings: the IP alone does not stop someone rotating addresses
+// against one inbox. Every request counts — these routes always answer 2xx.
+const emailActionLimiter = (message: string): RequestHandler =>
+  createLimiter({
+    windowMs: FIFTEEN_MIN,
+    limit: 3,
+    keyGenerator: normalizedEmail,
+    message,
+  });
+
+const registerEmailLimiter = emailActionLimiter(
+  "Demasiados registros con este correo. Intenta de nuevo en 15 minutos.",
+);
+const resendEmailLimiter = emailActionLimiter(
+  "Ya pediste varios enlaces para este correo. Intenta de nuevo en 15 minutos.",
+);
+const forgotEmailLimiter = emailActionLimiter(
+  "Ya pediste varios enlaces para este correo. Intenta de nuevo en 15 minutos.",
+);
 
 // Public catalog reads: anti-scraping, not anti-abuse. Generous enough that a
 // real storefront session never notices, strict enough that a crawler does.
@@ -167,7 +190,10 @@ export {
   loginIpLimiter,
   loginLimiter,
   twoFactorLimiter,
-  registerLimiter,
+  authActionLimiter,
+  registerEmailLimiter,
+  resendEmailLimiter,
+  forgotEmailLimiter,
   catalogLimiter,
   cartLimiter,
   checkoutLimiter,

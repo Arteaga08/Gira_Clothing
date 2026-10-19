@@ -35,7 +35,7 @@ describe("twoFactorChallenge · token", () => {
   });
 
   it("un token de sesión NO sirve como reto (clave separada)", () => {
-    const session = signAuthToken({ sub: "u1", role: "admin", tv: 0 });
+    const session = signAuthToken({ sub: "u1", role: "admin", tv: 0, sid: "s1" });
     expect(() => verifyChallengeToken(session)).toThrow();
   });
 

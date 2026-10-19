@@ -17,7 +17,9 @@ import {
 
 interface UserLean {
   _id: unknown;
-  name: string;
+  firstName: string;
+  lastName: string;
+  emailVerified?: boolean;
   email: string;
   role: UserRole;
   isActive: boolean;
@@ -27,17 +29,19 @@ interface UserLean {
 
 const toAdminUser = (doc: UserLean): AdminUser => ({
   id: String(doc._id),
-  name: doc.name,
+  firstName: doc.firstName,
+  lastName: doc.lastName,
   email: doc.email,
   role: doc.role,
   isActive: doc.isActive,
   twoFactorEnabled: doc.twoFactor?.enabled ?? false,
+  emailVerified: doc.emailVerified ?? false,
   createdAt: doc.createdAt,
 });
 
 const LIST_CONFIG: ListQueryConfig = {
-  sortable: ["createdAt", "name", "email"],
-  searchable: ["name", "email"],
+  sortable: ["createdAt", "firstName", "lastName", "email"],
+  searchable: ["firstName", "lastName", "email"],
   defaultSort: "-createdAt",
 };
 

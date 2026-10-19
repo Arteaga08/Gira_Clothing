@@ -7,6 +7,31 @@ interface LoginRequest {
   password: string;
 }
 
+/** Body of `POST /auth/register`. `role` and `emailVerified` never travel: the server derives them. */
+interface RegisterRequest {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+}
+
+/** Body of `POST /auth/verify-email`: the link's token plus the password chosen at signup (anti pre-hijacking). */
+interface VerifyEmailRequest {
+  token: string;
+  password: string;
+}
+
+/** Body of `POST /auth/resend-verification` and `POST /auth/forgot-password`. */
+interface EmailOnlyRequest {
+  email: string;
+}
+
+/** Body of `POST /auth/reset-password`. */
+interface ResetPasswordRequest {
+  token: string;
+  password: string;
+}
+
 /**
  * Login answers 200 in every success case; `status` says what comes next.
  * Admins never get a session from the password alone: they get a short-lived
@@ -44,6 +69,10 @@ interface ApiErrorBody {
 }
 
 export type {
+  RegisterRequest,
+  VerifyEmailRequest,
+  EmailOnlyRequest,
+  ResetPasswordRequest,
   LoginRequest,
   LoginResponse,
   TwoFactorCodeRequest,

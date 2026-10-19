@@ -12,6 +12,7 @@ interface AuthTokenPayload {
   sub: string; // user id
   role: string;
   tv: number; // tokenVersion at signing time — see User.tokenVersion
+  sid: string; // Session document id — one per signed-in device (models/Session.ts)
 }
 
 /** Pinned on both sides: the verifier must never let the token pick the algorithm. */
@@ -25,14 +26,17 @@ const signAuthToken = (payload: AuthTokenPayload): string =>
 
 const verifyAuthToken = (token: string): AuthTokenPayload => {
   const decoded = jwt.verify(token, env.jwtSecret, { algorithms: [ALGORITHM] });
-  if (typeof decoded === "string" || typeof decoded.sub !== "string") {
+  // A token without `sid` predates per-device sessions (M8.5): it cannot be
+  // revoked on its own, so it is no longer a session at all.
+  if (
+    typeof decoded === "string" ||
+    typeof decoded.sub !== "string" ||
+    typeof decoded.sid !== "string" ||
+    typeof decoded.tv !== "number"
+  ) {
     throw new jwt.JsonWebTokenError("Token inválido");
   }
-  // Tokens signed before this field existed carry no `tv` — treat them as
-  // version 0, same default as a freshly created user, so a rollout doesn't
-  // invalidate every session already in flight.
-  const tv = typeof decoded.tv === "number" ? decoded.tv : 0;
-  return { sub: decoded.sub, role: String(decoded.role), tv };
+  return { sub: decoded.sub, role: String(decoded.role), tv: decoded.tv, sid: decoded.sid };
 };
 
 // Milliseconds for the cookie maxAge, parsed from the same JWT_EXPIRES_IN value.
@@ -68,4 +72,10 @@ const buildClearCookieOptions = (): CookieOptions => ({
 });
 
 export type { AuthTokenPayload };
-export { signAuthToken, verifyAuthToken, buildCookieOptions, buildClearCookieOptions };
+export {
+  signAuthToken,
+  verifyAuthToken,
+  parseDurationMs,
+  buildCookieOptions,
+  buildClearCookieOptions,
+};

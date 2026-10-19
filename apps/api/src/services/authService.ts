@@ -11,6 +11,9 @@ import { AppError } from "../utils/AppError.js";
 import { signAuthToken } from "../utils/token.js";
 import type { ChallengePurpose } from "../utils/twoFactorChallenge.js";
 import { recordAudit } from "./auditService.js";
+import { createSession, revokeSession, revokeAllSessions } from "./sessionService.js";
+import { issueAccountToken } from "./accountTokenService.js";
+import { sendVerificationEmail } from "./authMailService.js";
 
 /**
  * Auth business logic — the only layer that touches the User model.
@@ -23,7 +26,8 @@ interface RequestContext {
 }
 
 interface RegisterInput {
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
 }
@@ -44,22 +48,27 @@ type LoginResult =
 
 interface PublicUser {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   role: UserRole;
   twoFactorEnabled: boolean;
   isActive: boolean;
+  emailVerified: boolean;
 }
 
 const GENERIC_LOGIN_ERROR = INVALID_CREDENTIALS_MESSAGE;
+const EMAIL_NOT_VERIFIED_MESSAGE = "Activa tu cuenta con el enlace que te enviamos por correo.";
 
 const toPublicUser = (user: UserDocument): PublicUser => ({
   id: user.id as string,
-  name: user.name,
+  firstName: user.firstName,
+  lastName: user.lastName,
   email: user.email,
   role: user.role,
   twoFactorEnabled: user.twoFactor.enabled,
   isActive: user.isActive,
+  emailVerified: user.emailVerified,
 });
 
 // Must match User.SALT_ROUNDS: the decoy and the "email already taken" branch
@@ -78,38 +87,68 @@ const warmAuthDecoy = async (): Promise<void> => {
   await getDecoyHash();
 };
 
+/** Issues a fresh activation link and emails it without waiting (see authMailService). */
+const sendActivationLink = async (user: UserDocument): Promise<void> => {
+  const token = await issueAccountToken(user._id, "emailVerification");
+  if (token) void sendVerificationEmail({ to: user.email, token });
+};
+
 /**
  * Registration never reveals whether the email was taken: the caller always
- * gets the same answer, and the taken branch burns the same bcrypt cost as a
- * real signup so response time does not leak it either
- * (BACKEND_SECURITY_GUIDELINES, "Timing-oracle"). Verification email arrives
- * in M8.5, which completes the anti-enumeration flow.
+ * gets the same 201, no session, and every branch pays one bcrypt hash so
+ * response time does not leak it either (BACKEND_SECURITY_GUIDELINES,
+ * "Timing-oracle"). The email itself is sent without being awaited.
+ *
+ * - New email: the account is created unverified and gets its link.
+ * - Existing, never-verified customer: password and names are replaced and a
+ *   new link is issued (killing the old one). Whoever controls the inbox can
+ *   always reclaim an address someone else squatted; activating still needs
+ *   the password, so the squatter cannot finish without the inbox.
+ * - Verified, deactivated or admin account: nothing changes and nothing is sent.
  */
 const registerCustomer = async (input: RegisterInput): Promise<void> => {
-  const existing = await User.findOne({ email: input.email }).lean();
+  const existing = await User.findOne({ email: input.email }).select("+password");
+
   if (existing) {
-    await bcrypt.hash(input.password, BCRYPT_ROUNDS);
+    if (existing.role !== UserRole.CUSTOMER || existing.emailVerified || !existing.isActive) {
+      await bcrypt.hash(input.password, BCRYPT_ROUNDS);
+      return;
+    }
+    existing.firstName = input.firstName;
+    existing.lastName = input.lastName;
+    existing.password = input.password; // pre-save hook hashes it: same cost as a signup
+    await existing.save();
+    await sendActivationLink(existing);
     return;
   }
 
+  let created: UserDocument;
   try {
     // Explicit field assignment — never spread the payload (anti mass-assignment).
-    await User.create({
-      name: input.name,
+    created = await User.create({
+      firstName: input.firstName,
+      lastName: input.lastName,
       email: input.email,
       password: input.password,
       role: UserRole.CUSTOMER,
+      emailVerified: false,
     });
   } catch (err) {
     // Lost a race against a concurrent signup of the same email: same outcome.
     if ((err as { code?: number }).code === 11000) return;
     throw err;
   }
+  await sendActivationLink(created);
 };
 
-/** Invalidates every session of the user: protect() compares the JWT's `tv` to this counter. */
-const logoutUser = async (userId: string): Promise<void> => {
-  await User.updateOne({ _id: userId }, { $inc: { tokenVersion: 1 } });
+/** Closes only the session this request came with; other devices stay signed in. */
+const logoutUser = async (sessionId: string): Promise<void> => {
+  await revokeSession(sessionId);
+};
+
+/** Closes every session of the user (and any open 2FA challenge, via tokenVersion). */
+const logoutAllSessions = async (userId: string): Promise<void> => {
+  await revokeAllSessions(userId);
 };
 
 const loginUser = async (
@@ -143,6 +182,12 @@ const loginUser = async (
     throw new AppError(GENERIC_LOGIN_ERROR, 401);
   }
 
+  // Deliberately AFTER the password check: only someone who already proved
+  // the password learns that the account exists but is not active yet.
+  if (!user.emailVerified) {
+    throw new AppError(EMAIL_NOT_VERIFIED_MESSAGE, 403);
+  }
+
   if (user.role === UserRole.ADMIN) {
     // The password alone never opens an admin session. LOGIN_SUCCESS is
     // audited when the session is actually issued (see issueSession).
@@ -157,12 +202,18 @@ const loginUser = async (
   return { kind: "session", ...(await issueSession(user, ctx)) };
 };
 
-/** Signs the session for an authenticated user and audits the login. */
+/** Opens a per-device session for an authenticated user, signs it and audits the login. */
 const issueSession = async (
   user: UserDocument,
   ctx: RequestContext,
 ): Promise<{ user: PublicUser; token: string }> => {
-  const token = signAuthToken({ sub: user.id as string, role: user.role, tv: user.tokenVersion });
+  const sid = await createSession(user._id);
+  const token = signAuthToken({
+    sub: user.id as string,
+    role: user.role,
+    tv: user.tokenVersion,
+    sid,
+  });
 
   await recordAudit({
     actorId: user._id,
@@ -187,6 +238,7 @@ export type { RequestContext, RegisterInput, LoginInput, LoginResult, PublicUser
 export {
   warmAuthDecoy,
   logoutUser,
+  logoutAllSessions,
   registerCustomer,
   loginUser,
   getCurrentUser,

@@ -3,6 +3,8 @@ import { Writable } from "node:stream";
 import request from "supertest";
 import { buildApp } from "../../src/app.js";
 import { createLogger } from "../../src/config/logger.js";
+import { createCustomer } from "../helpers/auth.js";
+import { spyOnMailer, waitForToken } from "../helpers/mail.js";
 
 const PUBLIC_ID = "A".repeat(43);
 
@@ -22,12 +24,10 @@ const appWithCapturedLogs = () => {
 describe("logs sin secretos", () => {
   it("el login no deja el JWT ni set-cookie en los logs", async () => {
     const { app, output } = appWithCapturedLogs();
-    await request(app)
-      .post("/api/v1/auth/register")
-      .send({ name: "Ana", email: "ana@example.com", password: "Segura123" });
+    await createCustomer({ email: "ana@example.com", password: "Segura1234" });
     const res = await request(app)
       .post("/api/v1/auth/login")
-      .send({ email: "ana@example.com", password: "Segura123" });
+      .send({ email: "ana@example.com", password: "Segura1234" });
 
     const rawCookie = String(res.headers["set-cookie"]);
     const jwt = /gira_session=([^;]+)/.exec(rawCookie)?.[1];
@@ -36,6 +36,29 @@ describe("logs sin secretos", () => {
     const logs = output();
     expect(logs).toContain("set-cookie");
     expect(logs).not.toContain(jwt!);
+  });
+
+  it("registro, activación y restablecimiento no dejan token ni contraseña en los logs", async () => {
+    const { app, output } = appWithCapturedLogs();
+    const spy = spyOnMailer();
+    const password = "Segura1234";
+    await request(app)
+      .post("/api/v1/auth/register")
+      .send({ firstName: "Ana", lastName: "López", email: "ana@example.com", password });
+    const verifyToken = await waitForToken(spy, "ana@example.com", "verificar-correo");
+    await request(app).post("/api/v1/auth/verify-email").send({ token: verifyToken, password });
+    await request(app).post("/api/v1/auth/forgot-password").send({ email: "ana@example.com" });
+    const resetToken = await waitForToken(spy, "ana@example.com", "restablecer-contrasena");
+    await request(app)
+      .post("/api/v1/auth/reset-password")
+      .send({ token: resetToken, password: "NuevaClave99" });
+    spy.mockRestore();
+
+    const logs = output();
+    expect(logs).toContain("/api/v1/auth/reset-password");
+    for (const secret of [verifyToken, resetToken, password, "NuevaClave99"]) {
+      expect(logs).not.toContain(secret);
+    }
   });
 
   it.each([

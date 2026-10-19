@@ -6,11 +6,31 @@ import { requireChallenge } from "../../middlewares/requireChallenge.js";
 import {
   loginIpLimiter,
   loginLimiter,
-  registerLimiter,
   twoFactorLimiter,
+  authActionLimiter,
+  registerEmailLimiter,
+  resendEmailLimiter,
+  forgotEmailLimiter,
 } from "../../middlewares/rateLimit.js";
-import { registerSchema, loginSchema, twoFactorCodeSchema } from "../../validators/authValidator.js";
-import { register, login, me, logout } from "../../controllers/authController.js";
+import {
+  registerSchema,
+  loginSchema,
+  verifyEmailSchema,
+  emailOnlySchema,
+  resetPasswordSchema,
+  twoFactorCodeSchema,
+} from "../../validators/authValidator.js";
+import {
+  register,
+  verifyEmail,
+  resendVerificationEmail,
+  forgotPassword,
+  resetPassword,
+  login,
+  me,
+  logout,
+  logoutAll,
+} from "../../controllers/authController.js";
 import {
   verify,
   enrollStart,
@@ -20,9 +40,35 @@ import {
 
 const authRouter = Router();
 
-authRouter.post("/register", registerLimiter, validate(registerSchema), register);
+// Account actions: one shared per-IP bucket, plus a per-mailbox one where an
+// email is the input.
+authRouter.post(
+  "/register",
+  authActionLimiter,
+  registerEmailLimiter,
+  validate(registerSchema),
+  register,
+);
+authRouter.post("/verify-email", authActionLimiter, validate(verifyEmailSchema), verifyEmail);
+authRouter.post(
+  "/resend-verification",
+  authActionLimiter,
+  resendEmailLimiter,
+  validate(emailOnlySchema),
+  resendVerificationEmail,
+);
+authRouter.post(
+  "/forgot-password",
+  authActionLimiter,
+  forgotEmailLimiter,
+  validate(emailOnlySchema),
+  forgotPassword,
+);
+authRouter.post("/reset-password", authActionLimiter, validate(resetPasswordSchema), resetPassword);
+
 authRouter.post("/login", loginIpLimiter, loginLimiter, validate(loginSchema), login);
 authRouter.post("/logout", protect, logout);
+authRouter.post("/logout-all", protect, logoutAll);
 authRouter.get("/me", protect, me);
 
 // Second factor. Unlike the rest of the admin surface these routes are reachable

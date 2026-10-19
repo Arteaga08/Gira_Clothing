@@ -67,7 +67,7 @@ const ResumenPage = async ({ searchParams }: ResumenPageProps) => {
 
   const adminName =
     sessionOutcome.status === "fulfilled" && sessionOutcome.value.kind === "authenticated"
-      ? sessionOutcome.value.user.name
+      ? sessionOutcome.value.user.firstName
       : "Administrador";
   const now = new Date();
 
