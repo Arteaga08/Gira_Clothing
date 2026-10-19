@@ -11,6 +11,7 @@ const orderId = (): mongoose.Types.ObjectId => new mongoose.Types.ObjectId();
 
 const confirmationPayload = {
   publicId: "abc123",
+  orderNumber: "GC-ABCD2345",
   customerName: "Ana",
   currency: "MXN",
   subtotal: 1000,
@@ -59,13 +60,14 @@ describe("dispatchNotifications", () => {
       channel: NotificationChannelKind.TEAM,
       type: NotificationType.TEAM_ORDER_PAID,
       to: "team",
-      payload: { publicId: "abc123", total: 1100, currency: "MXN", itemCount: 2 },
+      payload: { orderNumber: "GC-ABCD2345", total: 1100, currency: "MXN", itemCount: 2 },
     });
 
     const result = await dispatchNotifications();
 
     expect(result).toEqual({ sent: 1, failed: 0, skipped: 0 });
     expect(channelSpy).toHaveBeenCalledOnce();
+    expect(JSON.stringify(channelSpy.mock.calls[0])).toContain("Folio: GC-ABCD2345");
     expect(mailerSpy).not.toHaveBeenCalled();
   });
 
@@ -175,7 +177,7 @@ describe("dispatchNotifications · canal sin configurar", () => {
       type: NotificationType.TEAM_ORDER_PAID,
       to: "team",
       order: orderId(),
-      payload: { publicId: "abc123", total: 1000, currency: "MXN", itemCount: 1 },
+      payload: { orderNumber: "GC-ABCD2345", total: 1000, currency: "MXN", itemCount: 1 },
     });
 
     const result = await dispatchNotifications();

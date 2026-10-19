@@ -421,7 +421,7 @@ describe("expireReservations · cierre de la ventana de cobro", () => {
     // Queda constancia de que ese intent sigue vivo y necesita una mano.
     const audit = await AuditLog.findOne({
       action: "payment_cancel_failed",
-      targetId: order.publicId,
+      targetId: String(order._id),
     }).lean();
     expect(audit).not.toBeNull();
     void qty;
@@ -449,7 +449,7 @@ describe("carrera entre la expiración y el cobro", () => {
 
     const audit = await AuditLog.findOne({
       action: "payment_after_expiry",
-      targetId: order.publicId,
+      targetId: String(order._id),
     }).lean();
     expect(audit).not.toBeNull();
 
@@ -480,7 +480,7 @@ describe("carrera entre la expiración y el cobro", () => {
 
     const audit = await AuditLog.findOne({
       action: "stock_commit_missed",
-      targetId: order.publicId,
+      targetId: String(order._id),
     }).lean();
     expect(audit).not.toBeNull();
 
@@ -824,7 +824,7 @@ describe("flagForReview · auditoría sin duplicados", () => {
     await flagForReview(order, "stock_commit_missed", AuditAction.STOCK_COMMIT_MISSED);
 
     expect(
-      await AuditLog.countDocuments({ action: AuditAction.STOCK_COMMIT_MISSED, targetId: order.publicId }),
+      await AuditLog.countDocuments({ action: AuditAction.STOCK_COMMIT_MISSED, targetId: String(order._id) }),
     ).toBe(1);
     expect(await Notification.countDocuments({ order: order._id })).toBe(1);
   });
@@ -838,7 +838,7 @@ describe("flagForReview · auditoría sin duplicados", () => {
     await flagForReview(order, "stock_commit_failed", AuditAction.STOCK_COMMIT_FAILED);
     await flagForReview(order, "payment_after_expiry", AuditAction.PAYMENT_AFTER_EXPIRY);
 
-    expect(await AuditLog.countDocuments({ action: AuditAction.PAYMENT_AFTER_EXPIRY, targetId: order.publicId })).toBe(1);
+    expect(await AuditLog.countDocuments({ action: AuditAction.PAYMENT_AFTER_EXPIRY, targetId: String(order._id) })).toBe(1);
   });
 
   it("si el encolado no estricto falla, la auditoría se escribe de todos modos", async () => {
@@ -851,6 +851,6 @@ describe("flagForReview · auditoría sin duplicados", () => {
     await flagForReview(order, "stock_commit_failed", AuditAction.STOCK_COMMIT_FAILED);
     spy.mockRestore();
 
-    expect(await AuditLog.countDocuments({ action: AuditAction.STOCK_COMMIT_FAILED, targetId: order.publicId })).toBe(1);
+    expect(await AuditLog.countDocuments({ action: AuditAction.STOCK_COMMIT_FAILED, targetId: String(order._id) })).toBe(1);
   });
 });

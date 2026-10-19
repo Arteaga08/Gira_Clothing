@@ -124,7 +124,7 @@ describe("shipmentService · createShipment", () => {
     const after = await Order.findById(order._id);
     expect(after?.status).toBe(OrderStatus.SHIPPED);
 
-    const entry = await AuditLog.findOne({ targetId: order.publicId, action: "shipment_created" });
+    const entry = await AuditLog.findOne({ targetId: String(order._id), action: "shipment_created" });
     expect(entry).not.toBeNull();
   });
 

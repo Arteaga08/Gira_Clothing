@@ -278,7 +278,7 @@ describe("Admin · Orders · transición de estado", () => {
 
     const entry = await AuditLog.findOne({
       action: AuditAction.ORDER_STATUS_CHANGED,
-      targetId: order.publicId,
+      targetId: String(order._id),
     }).lean();
     expect(entry?.before).toMatchObject({ status: "paid" });
     expect(entry?.after).toMatchObject({ status: "processing" });
@@ -306,13 +306,76 @@ describe("Admin · Orders · shipped/delivered solo por el flujo de envío", () 
   });
 });
 
+const CANCEL_REASON = "Cliente pidió cancelar por teléfono";
+
+describe("Admin · Orders · motivo de cancelación", () => {
+  const patchStatus = (adminCookie: string, id: unknown, body: Record<string, unknown>) =>
+    request(app)
+      .patch(`${ADMIN_ORDERS_BASE}/${String(id)}/status`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", adminCookie)
+      .send(body);
+
+  it("cancelar sin motivo responde 400 y no toca la orden", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const order = await seedOrder(adminCookie, "CR1");
+
+    const res = await patchStatus(adminCookie, order._id, { status: "cancelled" });
+
+    expect(res.status).toBe(400);
+    expect((await Order.findById(order._id).lean())?.status).toBe(OrderStatus.PENDING_PAYMENT);
+  });
+
+  it("un motivo demasiado corto o largo responde 400", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const order = await seedOrder(adminCookie, "CR2");
+
+    expect((await patchStatus(adminCookie, order._id, { status: "cancelled", reason: "no" })).status).toBe(400);
+    expect(
+      (await patchStatus(adminCookie, order._id, { status: "cancelled", reason: "x".repeat(301) })).status,
+    ).toBe(400);
+  });
+
+  it("guarda el motivo en cancelReason y lo devuelve en el DTO admin", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const order = await seedOrder(adminCookie, "CR3");
+
+    const res = await patchStatus(adminCookie, order._id, { status: "cancelled", reason: CANCEL_REASON });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.order.cancelReason).toBe(CANCEL_REASON);
+    expect((await Order.findById(order._id).lean())?.cancelReason).toBe(CANCEL_REASON);
+  });
+
+  it("el motivo solo aplica al cancelar: en otra transición responde 400", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const order = await seedOrder(adminCookie, "CR4");
+    await applyPaymentSucceeded(order._id);
+
+    const res = await patchStatus(adminCookie, order._id, { status: "processing", reason: CANCEL_REASON });
+
+    expect(res.status).toBe(400);
+    expect((await Order.findById(order._id).lean())?.status).toBe(OrderStatus.PAID);
+  });
+
+  it("cuando el webhook cancela el intent, cancelReason lleva el código del sistema", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const order = await seedOrder(adminCookie, "CR5");
+    const { applyPaymentCancelled } = await import("../../src/services/orderPaymentService.js");
+
+    await applyPaymentCancelled(order._id);
+
+    expect((await Order.findById(order._id).lean())?.cancelReason).toBe("payment_cancelled");
+  });
+});
+
 describe("Admin · Orders · cancelar una orden pendiente", () => {
   const cancel = (adminCookie: string, id: unknown) =>
     request(app)
       .patch(`${ADMIN_ORDERS_BASE}/${String(id)}/status`)
       .set("Origin", ORIGIN)
       .set("Cookie", adminCookie)
-      .send({ status: "cancelled" });
+      .send({ status: "cancelled", reason: CANCEL_REASON });
 
   it("cancela el intent, libera la reserva y deja el pago como cancelado", async () => {
     const adminCookie = await loginAsAdmin(app);
@@ -390,7 +453,7 @@ describe("Admin · Orders · cancelar una orden pendiente", () => {
     expect(res.status).toBe(200);
     expect(res.body.data.order.status).toBe(OrderStatus.CANCELLED);
     expect(
-      await AuditLog.countDocuments({ action: AuditAction.ORDER_STATUS_CHANGED, targetId: order.publicId }),
+      await AuditLog.countDocuments({ action: AuditAction.ORDER_STATUS_CHANGED, targetId: String(order._id) }),
     ).toBe(1);
     cancelSpy.mockRestore();
   });

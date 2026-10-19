@@ -1,5 +1,8 @@
 import type { Currency } from "../enums/money.js";
 import type { DisputeStatus, OrderStatus, PaymentStatus } from "../enums/orderStatus.js";
+import type { OrderPriority } from "../enums/orderPriority.js";
+import type { OrderStatusGroup } from "../constants/orderStatusGroups.js";
+import type { AuditAction } from "../enums/auditAction.js";
 
 interface OrderCustomer {
   email: string;
@@ -36,13 +39,19 @@ interface OrderLine {
 
 interface PublicOrder {
   publicId: string;
+  /** The folio the customer reads and quotes ("GC-7KQ2M9XA"). */
+  orderNumber: string;
   status: OrderStatus;
   customer: OrderCustomer;
   shipping: ShippingAddress;
   lines: OrderLine[];
   currency: Currency;
   subtotal: number;
+  discount: number;
   shippingCost: number;
+  /** IVA included in `total` (a breakdown, not an addition). */
+  tax: number;
+  taxRateBps: number;
   total: number;
   createdAt: Date;
   paidAt?: Date;
@@ -67,6 +76,9 @@ interface OrderPayment {
   intentId?: string;
   status: PaymentStatus;
   lastError?: string;
+  capturedAt?: Date;
+  /** Brand + last4 only. */
+  card?: { brand: string; last4: string };
   /** Cumulative amount returned by the provider, in minor units. */
   refundedAmount?: number;
   refundedAt?: Date;
@@ -74,6 +86,10 @@ interface OrderPayment {
 
 interface AdminOrder extends CustomerOrder {
   user?: string;
+  priority: OrderPriority;
+  /** Admin-only: the customer never sees their own consent record. */
+  termsAcceptedAt: Date;
+  cancelReason?: string;
   statusHistory: StatusHistoryEntry[];
   payment: OrderPayment;
   disputeStatus?: DisputeStatus;
@@ -81,7 +97,34 @@ interface AdminOrder extends CustomerOrder {
   updatedAt: Date;
 }
 
+interface OrderSummary {
+  /** Every status, zero-filled. NOT bounded by date: a stuck order does not age out. */
+  countsByStatus: Record<OrderStatus, number>;
+  byGroup: Record<OrderStatusGroup, number>;
+  /** Orders with an open dispute. */
+  disputed: number;
+}
+
+/** "Who did what and when": the audit trail WITHOUT before/after (they can carry PII). */
+interface OrderActivityEntry {
+  action: AuditAction;
+  actorType: "user" | "system";
+  actorId?: string;
+  createdAt: Date;
+}
+
+type BulkStatusOutcome = "updated" | "unchanged" | "rejected";
+
+interface BulkStatusResult {
+  results: { id: string; orderNumber: string; outcome: BulkStatusOutcome; message?: string }[];
+  summary: Record<BulkStatusOutcome, number>;
+}
+
 export type {
+  OrderSummary,
+  OrderActivityEntry,
+  BulkStatusOutcome,
+  BulkStatusResult,
   OrderCustomer,
   ShippingAddress,
   ImageAttrs,

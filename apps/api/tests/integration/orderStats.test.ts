@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 import { Currency, DisputeStatus, OrderStatus, PaymentStatus, PriceRounding } from "@gira/shared";
 import { buildApp } from "../../src/app.js";
 import { Order } from "../../src/models/Order.js";
+import { generateOrderNumber } from "../../src/utils/orderNumber.js";
 import { loginAsAdmin, loginAsCustomer } from "../helpers/auth.js";
 
 const app = buildApp();
@@ -40,6 +41,10 @@ const seedStatsOrder = async (opts: SeedOrderOptions): Promise<mongoose.Types.Ob
 
   const doc = await Order.create({
     publicId: new mongoose.Types.ObjectId().toHexString() + "x".repeat(20),
+    orderNumber: generateOrderNumber(),
+    tax: 0,
+    taxRateBps: 1600,
+    termsAcceptedAt: new Date(),
     customer: { email: "cliente@example.com", name: "Ana Pérez" },
     shipping: {
       recipient: "Ana Pérez",

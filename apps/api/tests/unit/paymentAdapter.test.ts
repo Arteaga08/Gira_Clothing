@@ -326,3 +326,65 @@ describe("factory getPaymentProvider", () => {
     expect(result.providerId).toMatch(/^pi_stub_/);
   });
 });
+
+describe("stripePaymentProvider · getChargeDetails", () => {
+  it("expande latest_charge y devuelve solo brand + last4 y la fecha del cargo", async () => {
+    mockRetrieve.mockResolvedValue({
+      id: "pi_9",
+      status: "succeeded",
+      latest_charge: {
+        created: 1_760_000_000,
+        payment_method_details: {
+          type: "card",
+          card: { brand: "visa", last4: "4242", fingerprint: "NO-DEBE-SALIR", exp_month: 12 },
+        },
+      },
+    });
+    const provider = createStripePaymentProvider(CONFIG);
+
+    const details = await provider.getChargeDetails("pi_9");
+
+    expect(mockRetrieve).toHaveBeenCalledWith("pi_9", { expand: ["latest_charge"] });
+    expect(details).toEqual({
+      capturedAt: new Date(1_760_000_000 * 1000),
+      card: { brand: "visa", last4: "4242" },
+    });
+  });
+
+  it("sin cargo expandido (latest_charge es un id) devuelve vacío", async () => {
+    mockRetrieve.mockResolvedValue({ id: "pi_10", status: "succeeded", latest_charge: "ch_1" });
+    const provider = createStripePaymentProvider(CONFIG);
+
+    expect(await provider.getChargeDetails("pi_10")).toEqual({});
+  });
+
+  it("un método de pago que no es tarjeta conserva la fecha y omite card", async () => {
+    mockRetrieve.mockResolvedValue({
+      id: "pi_11",
+      status: "succeeded",
+      latest_charge: { created: 1_760_000_000, payment_method_details: { type: "oxxo" } },
+    });
+    const provider = createStripePaymentProvider(CONFIG);
+
+    const details = await provider.getChargeDetails("pi_11");
+
+    expect(details.card).toBeUndefined();
+    expect(details.capturedAt).toBeInstanceOf(Date);
+  });
+
+  it("convierte un error del SDK en AppError 502", async () => {
+    mockRetrieve.mockRejectedValue(new Error("network down"));
+    const provider = createStripePaymentProvider(CONFIG);
+
+    await expect(provider.getChargeDetails("pi_12")).rejects.toMatchObject({ statusCode: 502 });
+  });
+});
+
+describe("stubPaymentProvider · getChargeDetails", () => {
+  it("devuelve una tarjeta fija y la fecha actual", async () => {
+    const details = await createStubPaymentProvider().getChargeDetails("stub_1");
+
+    expect(details.card).toEqual({ brand: "visa", last4: "4242" });
+    expect(details.capturedAt).toBeInstanceOf(Date);
+  });
+});

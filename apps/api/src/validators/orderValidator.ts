@@ -42,6 +42,10 @@ const createOrderSchema = Joi.object({
     phone: Joi.string().trim().max(30).allow(""),
   }).required(),
   shipping: shippingAddressSchema.required(),
+  termsAccepted: Joi.boolean().valid(true).required().messages({
+    "any.only": "Debes aceptar los términos y condiciones.",
+    "any.required": "Debes aceptar los términos y condiciones.",
+  }),
 })
   .xor("lines", "useCart")
   .messages({ "object.xor": "Envía las líneas del carrito o usa useCart, no ambos." });
@@ -56,4 +60,4 @@ const publicIdParamSchema = Joi.object({
 
 const myOrdersQuerySchema = listQueryBase;
 
-export { createOrderSchema, publicIdParamSchema, myOrdersQuerySchema };
+export { createOrderSchema, publicIdParamSchema, myOrdersQuerySchema, shippingAddressSchema };

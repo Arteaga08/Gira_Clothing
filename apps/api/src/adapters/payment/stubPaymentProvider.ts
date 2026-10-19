@@ -5,6 +5,7 @@ import {
   ProviderEventType,
   type CreatePaymentInput,
   type PaymentView,
+  type ChargeDetails,
   type PaymentProvider,
   type ProviderEvent,
 } from "./types.js";
@@ -66,6 +67,9 @@ const createStubPaymentProvider = (): PaymentProvider => {
       currency: Currency.MXN,
     });
 
+  const getChargeDetails = (): Promise<ChargeDetails> =>
+    Promise.resolve({ capturedAt: new Date(), card: { brand: "visa", last4: "4242" } });
+
   const cancelPayment = (): Promise<void> => Promise.resolve();
 
   const refundPayment = (): Promise<void> => Promise.resolve();
@@ -98,7 +102,14 @@ const createStubPaymentProvider = (): PaymentProvider => {
     };
   };
 
-  return { createPayment, getPayment, cancelPayment, refundPayment, parseWebhookEvent };
+  return {
+    createPayment,
+    getPayment,
+    getChargeDetails,
+    cancelPayment,
+    refundPayment,
+    parseWebhookEvent,
+  };
 };
 
 export { createStubPaymentProvider, STUB_WEBHOOK_SECRET };

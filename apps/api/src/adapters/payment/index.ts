@@ -11,6 +11,12 @@ const getPaymentProvider = (): PaymentProvider => {
   return cached;
 };
 
-export type { CreatePaymentInput, PaymentView, ProviderEvent, PaymentProvider } from "./types.js";
+export type {
+  CreatePaymentInput,
+  PaymentView,
+  ChargeDetails,
+  ProviderEvent,
+  PaymentProvider,
+} from "./types.js";
 export { ProviderEventType } from "./types.js";
 export { getPaymentProvider };

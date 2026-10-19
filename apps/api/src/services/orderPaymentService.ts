@@ -20,6 +20,7 @@ import { flagForReview } from "./paymentAlertService.js";
 import { clearCart } from "./cartService.js";
 import { AppError } from "../utils/AppError.js";
 import { logger } from "../config/logger.js";
+import { getPaymentProvider, type ChargeDetails } from "../adapters/payment/index.js";
 
 /**
  * The effects of a payment outcome on an order. Lives apart from
@@ -56,6 +57,7 @@ const queueOrderPaidNotifications = async (order: OrderDocument): Promise<void> 
       order: order._id,
       payload: {
         publicId: order.publicId,
+        orderNumber: order.orderNumber,
         customerName: order.customer.name,
         currency: order.currency,
         subtotal: order.subtotal,
@@ -81,7 +83,7 @@ const queueOrderPaidNotifications = async (order: OrderDocument): Promise<void> 
       to: "team",
       order: order._id,
       payload: {
-        publicId: order.publicId,
+        orderNumber: order.orderNumber,
         total: order.total,
         currency: order.currency,
         itemCount: order.lines.reduce((sum, line) => sum + line.qty, 0),
@@ -196,6 +198,39 @@ const runPaidEffects = async (order: OrderDocument): Promise<void> => {
   );
 };
 
+/**
+ * Card label + capture time are display data: a provider hiccup reading them must
+ * never keep a paid order from being marked paid, so failure degrades to "unknown".
+ */
+const readChargeDetails = async (intentId: string | undefined): Promise<ChargeDetails> => {
+  if (!intentId) return {};
+  try {
+    return await getPaymentProvider().getChargeDetails(intentId);
+  } catch (err) {
+    logger.warn({ err }, "No se pudo leer el cargo; la orden se marca pagada sin tarjeta");
+    return {};
+  }
+};
+
+/**
+ * Writes capturedAt + card once, with a targeted update (never a whole-document
+ * save). Guarded by `capturedAt` absent so webhook retries and the reconciler
+ * fill what a failed first attempt missed, and never overwrite it.
+ */
+const stampChargeDetails = async (order: OrderDocument): Promise<void> => {
+  if (order.payment.capturedAt) return;
+  const details = await readChargeDetails(order.payment.intentId);
+  await Order.updateOne(
+    { _id: order._id, "payment.capturedAt": { $exists: false } },
+    {
+      $set: {
+        "payment.capturedAt": details.capturedAt ?? order.paidAt ?? new Date(),
+        ...(details.card ? { "payment.card": details.card } : {}),
+      },
+    },
+  );
+};
+
 const applyPaymentSucceeded = async (orderId: Types.ObjectId): Promise<void> => {
   const current = await Order.findById(orderId);
   if (!current) return;
@@ -219,11 +254,13 @@ const applyPaymentSucceeded = async (orderId: Types.ObjectId): Promise<void> => 
       set: { paidAt: new Date(), "payment.status": PaymentStatus.SUCCEEDED },
     });
     if (paid) {
+      // After the status is committed: a slow provider must never delay "paid".
+      await stampChargeDetails(paid);
       await recordAudit({
         actorType: "system",
         action: AuditAction.PAYMENT_SUCCEEDED,
         module: AuditModule.PAYMENTS,
-        targetId: paid.publicId,
+        targetId: String(paid._id),
       });
       await runPaidEffects(paid);
       return;
@@ -232,13 +269,19 @@ const applyPaymentSucceeded = async (orderId: Types.ObjectId): Promise<void> => 
     const latest = await Order.findById(orderId);
     if (!latest) return;
     if (DEAD_ON_ARRIVAL.has(latest.status)) await handleDeadOnArrival(latest);
-    else if (PAID_AND_ALIVE.has(latest.status)) await runPaidEffects(latest);
+    else if (PAID_AND_ALIVE.has(latest.status)) {
+      await stampChargeDetails(latest);
+      await runPaidEffects(latest);
+    }
     return;
   }
 
   // Already paid (a webhook retry whose effects threw, or a duplicate): finish
   // whatever is left. Refunded: nothing to do.
-  if (PAID_AND_ALIVE.has(current.status)) await runPaidEffects(current);
+  if (PAID_AND_ALIVE.has(current.status)) {
+    await stampChargeDetails(current);
+    await runPaidEffects(current);
+  }
 };
 
 /**
@@ -270,7 +313,7 @@ const applyPaymentFailed = async (orderId: Types.ObjectId, reason?: string): Pro
       channel: NotificationChannelKind.TEAM,
       type: NotificationType.TEAM_PAYMENT_FAILED,
       to: "team",
-      payload: { publicId: order.publicId, ...(reason ? { reason } : {}) },
+      payload: { orderNumber: order.orderNumber, ...(reason ? { reason } : {}) },
     },
     { strict: true },
   );
@@ -279,7 +322,7 @@ const applyPaymentFailed = async (orderId: Types.ObjectId, reason?: string): Pro
     actorType: "system",
     action: AuditAction.PAYMENT_FAILED,
     module: AuditModule.PAYMENTS,
-    targetId: order.publicId,
+    targetId: String(order._id),
     ...(reason ? { after: { reason } } : {}),
   });
 };
@@ -291,7 +334,7 @@ const applyPaymentCancelled = async (orderId: Types.ObjectId): Promise<void> => 
     to: OrderStatus.CANCELLED,
     actor: SYSTEM,
     reason: "payment_cancelled",
-    set: { "payment.status": PaymentStatus.CANCELLED },
+    set: { "payment.status": PaymentStatus.CANCELLED, cancelReason: "payment_cancelled" },
   });
   if (!order) return; // not pending anymore (or gone): nothing to cancel
 
@@ -301,7 +344,7 @@ const applyPaymentCancelled = async (orderId: Types.ObjectId): Promise<void> => 
     actorType: "system",
     action: AuditAction.PAYMENT_CANCELLED,
     module: AuditModule.PAYMENTS,
-    targetId: order.publicId,
+    targetId: String(order._id),
   });
 };
 
@@ -348,7 +391,7 @@ const applyRefund = async (orderId: Types.ObjectId, amountRefunded?: number): Pr
         actorType: "system",
         action: AuditAction.PAYMENT_PARTIALLY_REFUNDED,
         module: AuditModule.PAYMENTS,
-        targetId: order.publicId,
+        targetId: String(order._id),
         after: { amountRefunded },
       });
     }
@@ -369,7 +412,7 @@ const applyRefund = async (orderId: Types.ObjectId, amountRefunded?: number): Pr
         actorType: "system",
         action: AuditAction.PAYMENT_REFUNDED,
         module: AuditModule.PAYMENTS,
-        targetId: order.publicId,
+        targetId: String(order._id),
         after: { status: order.status },
       });
     }
@@ -399,7 +442,7 @@ const refundPaidOrder = async (orderId: Types.ObjectId): Promise<void> => {
   // Before, the order was saved first and the lines were reposted afterwards in
   // a bare loop: a throw on line 2 of 3 left the order refunded with the
   // inventory permanently half-corrected.
-  let publicId = "";
+  let orderNumber = "";
   let restocked = false;
   let reservationWasActive = false;
   let unaccountedStock = false;
@@ -408,7 +451,7 @@ const refundPaidOrder = async (orderId: Types.ObjectId): Promise<void> => {
   try {
     await session.withTransaction(async () => {
       // Reset per attempt: withTransaction retries its callback on transient errors.
-      publicId = "";
+      orderNumber = "";
       restocked = false;
       reservationWasActive = false;
       unaccountedStock = false;
@@ -442,14 +485,14 @@ const refundPaidOrder = async (orderId: Types.ObjectId): Promise<void> => {
       }
       reservationWasActive = reservation?.status === ReservationStatus.ACTIVE;
       unaccountedStock = !committed && !reservationWasActive;
-      publicId = order.publicId;
+      orderNumber = order.orderNumber;
     });
   } finally {
     await session.endSession();
   }
 
   // Nothing moved (the order is gone or was no longer paid) -> nothing to audit.
-  if (!publicId) return;
+  if (!orderNumber) return;
 
   // The commit never happened (webhook retry pending) but the money is already
   // back: the hold must not stay `reserved` forever.
@@ -462,7 +505,7 @@ const refundPaidOrder = async (orderId: Types.ObjectId): Promise<void> => {
       actorType: "system",
       action: AuditAction.STOCK_RESTOCKED_ON_REFUND,
       module: AuditModule.INVENTORY,
-      targetId: publicId,
+      targetId: String(orderId),
     });
   }
 
@@ -470,14 +513,14 @@ const refundPaidOrder = async (orderId: Types.ObjectId): Promise<void> => {
     actorType: "system",
     action: AuditAction.PAYMENT_REFUNDED,
     module: AuditModule.PAYMENTS,
-    targetId: publicId,
+    targetId: String(orderId),
   });
 
   if (unaccountedStock) {
     // Refunded money, but the stock was never taken out (hold released before
     // payment): nothing to put back, and somebody should confirm the books.
     await flagForReview(
-      { _id: orderId, publicId, status: OrderStatus.REFUNDED },
+      { _id: orderId, orderNumber, status: OrderStatus.REFUNDED },
       "refund_without_committed_stock",
       AuditAction.REFUND_WITHOUT_RESTOCK,
       // Fires once per refund transition; it must not share (or lose to) the
@@ -506,7 +549,7 @@ const applyDisputeOpened = async (orderId: Types.ObjectId): Promise<void> => {
     actorType: "system",
     action: AuditAction.PAYMENT_DISPUTED,
     module: AuditModule.PAYMENTS,
-    targetId: order.publicId,
+    targetId: String(order._id),
   });
 };
 
@@ -532,7 +575,7 @@ const applyDisputeClosed = async (
       actorType: "system",
       action: AuditAction.PAYMENT_DISPUTE_CLOSED,
       module: AuditModule.PAYMENTS,
-      targetId: closed.publicId,
+      targetId: String(closed._id),
       after: { disputeStatus: outcome },
     });
   }
@@ -548,7 +591,7 @@ const applyDisputeClosed = async (
         type: NotificationType.TEAM_DISPUTE_LOST,
         to: "team",
         order: order._id,
-        payload: { publicId: order.publicId },
+        payload: { orderNumber: order.orderNumber },
       },
       { strict: true },
     );

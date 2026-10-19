@@ -1,6 +1,14 @@
 import mongoose from "mongoose";
-import { Currency, OrderStatus, PaymentStatus, PriceRounding } from "@gira/shared";
+import {
+  Currency,
+  DisputeStatus,
+  OrderPriority,
+  OrderStatus,
+  PaymentStatus,
+  PriceRounding,
+} from "@gira/shared";
 import { Order } from "../../src/models/Order.js";
+import { generateOrderNumber } from "../../src/utils/orderNumber.js";
 
 interface SeedOrderOptions {
   status: OrderStatus;
@@ -8,6 +16,12 @@ interface SeedOrderOptions {
   currency?: Currency;
   createdAt: Date;
   qty?: number;
+  priority?: OrderPriority;
+  orderNumber?: string;
+  email?: string;
+  name?: string;
+  phone?: string;
+  disputeStatus?: DisputeStatus;
 }
 
 /**
@@ -23,7 +37,15 @@ const seedOrder = async (opts: SeedOrderOptions): Promise<mongoose.Types.ObjectI
 
   const doc = await Order.create({
     publicId: new mongoose.Types.ObjectId().toHexString() + "x".repeat(20),
-    customer: { email: "cliente@example.com", name: "Ana Pérez" },
+    orderNumber: opts.orderNumber ?? generateOrderNumber(),
+    tax: 0,
+    taxRateBps: 1600,
+    termsAcceptedAt: new Date(),
+    customer: {
+      email: opts.email ?? "cliente@example.com",
+      name: opts.name ?? "Ana Pérez",
+      ...(opts.phone ? { phone: opts.phone } : {}),
+    },
     shipping: {
       recipient: "Ana Pérez",
       line1: "Calle Falsa 123",
@@ -55,6 +77,8 @@ const seedOrder = async (opts: SeedOrderOptions): Promise<mongoose.Types.ObjectI
     statusHistory: [{ status: opts.status, at: opts.createdAt }],
     payment: { provider: "stripe", status: PaymentStatus.SUCCEEDED },
     idempotencyKey: new mongoose.Types.ObjectId().toHexString(),
+    ...(opts.priority ? { priority: opts.priority } : {}),
+    ...(opts.disputeStatus ? { disputeStatus: opts.disputeStatus, disputedAt: new Date() } : {}),
   });
 
   // `createdAt` is marked `immutable: true` by Mongoose's timestamps plugin,

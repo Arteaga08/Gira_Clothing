@@ -108,6 +108,9 @@ describe("orderPaymentService · notificaciones", () => {
     expect(doc?.channel).toBe(NotificationChannelKind.EMAIL);
     expect(doc?.to).toBe(order.customer.email);
     expect((doc?.payload as { total: number }).total).toBe(order.total);
+    // The email shows the folio and keeps the credential only for the link.
+    expect((doc?.payload as { orderNumber: string }).orderNumber).toBe(order.orderNumber);
+    expect((doc?.payload as { publicId: string }).publicId).toBe(order.publicId);
   });
 
   it("applyPaymentSucceeded encola un aviso de equipo sin el correo de la clienta", async () => {
@@ -119,7 +122,10 @@ describe("orderPaymentService · notificaciones", () => {
     const doc = await Notification.findOne({ type: NotificationType.TEAM_ORDER_PAID });
     expect(doc).not.toBeNull();
     expect(doc?.channel).toBe(NotificationChannelKind.TEAM);
-    expect((doc?.payload as { publicId: string }).publicId).toBe(order.publicId);
+    const payload = doc?.payload as { orderNumber: string };
+    expect(payload.orderNumber).toBe(order.orderNumber);
+    // Telegram is a shared channel: the order's credential never travels there.
+    expect(JSON.stringify(doc?.payload)).not.toContain(order.publicId);
     expect(JSON.stringify(doc?.payload)).not.toContain(order.customer.email);
   });
 

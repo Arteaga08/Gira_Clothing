@@ -3,13 +3,14 @@ import { formatMoney } from "./orderEmails.js";
 import type { TeamMessage } from "../adapters/notification/types.js";
 
 /**
- * Operational pings. They carry the order's publicId (an internal-channel
- * identifier, not a public link) and never the customer's email or address:
+ * Operational pings. They carry the order's human folio (`orderNumber`), never
+ * its `publicId` (that one is the credential for the customer's order page and
+ * must not sit in a shared chat) and never the customer's email or address:
  * a Telegram group is not a place to spill PII.
  */
 
 interface TeamOrderSnapshot {
-  publicId: string;
+  orderNumber: string;
   total: number;
   currency: Currency;
   itemCount: number;
@@ -18,15 +19,15 @@ interface TeamOrderSnapshot {
 const renderTeamOrderPaid = (snapshot: TeamOrderSnapshot): TeamMessage => ({
   title: "🛍️ Nueva orden pagada",
   lines: [
-    `Folio: ${snapshot.publicId}`,
+    `Folio: ${snapshot.orderNumber}`,
     `Total: ${formatMoney(snapshot.total, snapshot.currency)}`,
     `Artículos: ${String(snapshot.itemCount)}`,
   ],
 });
 
-const renderTeamPaymentFailed = (publicId: string, reason?: string): TeamMessage => ({
+const renderTeamPaymentFailed = (orderNumber: string, reason?: string): TeamMessage => ({
   title: "⚠️ Pago rechazado",
-  lines: [`Folio: ${publicId}`, ...(reason ? [`Motivo: ${reason}`] : [])],
+  lines: [`Folio: ${orderNumber}`, ...(reason ? [`Motivo: ${reason}`] : [])],
 });
 
 /**
@@ -45,29 +46,29 @@ const REVIEW_REASONS: Readonly<Record<string, string>> = Object.freeze({
   stock_commit_missed: "El pedido quedó pagado pero su apartado ya se había liberado: el stock NO se descontó.",
 });
 
-const renderTeamPaymentNeedsReview = (publicId: string, reason: string): TeamMessage => ({
+const renderTeamPaymentNeedsReview = (orderNumber: string, reason: string): TeamMessage => ({
   title: "🚨 Pedido pagado que necesita revisión",
   lines: [
-    `Folio: ${publicId}`,
+    `Folio: ${orderNumber}`,
     REVIEW_REASONS[reason] ?? `Motivo: ${reason}`,
   ],
 });
 
-const renderTeamDisputeLost = (publicId: string): TeamMessage => ({
+const renderTeamDisputeLost = (orderNumber: string): TeamMessage => ({
   title: "⚖️ Disputa perdida",
   lines: [
-    `Folio: ${publicId}`,
+    `Folio: ${orderNumber}`,
     "El banco resolvió a favor del cliente: el dinero salió, pero el pedido NO se reembolsó ni se repuso stock.",
   ],
 });
 
 const renderTeamShipmentIncident = (
-  publicId: string,
+  orderNumber: string,
   status: string,
   carrier: string,
 ): TeamMessage => ({
   title: "📦 Incidencia de envío",
-  lines: [`Folio: ${publicId}`, `Estado: ${status}`, `Paquetería: ${carrier}`],
+  lines: [`Folio: ${orderNumber}`, `Estado: ${status}`, `Paquetería: ${carrier}`],
 });
 
 export type { TeamOrderSnapshot };

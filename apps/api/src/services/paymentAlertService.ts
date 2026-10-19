@@ -19,7 +19,7 @@ import { Notification } from "../models/Notification.js";
  */
 interface FlagTarget {
   _id: Types.ObjectId;
-  publicId: string;
+  orderNumber: string;
   status: string;
 }
 
@@ -41,7 +41,7 @@ const flagForReview = async (
       type: NotificationType.TEAM_PAYMENT_NEEDS_REVIEW,
       to: "team",
       ...(dedupePerOrder ? { order: order._id } : {}),
-      payload: { publicId: order.publicId, reason },
+      payload: { orderNumber: order.orderNumber, reason },
     },
     { strict },
   );
@@ -65,7 +65,7 @@ const flagForReview = async (
       actorType: "system",
       action,
       module: AuditModule.PAYMENTS,
-      targetId: order.publicId,
+      targetId: String(order._id),
       after: { reason, status: order.status },
     });
   }

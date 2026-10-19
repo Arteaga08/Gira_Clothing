@@ -57,6 +57,8 @@ enum AuditAction {
   ORDER_STATUS_CHANGED = "order_status_changed",
   ORDER_EXPIRED = "order_expired",
   ORDER_REFUND_REQUESTED = "order_refund_requested",
+  ORDER_PRIORITY_UPDATED = "order_priority_updated",
+  ORDER_SHIPPING_ADDRESS_UPDATED = "order_shipping_address_updated",
   STOCK_RESERVED = "stock_reserved",
   STOCK_RESERVATION_COMMITTED = "stock_reservation_committed",
   STOCK_RESERVATION_RELEASED = "stock_reservation_released",
