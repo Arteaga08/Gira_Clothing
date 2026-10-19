@@ -1,34 +1,34 @@
-import { UserRole } from "@gira/shared";
 import { env } from "../config/env.js";
 import { connectDB, disconnectDB } from "../config/db.js";
 import { logger } from "../config/logger.js";
-import { User } from "../models/User.js";
+import { ensureAdmin, type AdminInput } from "../services/adminBootstrapService.js";
 
 /**
- * Idempotent admin seeder. Registration only ever produces customers, so the
- * first admin is created here. Credentials come from argv or env — never
- * hardcoded. Running it twice with the same email is a no-op.
+ * Admin seeder — thin wrapper over `ensureAdmin`. Credentials come from argv
+ * or env, never hardcoded. On an admin that already exists it only completes
+ * names and emailVerified (password and 2FA untouched).
  *
  * Usage:
- *   pnpm --filter @gira/api seed:admin -- --email a@b.com --password 'S3gura...' --name 'Admin'
- *   or set ADMIN_EMAIL / ADMIN_PASSWORD / ADMIN_NAME in the environment.
+ *   pnpm --filter @gira/api seed:admin -- --email a@b.com --password 'S3gura...' \
+ *     --first-name 'Manuel' --last-name 'Arteaga'
+ *   or set ADMIN_EMAIL / ADMIN_PASSWORD / ADMIN_FIRST_NAME / ADMIN_LAST_NAME.
+ *
+ * It prints the database host first: check it before trusting the result.
  */
 
-interface AdminInput {
-  name: string;
-  email: string;
-  password: string;
-}
+const FLAGS: Record<string, keyof AdminInput> = {
+  "--email": "email",
+  "--password": "password",
+  "--first-name": "firstName",
+  "--last-name": "lastName",
+};
 
 const parseArgs = (argv: string[]): Partial<AdminInput> => {
   const out: Partial<AdminInput> = {};
   for (let i = 0; i < argv.length; i += 1) {
-    const key = argv[i];
+    const field = FLAGS[argv[i] ?? ""];
     const value = argv[i + 1];
-    if (!value) continue;
-    if (key === "--email") out.email = value;
-    if (key === "--password") out.password = value;
-    if (key === "--name") out.name = value;
+    if (field && value) out[field] = value;
   }
   return out;
 };
@@ -37,34 +37,36 @@ const resolveInput = (): AdminInput => {
   const args = parseArgs(process.argv.slice(2));
   const email = args.email ?? process.env.ADMIN_EMAIL;
   const password = args.password ?? process.env.ADMIN_PASSWORD;
-  const name = args.name ?? process.env.ADMIN_NAME ?? "Administrador";
+  const firstName = args.firstName ?? process.env.ADMIN_FIRST_NAME ?? "Administrador";
+  const lastName = args.lastName ?? process.env.ADMIN_LAST_NAME ?? "Gira";
 
   if (!email || !password) {
     throw new Error(
       "Faltan credenciales. Usa --email y --password (o ADMIN_EMAIL / ADMIN_PASSWORD).",
     );
   }
-  return { name, email: email.toLowerCase().trim(), password };
+  return { email: email.toLowerCase().trim(), password, firstName, lastName };
+};
+
+/** Host only — never the credentials embedded in the connection string. */
+const databaseHost = (uri: string): string => {
+  try {
+    return new URL(uri).host;
+  } catch {
+    return "(URI no reconocida)";
+  }
 };
 
 const seedAdmin = async (): Promise<void> => {
   const input = resolveInput();
+  logger.info({ host: databaseHost(env.mongoUri) }, "Base de datos de destino");
   await connectDB(env.mongoUri);
 
-  const existing = await User.findOne({ email: input.email }).lean();
-  if (existing) {
-    logger.info("El administrador ya existe. Nada que hacer.");
-    return;
-  }
-
-  await User.create({
-    name: input.name,
-    email: input.email,
-    password: input.password,
-    role: UserRole.ADMIN,
-  });
+  const outcome = await ensureAdmin(input);
   logger.info(
-    "Administrador creado correctamente. En su primer inicio de sesión configurará la verificación en dos pasos.",
+    outcome === "created"
+      ? "Administrador creado correctamente. En su primer inicio de sesión configurará la verificación en dos pasos."
+      : "El administrador ya existía: se completaron nombre, apellido y correo verificado. Contraseña y 2FA intactos.",
   );
 };
 

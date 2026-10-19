@@ -20,6 +20,11 @@ enum AuditAction {
   LOGIN_SUCCESS = "login_success",
   LOGIN_FAILED = "login_failed",
   LOGOUT = "logout",
+  /** Every session of the account closed at once (M8.5). */
+  LOGOUT_ALL = "logout_all",
+  EMAIL_VERIFIED = "email_verified",
+  PASSWORD_RESET_REQUESTED = "password_reset_requested",
+  PASSWORD_RESET_COMPLETED = "password_reset_completed",
   TWO_FACTOR_SETUP = "two_factor_setup",
   TWO_FACTOR_ENABLED = "two_factor_enabled",
   // Kept: historical audit rows still carry it, even though the endpoint is gone (M8.4).

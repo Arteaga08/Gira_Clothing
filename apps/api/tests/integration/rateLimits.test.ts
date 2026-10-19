@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import request from "supertest";
 import { buildApp } from "../../src/app.js";
 import { resetRateLimitStores } from "../../src/middlewares/rateLimit.js";
-import { loginAsAdmin } from "../helpers/auth.js";
+import { loginAsAdmin, createCustomer } from "../helpers/auth.js";
 
 const ORIGIN = "http://localhost:3000";
 
@@ -55,9 +55,7 @@ describe("login: correo + IP", () => {
 
   beforeEach(async () => {
     process.env.RATE_LIMIT_ENABLED = "false";
-    await request(app)
-      .post("/api/v1/auth/register")
-      .send({ name: "Ana", email: "ana@example.com", password: "Segura123" });
+    await createCustomer({ email: "ana@example.com", password: "Segura1234" });
     process.env.RATE_LIMIT_ENABLED = "true";
     resetRateLimitStores();
   });
@@ -78,12 +76,57 @@ describe("login: correo + IP", () => {
 
   it("un login exitoso no cuenta contra el límite", async () => {
     for (let i = 0; i < 8; i += 1) {
-      expect((await attempt("ana@example.com", "Segura123")).status).toBe(200);
+      expect((await attempt("ana@example.com", "Segura1234")).status).toBe(200);
     }
   });
 
   it("el techo por IP frena el password spraying contra muchos correos distintos", async () => {
     for (let i = 0; i < 30; i += 1) await attempt(`victima${i}@example.com`);
     expect((await attempt("victima99@example.com")).status).toBe(429);
+  });
+});
+
+describe("acciones de cuenta: límite por correo (3/15 min) además de IP", () => {
+  const app = buildApp();
+  const signup = (email: string) =>
+    request(app)
+      .post("/api/v1/auth/register")
+      .set("Origin", ORIGIN)
+      .send({ firstName: "Ana", lastName: "López", email, password: "Segura1234" });
+  const emailOnly = (path: string, email: string) =>
+    request(app).post(`/api/v1/auth/${path}`).set("Origin", ORIGIN).send({ email });
+
+  beforeEach(() => {
+    process.env.RATE_LIMIT_ENABLED = "true";
+    resetRateLimitStores();
+  });
+  afterEach(() => {
+    process.env.RATE_LIMIT_ENABLED = "false";
+  });
+
+  it("registro: el 4º intento con el mismo correo da 429; otro correo pasa", async () => {
+    for (let i = 0; i < 3; i += 1) expect((await signup("ana@example.com")).status).toBe(201);
+    expect((await signup("ana@example.com")).status).toBe(429);
+    expect((await signup("otra@example.com")).status).toBe(201);
+  });
+
+  it.each(["resend-verification", "forgot-password"])(
+    "%s: el 4º intento con el mismo correo da 429, también con mayúsculas",
+    async (path) => {
+      for (let i = 0; i < 3; i += 1) expect((await emailOnly(path, "ana@example.com")).status).toBe(200);
+      expect((await emailOnly(path, "ANA@Example.com")).status).toBe(429);
+      expect((await emailOnly(path, "otra@example.com")).status).toBe(200);
+    },
+  );
+
+  it("el límite por IP (20/15 min) es uno solo para todas las acciones de cuenta", async () => {
+    const token = "a".repeat(64);
+    for (let i = 0; i < 20; i += 1) {
+      const path = ["verify-email", "reset-password"][i % 2]!;
+      const body = path === "verify-email" ? { token, password: "x" } : { token, password: "Segura1234" };
+      await request(app).post(`/api/v1/auth/${path}`).set("Origin", ORIGIN).send(body);
+    }
+    expect((await emailOnly("forgot-password", "nueva@example.com")).status).toBe(429);
+    expect((await signup("nueva2@example.com")).status).toBe(429);
   });
 });

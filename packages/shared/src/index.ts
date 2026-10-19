@@ -81,8 +81,13 @@ import type {
 import type { PeriodPreset, StatsGranularity } from "./constants/stats.js";
 import { PERIOD_PRESETS, STATS_GRANULARITIES, MAX_STATS_DAYS } from "./constants/stats.js";
 import { MAX_STATUS_HISTORY } from "./constants/order.js";
+import { PASSWORD_MIN_LENGTH, PASSWORD_MAX_BYTES } from "./constants/password.js";
 import type { AuditLogEntry } from "./types/audit.js";
 import type {
+  RegisterRequest,
+  VerifyEmailRequest,
+  EmailOnlyRequest,
+  ResetPasswordRequest,
   LoginRequest,
   LoginResponse,
   TwoFactorCodeRequest,
@@ -144,7 +149,12 @@ export type {
 export type { StatsGranularity, PeriodPreset };
 export { STATS_GRANULARITIES, MAX_STATS_DAYS, PERIOD_PRESETS };
 export { MAX_STATUS_HISTORY };
+export { PASSWORD_MIN_LENGTH, PASSWORD_MAX_BYTES };
 export type {
+  RegisterRequest,
+  VerifyEmailRequest,
+  EmailOnlyRequest,
+  ResetPasswordRequest,
   LoginRequest,
   LoginResponse,
   TwoFactorCodeRequest,

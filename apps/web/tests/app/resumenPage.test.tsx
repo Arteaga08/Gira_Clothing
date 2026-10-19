@@ -98,7 +98,7 @@ const healthFixture = () => ({
 
 const adminSession = {
   kind: "authenticated" as const,
-  user: { id: "1", name: "Manuel", email: "m@gira.mx", role: UserRole.ADMIN, twoFactorEnabled: true, isActive: true },
+  user: { id: "1", firstName: "Manuel", lastName: "Arteaga", emailVerified: true, email: "m@gira.mx", role: UserRole.ADMIN, twoFactorEnabled: true, isActive: true },
 };
 
 const renderPage = async (searchParams: Record<string, string | string[]> = {}) => {

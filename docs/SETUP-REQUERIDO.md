@@ -113,10 +113,20 @@ El registro público solo produce clientes. El primer admin se crea a mano:
 pnpm --filter @gira/api seed:admin -- \
   --email tucorreo@ejemplo.com \
   --password 'UnaContraseñaFuerte123' \
-  --name 'Manuel'
+  --first-name 'Manuel' \
+  --last-name 'Arteaga'
 ```
 
-Es idempotente: correrlo dos veces con el mismo correo no hace nada.
+Antes de hacer nada imprime **a qué base apunta** (solo el host): revísalo. El admin nace
+con el correo ya verificado.
+
+Es idempotente. Si el admin ya existe, no toca su contraseña ni su 2FA: solo completa
+nombre, apellido y correo verificado (y quita el campo `name` de antes de M8.5).
+
+- [ ] **Una sola vez tras M8.5:** corre el comando sobre el admin que ya existe en Atlas.
+      Sin esto el login responde "Activa tu cuenta…" (403), porque las cuentas nuevas exigen
+      el correo verificado, y el panel no tiene nombre y apellido que mostrar. Córrelo **justo
+      después del deploy**, antes de volver a iniciar sesión.
 
 ### Verificación en dos pasos (obligatoria para el admin)
 
@@ -365,6 +375,15 @@ db.orders.getIndexes()
 
 - [ ] Crear el primer admin en producción (mismo comando de A.3).
 
+- [ ] **Sesiones (M8.5).** Cada inicio de sesión es una sesión por dispositivo (colección
+      `sessions`, que se limpia sola al vencer). Las sesiones firmadas antes de M8.5 dejan de
+      servir con el deploy: toca volver a iniciar sesión una vez.
+
+- [ ] **Correos de cuenta.** El enlace para activar la cuenta y el de restablecer la
+      contraseña salen por Resend directo, sin pasar por la cola de notificaciones (el token
+      nunca se guarda). Si Resend falla, el registro igual responde bien y la persona pide
+      otro enlace pasado un minuto; el fallo queda en el log del API.
+
 ## B.6 — Reglas de riesgo en Stripe (Radar)
 
 **Esto no se configura en el código, se configura en el panel de Stripe.** Y por
@@ -445,6 +464,14 @@ Vale la pena acordarlo antes de que llegue el primero.
 ## C.3 — Lo que el storefront tendrá que respetar (Bloque 2/3)
 
 Cuando se construya el frontend, dos cosas ya están decididas por el backend:
+
+- [ ] **Rutas de cuenta (M8.5).** Los correos de cuenta enlazan a
+      `{CLIENT_URL}/verificar-correo?token=…` y `{CLIENT_URL}/restablecer-contrasena?token=…`.
+      Esas dos páginas deben responder con `Referrer-Policy: no-referrer` y
+      `Cache-Control: no-store`, para que el token no se filtre en el Referer ni quede en caché.
+      Activar la cuenta pide el token **y** la contraseña del registro
+      (`POST /auth/verify-email`); el formulario de contraseña nueva usa
+      `PASSWORD_MIN_LENGTH` / `PASSWORD_MAX_BYTES` de `@gira/shared`.
 
 - [ ] **Dos rutas obligatorias.** Los correos enlazan a
       `{CLIENT_URL}/orden/{publicId}` y `{CLIENT_URL}/orden/{publicId}/seguimiento`.

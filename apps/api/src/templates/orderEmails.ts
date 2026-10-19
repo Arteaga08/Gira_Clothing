@@ -1,5 +1,6 @@
 import { Currency } from "@gira/shared";
 import { env } from "../config/env.js";
+import { escapeHtml, layout, type RenderedMail } from "./emailLayout.js";
 
 /**
  * Pure render functions. They take a FLAT SNAPSHOT — never a Mongoose document
@@ -35,21 +36,7 @@ interface ShippedEmailSnapshot extends OrderEmailSnapshot {
   trackingNumber: string;
 }
 
-interface RenderedMail {
-  subject: string;
-  html: string;
-  text: string;
-}
-
 const MINOR_UNITS = 100;
-
-const escapeHtml = (value: string): string =>
-  value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
 
 /** Minor units -> "$1,350.00 MXN". Integer math only; no float ever touches a price. */
 const formatMoney = (minorUnits: number, currency: Currency): string => {
@@ -80,11 +67,6 @@ const renderLinesText = (lines: OrderEmailLine[], currency: Currency): string =>
         formatMoney(line.lineTotal, currency),
     )
     .join("\n");
-
-const layout = (heading: string, bodyHtml: string): string =>
-  `<!doctype html><html lang="es"><body style="font-family:system-ui,sans-serif;color:#1a1a1a">` +
-  `<h1 style="font-size:20px">${escapeHtml(heading)}</h1>${bodyHtml}` +
-  `<p style="font-size:12px;color:#666">Gira Clothing</p></body></html>`;
 
 const totalsHtml = (snapshot: OrderEmailSnapshot): string =>
   `<p>Subtotal: ${formatMoney(snapshot.subtotal, snapshot.currency)}<br>` +

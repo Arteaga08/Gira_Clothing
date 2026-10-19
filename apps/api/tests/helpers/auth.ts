@@ -45,8 +45,10 @@ const createAdmin = async (options: AdminOptions = {}): Promise<TestAdmin> => {
   const email = `admin${Date.now()}${Math.random().toString(36).slice(2)}@example.com`;
   const secret = authenticator.generateSecret();
   const user = await User.create({
-    name: "Admin",
+    firstName: "Admin",
+    lastName: "Gira",
     email,
+    emailVerified: true,
     password: ADMIN_PASSWORD,
     role: UserRole.ADMIN,
     twoFactor: twoFactorEnabled
@@ -77,22 +79,64 @@ const loginAdmin = async (app: Express, admin: TestAdmin, offset = 0): Promise<s
 /** Creates a fully enrolled admin and logs in. */
 const loginAsAdmin = async (app: Express): Promise<string> => loginAdmin(app, await createAdmin());
 
-const loginAsCustomer = async (app: Express): Promise<string> => {
-  const email = `cliente${Date.now()}${Math.random().toString(36).slice(2)}@example.com`;
-  await request(app)
-    .post("/api/v1/auth/register")
-    .set("Origin", ORIGIN)
-    .send({ name: "Cliente", email, password: "Cliente123" });
+const CUSTOMER_PASSWORD = "Cliente123";
+
+interface TestCustomer {
+  id: string;
+  email: string;
+  password: string;
+}
+
+interface CustomerOptions {
+  email?: string;
+  password?: string;
+  /** Default true: almost every test needs a customer who can already log in. */
+  emailVerified?: boolean;
+}
+
+/**
+ * Creates a customer straight in the DB. Registration no longer opens a
+ * session (verification is mandatory), so tests that only need "a logged-in
+ * customer" skip the email round trip; the signup flow has its own tests.
+ */
+const createCustomer = async (options: CustomerOptions = {}): Promise<TestCustomer> => {
+  const {
+    email = `cliente${Date.now()}${Math.random().toString(36).slice(2)}@example.com`,
+    password = CUSTOMER_PASSWORD,
+    emailVerified = true,
+  } = options;
+  const user = await User.create({
+    firstName: "Cliente",
+    lastName: "Prueba",
+    email,
+    password,
+    role: UserRole.CUSTOMER,
+    emailVerified,
+  });
+  return { id: user.id as string, email, password };
+};
+
+/** Password login for a customer; returns the session cookie. */
+const loginCustomer = async (
+  app: Express,
+  customer: Pick<TestCustomer, "email" | "password">,
+): Promise<string> => {
   const res = await request(app)
     .post("/api/v1/auth/login")
     .set("Origin", ORIGIN)
-    .send({ email, password: "Cliente123" });
+    .send({ email: customer.email, password: customer.password });
   return cookieFrom(res);
 };
 
-export type { TestAdmin };
+const loginAsCustomer = async (app: Express): Promise<string> =>
+  loginCustomer(app, await createCustomer());
+
+export type { TestAdmin, TestCustomer };
 export {
   ORIGIN,
+  CUSTOMER_PASSWORD,
+  createCustomer,
+  loginCustomer,
   cookieFrom,
   totpFor,
   createAdmin,

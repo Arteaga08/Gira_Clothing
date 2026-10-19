@@ -44,7 +44,9 @@ describe("AdminLayout", () => {
       kind: "authenticated",
       user: {
         id: "1",
-        name: "Cliente",
+        firstName: "Cliente",
+        lastName: "Prueba",
+        emailVerified: true,
         email: "c@gira.mx",
         role: UserRole.CUSTOMER,
         twoFactorEnabled: false,
@@ -76,7 +78,9 @@ describe("AdminLayout", () => {
       kind: "authenticated",
       user: {
         id: "1",
-        name: "Manuel",
+        firstName: "Manuel",
+        lastName: "Prueba",
+        emailVerified: true,
         email: "m@gira.mx",
         role: UserRole.ADMIN,
         twoFactorEnabled: true,

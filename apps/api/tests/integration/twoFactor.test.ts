@@ -6,6 +6,7 @@ import { User } from "../../src/models/User.js";
 import { AuditLog } from "../../src/models/AuditLog.js";
 import { decryptSecret } from "../../src/utils/crypto.js";
 import { signAuthToken } from "../../src/utils/token.js";
+import { createSession } from "../../src/services/sessionService.js";
 import { signChallengeToken, CHALLENGE_TTL_MS } from "../../src/utils/twoFactorChallenge.js";
 import { resetRateLimitStores } from "../../src/middlewares/rateLimit.js";
 import { resetAdminTwoFactorByEmail } from "../../src/services/twoFactorService.js";
@@ -121,7 +122,8 @@ describe("2FA · login de admin (paso de contraseña)", () => {
 describe("2FA · protect exige el segundo factor al admin", () => {
   it("un admin sin 2FA no pasa protect aunque tenga un JWT de sesión válido", async () => {
     const admin = await createAdmin({ twoFactorEnabled: false });
-    const token = signAuthToken({ sub: admin.id, role: UserRole.ADMIN, tv: 0 });
+    const sid = await createSession(admin.id);
+    const token = signAuthToken({ sub: admin.id, role: UserRole.ADMIN, tv: 0, sid });
     const res = await me(`${SESSION_COOKIE}=${token}`);
     expect(res.status).toBe(401);
     expect(res.body.message).toMatch(/dos pasos/i);

@@ -10,6 +10,9 @@ import { UserRole } from "@gira/shared";
 
 const SALT_ROUNDS = 12;
 
+/** The one place a password is hashed: the pre-save hook and atomic updates (reset) share it. */
+const hashPassword = (plain: string): Promise<string> => bcrypt.hash(plain, SALT_ROUNDS);
+
 interface TwoFactor {
   enabled: boolean;
   secret?: string | undefined; // AES-256-GCM encrypted at rest, select: false
@@ -21,11 +24,28 @@ interface TwoFactor {
   lockedUntil?: Date | undefined;
 }
 
+/**
+ * One-time link (email verification or password reset). Only the sha256 of
+ * the token is stored; the raw value exists solely inside the email. One
+ * subdocument per kind, so issuing a new link overwrites — and kills — the
+ * previous one.
+ */
+interface AccountToken {
+  tokenHash: string;
+  expiresAt: Date;
+  /** When it was issued: drives the 60 s cooldown between emails. */
+  issuedAt: Date;
+}
+
 interface UserAttrs {
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
   role: UserRole;
+  emailVerified: boolean;
+  emailVerification?: AccountToken | undefined;
+  passwordReset?: AccountToken | undefined;
   twoFactor: TwoFactor;
   isActive: boolean;
   tokenVersion: number;
@@ -49,9 +69,20 @@ const twoFactorSchema = new Schema<TwoFactor>(
   { _id: false },
 );
 
+const accountTokenSchema = new Schema<AccountToken>(
+  {
+    tokenHash: { type: String, required: true },
+    expiresAt: { type: Date, required: true },
+    issuedAt: { type: Date, required: true },
+  },
+  { _id: false },
+);
+
 const userSchema = new Schema<UserAttrs, UserModel, UserMethods>(
   {
-    name: { type: String, required: true, trim: true, maxlength: 120 },
+    // Separate on purpose: shipping labels and invoices use them apart.
+    firstName: { type: String, required: true, trim: true, maxlength: 60 },
+    lastName: { type: String, required: true, trim: true, maxlength: 60 },
     // `unique` already builds the index — adding `index: true` too makes
     // Mongoose declare it twice and warn on every boot.
     email: {
@@ -67,6 +98,11 @@ const userSchema = new Schema<UserAttrs, UserModel, UserMethods>(
       enum: Object.values(UserRole),
       default: UserRole.CUSTOMER,
     },
+    // Never taken from a payload: only the verification link, a password
+    // reset (which proves the inbox too) or the admin seed set it.
+    emailVerified: { type: Boolean, default: false },
+    emailVerification: { type: accountTokenSchema, select: false },
+    passwordReset: { type: accountTokenSchema, select: false },
     twoFactor: {
       type: twoFactorSchema,
       default: () => ({ enabled: false, failedAttempts: 0 }),
@@ -83,12 +119,12 @@ const userSchema = new Schema<UserAttrs, UserModel, UserMethods>(
 );
 
 // Hash only when the password actually changed (BACKEND_SECURITY_GUIDELINES §1).
-userSchema.pre("save", async function hashPassword(next) {
+userSchema.pre("save", async function hashModifiedPassword(next) {
   if (!this.isModified("password")) {
     next();
     return;
   }
-  this.password = await bcrypt.hash(this.password, SALT_ROUNDS);
+  this.password = await hashPassword(this.password);
   next();
 });
 
@@ -100,8 +136,17 @@ userSchema.methods.comparePassword = function comparePassword(
 
 // Admin listing's default sort (-createdAt) and the role filter both need this.
 userSchema.index({ role: 1, createdAt: -1 });
+// Link lookups by token hash. Partial: most users have no live link.
+userSchema.index(
+  { "emailVerification.tokenHash": 1 },
+  { partialFilterExpression: { "emailVerification.tokenHash": { $exists: true } } },
+);
+userSchema.index(
+  { "passwordReset.tokenHash": 1 },
+  { partialFilterExpression: { "passwordReset.tokenHash": { $exists: true } } },
+);
 
 const User = model<UserAttrs, UserModel>("User", userSchema);
 
-export type { UserAttrs, UserDocument, TwoFactor };
-export { User };
+export type { UserAttrs, UserDocument, TwoFactor, AccountToken };
+export { User, hashPassword };

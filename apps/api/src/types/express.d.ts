@@ -7,6 +7,8 @@ declare global {
   namespace Express {
     interface Request {
       user?: UserDocument;
+      /** The session (`sid`) the request authenticated with — logout closes exactly this one. */
+      sessionId?: string;
     }
   }
 }

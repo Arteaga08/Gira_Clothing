@@ -14,7 +14,9 @@ vi.mock("next/navigation", () => ({
 
 const user: Wire<PublicUser> = {
   id: "1",
-  name: "Manuel Arteaga",
+  firstName: "Manuel",
+  lastName: "Arteaga",
+  emailVerified: true,
   email: "manuel@gira.mx",
   role: "admin" as PublicUser["role"],
   twoFactorEnabled: true,

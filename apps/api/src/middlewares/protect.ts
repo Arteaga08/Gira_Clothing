@@ -5,11 +5,16 @@ import { env } from "../config/env.js";
 import { AppError } from "../utils/AppError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { User } from "../models/User.js";
+import { isSessionActive } from "../services/sessionService.js";
 
 /**
  * `protect` verifies the session JWT from the HttpOnly cookie and loads the
  * active user onto req.user. `restrictTo` runs AFTER protect and checks the
  * role (BACKEND_SECURITY_GUIDELINES §3).
+ *
+ * A valid signature is not enough: the token's session (`sid`) must still
+ * exist — logout deletes it — and its `tv` must match the user's current
+ * tokenVersion, which "close every session" bumps.
  */
 
 const protect: RequestHandler = asyncHandler(
@@ -21,8 +26,11 @@ const protect: RequestHandler = asyncHandler(
     }
 
     const payload = verifyAuthToken(token);
-    const user = await User.findById(payload.sub);
-    if (!user || !user.isActive || payload.tv !== user.tokenVersion) {
+    const [user, sessionActive] = await Promise.all([
+      User.findById(payload.sub),
+      isSessionActive(payload.sid, payload.sub),
+    ]);
+    if (!user || !user.isActive || payload.tv !== user.tokenVersion || !sessionActive) {
       throw new AppError("Tu sesión ya no es válida. Inicia sesión de nuevo.", 401);
     }
     // An admin session only counts once the second factor is on. Login never
@@ -33,6 +41,7 @@ const protect: RequestHandler = asyncHandler(
     }
 
     req.user = user;
+    req.sessionId = payload.sid;
     next();
   },
 );
@@ -54,10 +63,16 @@ const optionalAuth: RequestHandler = asyncHandler(
 
     try {
       const payload = verifyAuthToken(token);
-      const user = await User.findById(payload.sub);
-      const sessionValid = user?.isActive && payload.tv === user.tokenVersion;
+      const [user, sessionActive] = await Promise.all([
+        User.findById(payload.sub),
+        isSessionActive(payload.sid, payload.sub),
+      ]);
+      const sessionValid = sessionActive && user?.isActive && payload.tv === user.tokenVersion;
       const adminWithoutFactor = user?.role === UserRole.ADMIN && !user.twoFactor.enabled;
-      if (user && sessionValid && !adminWithoutFactor) req.user = user;
+      if (user && sessionValid && !adminWithoutFactor) {
+        req.user = user;
+        req.sessionId = payload.sid;
+      }
     } catch {
       // Invalid/expired token on an optional route: proceed as guest.
     }
