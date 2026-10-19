@@ -63,7 +63,9 @@ const seedAdmin = async (): Promise<void> => {
     password: input.password,
     role: UserRole.ADMIN,
   });
-  logger.info("Administrador creado correctamente.");
+  logger.info(
+    "Administrador creado correctamente. En su primer inicio de sesión configurará la verificación en dos pasos.",
+  );
 };
 
 seedAdmin()

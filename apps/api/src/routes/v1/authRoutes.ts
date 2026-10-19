@@ -2,22 +2,21 @@ import { Router } from "express";
 import { UserRole } from "@gira/shared";
 import { validate } from "../../middlewares/validate.js";
 import { protect, restrictTo } from "../../middlewares/protect.js";
-import { loginIpLimiter, loginLimiter, registerLimiter } from "../../middlewares/rateLimit.js";
+import { requireChallenge } from "../../middlewares/requireChallenge.js";
 import {
-  registerSchema,
-  loginSchema,
-  twoFactorSetupSchema,
-  twoFactorCodeSchema,
-} from "../../validators/authValidator.js";
+  loginIpLimiter,
+  loginLimiter,
+  registerLimiter,
+  twoFactorLimiter,
+} from "../../middlewares/rateLimit.js";
+import { registerSchema, loginSchema, twoFactorCodeSchema } from "../../validators/authValidator.js";
+import { register, login, me, logout } from "../../controllers/authController.js";
 import {
-  register,
-  login,
-  me,
-  logout,
-  twoFactorSetup,
-  twoFactorEnable,
-  twoFactorDisable,
-} from "../../controllers/authController.js";
+  verify,
+  enrollStart,
+  enrollComplete,
+  setup,
+} from "../../controllers/twoFactorController.js";
 
 const authRouter = Router();
 
@@ -26,28 +25,24 @@ authRouter.post("/login", loginIpLimiter, loginLimiter, validate(loginSchema), l
 authRouter.post("/logout", protect, logout);
 authRouter.get("/me", protect, me);
 
-// Admin-only 2FA management. Admin routes are not rate-limited (auth + role is
-// the barrier). restrictTo always runs after protect.
+// Second factor. Unlike the rest of the admin surface these routes are reachable
+// BEFORE a session exists (the challenge cookie is the credential), so they carry
+// their own failure limiter. restrictTo always runs after protect.
+authRouter.use("/2fa", twoFactorLimiter);
+authRouter.post("/2fa/verify", requireChallenge("verify"), validate(twoFactorCodeSchema), verify);
+authRouter.post("/2fa/enroll/start", requireChallenge("enroll"), enrollStart);
+authRouter.post(
+  "/2fa/enroll/complete",
+  requireChallenge("enroll"),
+  validate(twoFactorCodeSchema),
+  enrollComplete,
+);
 authRouter.post(
   "/2fa/setup",
   protect,
   restrictTo(UserRole.ADMIN),
-  validate(twoFactorSetupSchema),
-  twoFactorSetup,
-);
-authRouter.post(
-  "/2fa/enable",
-  protect,
-  restrictTo(UserRole.ADMIN),
   validate(twoFactorCodeSchema),
-  twoFactorEnable,
-);
-authRouter.post(
-  "/2fa/disable",
-  protect,
-  restrictTo(UserRole.ADMIN),
-  validate(twoFactorCodeSchema),
-  twoFactorDisable,
+  setup,
 );
 
 export { authRouter };

@@ -1,19 +1,31 @@
 import type { ApiStatus } from "./apiResponse.js";
 import type { PublicUser } from "./user.js";
 
-/**
- * Body of `POST /auth/login`. `code` is the 6-digit TOTP, required only when
- * the account has 2FA enabled — the API's Joi schema allows it to be absent,
- * never an empty string (see apps/api/src/validators/authValidator.ts).
- */
+/** Body of `POST /auth/login`. The second factor travels in its own request (M8.4). */
 interface LoginRequest {
   email: string;
   password: string;
-  code?: string;
 }
 
-interface LoginResponse {
-  user: PublicUser;
+/**
+ * Login answers 200 in every success case; `status` says what comes next.
+ * Admins never get a session from the password alone: they get a short-lived
+ * challenge cookie and must finish through `/auth/2fa/*`.
+ */
+type LoginResponse =
+  | { status: "authenticated"; user: PublicUser }
+  | { status: "two_factor_required" }
+  | { status: "enrollment_required" };
+
+/** Body of `POST /auth/2fa/verify` and `POST /auth/2fa/enroll/complete`. */
+interface TwoFactorCodeRequest {
+  code: string;
+}
+
+/** `POST /auth/2fa/enroll/start`: QR as a PNG data URL, plus the key for manual entry. */
+interface EnrollmentStartResponse {
+  qrDataUrl: string;
+  manualKey: string;
 }
 
 interface MeResponse {
@@ -31,4 +43,11 @@ interface ApiErrorBody {
   message: string;
 }
 
-export type { LoginRequest, LoginResponse, MeResponse, ApiErrorBody };
+export type {
+  LoginRequest,
+  LoginResponse,
+  TwoFactorCodeRequest,
+  EnrollmentStartResponse,
+  MeResponse,
+  ApiErrorBody,
+};

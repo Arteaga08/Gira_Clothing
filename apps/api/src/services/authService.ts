@@ -1,18 +1,15 @@
-import { authenticator } from "otplib";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "node:crypto";
 import {
   UserRole,
   AuditAction,
   AuditModule,
-  TWO_FACTOR_REQUIRED_MESSAGE,
-  TWO_FACTOR_INVALID_MESSAGE,
   INVALID_CREDENTIALS_MESSAGE,
 } from "@gira/shared";
 import { User, type UserDocument } from "../models/User.js";
 import { AppError } from "../utils/AppError.js";
 import { signAuthToken } from "../utils/token.js";
-import { encryptSecret, decryptSecret } from "../utils/crypto.js";
+import type { ChallengePurpose } from "../utils/twoFactorChallenge.js";
 import { recordAudit } from "./auditService.js";
 
 /**
@@ -34,8 +31,16 @@ interface RegisterInput {
 interface LoginInput {
   email: string;
   password: string;
-  code?: string;
 }
+
+/**
+ * Outcome of a correct password. Customers get a session straight away; an
+ * admin never does — only a challenge naming the next step (verify the code
+ * or enrol the factor), finished through `/auth/2fa/*`.
+ */
+type LoginResult =
+  | { kind: "session"; user: PublicUser; token: string }
+  | { kind: "challenge"; purpose: ChallengePurpose; userId: string; tv: number };
 
 interface PublicUser {
   id: string;
@@ -110,7 +115,7 @@ const logoutUser = async (userId: string): Promise<void> => {
 const loginUser = async (
   input: LoginInput,
   ctx: RequestContext,
-): Promise<{ user: PublicUser; token: string }> => {
+): Promise<LoginResult> => {
   const user = await User.findOne({ email: input.email }).select("+password");
 
   if (!user || !user.isActive) {
@@ -138,20 +143,25 @@ const loginUser = async (
     throw new AppError(GENERIC_LOGIN_ERROR, 401);
   }
 
-  // Second factor: when enabled, a valid TOTP is required in addition to the
-  // password. The 2FA error is specific — the generic anti-enumeration message
-  // only applies to the email/password pair, not to the second factor.
-  if (user.twoFactor.enabled) {
-    const withSecret = await User.findById(user._id).select("+twoFactor.secret");
-    const encrypted = withSecret?.twoFactor.secret;
-    if (!input.code) {
-      throw new AppError(TWO_FACTOR_REQUIRED_MESSAGE, 401);
-    }
-    if (!encrypted || !verifyTotp(encrypted, input.code)) {
-      throw new AppError(TWO_FACTOR_INVALID_MESSAGE, 401);
-    }
+  if (user.role === UserRole.ADMIN) {
+    // The password alone never opens an admin session. LOGIN_SUCCESS is
+    // audited when the session is actually issued (see issueSession).
+    return {
+      kind: "challenge",
+      purpose: user.twoFactor.enabled ? "verify" : "enroll",
+      userId: user.id as string,
+      tv: user.tokenVersion,
+    };
   }
 
+  return { kind: "session", ...(await issueSession(user, ctx)) };
+};
+
+/** Signs the session for an authenticated user and audits the login. */
+const issueSession = async (
+  user: UserDocument,
+  ctx: RequestContext,
+): Promise<{ user: PublicUser; token: string }> => {
   const token = signAuthToken({ sub: user.id as string, role: user.role, tv: user.tokenVersion });
 
   await recordAudit({
@@ -173,126 +183,7 @@ const getCurrentUser = async (userId: string): Promise<PublicUser> => {
   return toPublicUser(user);
 };
 
-// --- Two-factor (TOTP) ---------------------------------------------------
-
-const APP_ISSUER = "Gira Clothing";
-
-const verifyTotp = (encryptedSecret: string, code: string): boolean => {
-  const secret = decryptSecret(encryptedSecret);
-  return authenticator.verify({ token: code, secret });
-};
-
-/**
- * Two-step activation (BACKEND_SECURITY_GUIDELINES §2). `setup` generates and
- * stores the encrypted secret with enabled:false ("pending"); `enable` requires
- * a valid TOTP before flipping enabled:true.
- *
- * RE-configuring an ALREADY ACTIVE second factor requires the current code, for
- * the same reason `disableTwoFactor` does: this function turns 2FA off on its
- * way to issuing a new secret, so without the check it is a one-request bypass
- * of the very control `disable` refuses to perform without proof. A stolen
- * session must not be able to strip the second factor by either door.
- */
-const setupTwoFactor = async (
-  userId: string,
-  ctx: RequestContext = {},
-  code?: string,
-): Promise<{ otpauthUrl: string; secret: string }> => {
-  const user = await User.findById(userId).select("+twoFactor.secret");
-  if (!user) {
-    throw new AppError("Usuario no encontrado.", 404);
-  }
-
-  if (user.twoFactor.enabled) {
-    if (!code) {
-      throw new AppError(
-        "Tu verificación en dos pasos ya está activa: ingresa el código actual para reconfigurarla.",
-        400,
-      );
-    }
-    if (!user.twoFactor.secret || !verifyTotp(user.twoFactor.secret, code)) {
-      throw new AppError("El código de verificación es incorrecto.", 400);
-    }
-  }
-
-  const secret = authenticator.generateSecret();
-  user.twoFactor.secret = encryptSecret(secret);
-  user.twoFactor.enabled = false;
-  await user.save();
-
-  await recordAudit({
-    actorId: user._id,
-    actorType: "user",
-    action: AuditAction.TWO_FACTOR_SETUP,
-    module: AuditModule.AUTH,
-    ip: ctx.ip,
-  });
-
-  const otpauthUrl = authenticator.keyuri(user.email, APP_ISSUER, secret);
-  return { otpauthUrl, secret };
-};
-
-const enableTwoFactor = async (
-  userId: string,
-  code: string,
-  ctx: RequestContext,
-): Promise<void> => {
-  const user = await User.findById(userId).select("+twoFactor.secret");
-  if (!user || !user.twoFactor.secret) {
-    throw new AppError("Primero debes iniciar la configuración de dos factores.", 400);
-  }
-  if (!verifyTotp(user.twoFactor.secret, code)) {
-    throw new AppError("El código de verificación es incorrecto.", 400);
-  }
-
-  user.twoFactor.enabled = true;
-  // Any session issued before turning 2FA on no longer reflects the account's
-  // real security state — bump the version so those tokens stop working and
-  // whoever holds one has to log in again (this time through the 2FA gate).
-  user.tokenVersion += 1;
-  await user.save();
-
-  await recordAudit({
-    actorId: user._id,
-    actorType: "user",
-    action: AuditAction.TWO_FACTOR_ENABLED,
-    module: AuditModule.AUTH,
-    ip: ctx.ip,
-  });
-};
-
-const disableTwoFactor = async (
-  userId: string,
-  code: string,
-  ctx: RequestContext,
-): Promise<void> => {
-  const user = await User.findById(userId).select("+twoFactor.secret");
-  if (!user || !user.twoFactor.enabled || !user.twoFactor.secret) {
-    throw new AppError("El segundo factor no está activo.", 400);
-  }
-  // Disabling also requires a valid TOTP so a stolen session can't turn it off.
-  if (!verifyTotp(user.twoFactor.secret, code)) {
-    throw new AppError("El código de verificación es incorrecto.", 400);
-  }
-
-  user.twoFactor.enabled = false;
-  user.twoFactor.secret = undefined;
-  // BACKEND_SECURITY_GUIDELINES §2: disabling 2FA must revoke active sessions
-  // too, not just flip the flag — a stolen cookie shouldn't survive the
-  // account's own security downgrade.
-  user.tokenVersion += 1;
-  await user.save();
-
-  await recordAudit({
-    actorId: user._id,
-    actorType: "user",
-    action: AuditAction.TWO_FACTOR_DISABLED,
-    module: AuditModule.AUTH,
-    ip: ctx.ip,
-  });
-};
-
-export type { RequestContext, RegisterInput, LoginInput, PublicUser };
+export type { RequestContext, RegisterInput, LoginInput, LoginResult, PublicUser };
 export {
   warmAuthDecoy,
   logoutUser,
@@ -300,7 +191,5 @@ export {
   loginUser,
   getCurrentUser,
   toPublicUser,
-  setupTwoFactor,
-  enableTwoFactor,
-  disableTwoFactor,
+  issueSession,
 };

@@ -6,13 +6,15 @@ import { buildCookieOptions, buildClearCookieOptions } from "../utils/token.js";
 import { env } from "../config/env.js";
 import { AppError } from "../utils/AppError.js";
 import {
+  challengeCookieName,
+  signChallengeToken,
+  buildChallengeCookieOptions,
+} from "../utils/twoFactorChallenge.js";
+import {
   registerCustomer,
   logoutUser,
   loginUser,
   getCurrentUser,
-  setupTwoFactor,
-  enableTwoFactor,
-  disableTwoFactor,
   type RegisterInput,
   type LoginInput,
 } from "../services/authService.js";
@@ -30,9 +32,28 @@ const register = asyncHandler(async (req: Request, res: Response) => {
 });
 
 const login = asyncHandler(async (req: Request, res: Response) => {
-  const { user, token } = await loginUser(req.body as LoginInput, { ip: req.ip });
-  res.cookie(env.cookieName, token, buildCookieOptions());
-  sendResponse(res, 200, "Sesión iniciada correctamente.", { user });
+  const result = await loginUser(req.body as LoginInput, { ip: req.ip });
+
+  if (result.kind === "session") {
+    res.cookie(env.cookieName, result.token, buildCookieOptions());
+    sendResponse(res, 200, "Sesión iniciada correctamente.", {
+      status: "authenticated",
+      user: result.user,
+    });
+    return;
+  }
+
+  // Admin: password accepted, but no session yet. The challenge cookie only
+  // opens the 2FA routes; the code arrives in a separate request.
+  const challenge = signChallengeToken({
+    sub: result.userId,
+    purpose: result.purpose,
+    tv: result.tv,
+  });
+  res.cookie(challengeCookieName(), challenge, buildChallengeCookieOptions());
+  sendResponse(res, 200, "Contraseña correcta. Falta la verificación en dos pasos.", {
+    status: result.purpose === "verify" ? "two_factor_required" : "enrollment_required",
+  });
 });
 
 const me = asyncHandler(async (req: Request, res: Response) => {
@@ -58,35 +79,4 @@ const logout = asyncHandler(async (req: Request, res: Response) => {
   sendResponse(res, 200, "Sesión cerrada correctamente.");
 });
 
-const requireUser = (req: Request): string => {
-  if (!req.user) {
-    throw new AppError("No has iniciado sesión.", 401);
-  }
-  return req.user.id as string;
-};
-
-const twoFactorSetup = asyncHandler(async (req: Request, res: Response) => {
-  // Only used when the account already has 2FA active — see setupTwoFactor.
-  // A request with no body at all leaves req.body undefined in Express 5, and
-  // that is the normal case here: the first-time setup sends nothing.
-  const { code } = (req.body ?? {}) as { code?: string };
-  const { otpauthUrl, secret } = await setupTwoFactor(requireUser(req), { ip: req.ip }, code);
-  sendResponse(res, 200, "Escanea el código con tu app de autenticación.", {
-    otpauthUrl,
-    secret,
-  });
-});
-
-const twoFactorEnable = asyncHandler(async (req: Request, res: Response) => {
-  const { code } = req.body as { code: string };
-  await enableTwoFactor(requireUser(req), code, { ip: req.ip });
-  sendResponse(res, 200, "Verificación en dos pasos activada.");
-});
-
-const twoFactorDisable = asyncHandler(async (req: Request, res: Response) => {
-  const { code } = req.body as { code: string };
-  await disableTwoFactor(requireUser(req), code, { ip: req.ip });
-  sendResponse(res, 200, "Verificación en dos pasos desactivada.");
-});
-
-export { register, login, me, logout, twoFactorSetup, twoFactorEnable, twoFactorDisable };
+export { register, login, me, logout };

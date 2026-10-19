@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction, RequestHandler } from "express";
-import type { UserRole } from "@gira/shared";
+import { UserRole } from "@gira/shared";
 import { verifyAuthToken } from "../utils/token.js";
 import { env } from "../config/env.js";
 import { AppError } from "../utils/AppError.js";
@@ -25,6 +25,12 @@ const protect: RequestHandler = asyncHandler(
     if (!user || !user.isActive || payload.tv !== user.tokenVersion) {
       throw new AppError("Tu sesión ya no es válida. Inicia sesión de nuevo.", 401);
     }
+    // An admin session only counts once the second factor is on. Login never
+    // mints one without it, so this catches an account whose factor was
+    // reset after the cookie was issued, or a token minted by other means.
+    if (user.role === UserRole.ADMIN && !user.twoFactor.enabled) {
+      throw new AppError("Configura la verificación en dos pasos para continuar.", 401);
+    }
 
     req.user = user;
     next();
@@ -49,7 +55,9 @@ const optionalAuth: RequestHandler = asyncHandler(
     try {
       const payload = verifyAuthToken(token);
       const user = await User.findById(payload.sub);
-      if (user?.isActive && payload.tv === user.tokenVersion) req.user = user;
+      const sessionValid = user?.isActive && payload.tv === user.tokenVersion;
+      const adminWithoutFactor = user?.role === UserRole.ADMIN && !user.twoFactor.enabled;
+      if (user && sessionValid && !adminWithoutFactor) req.user = user;
     } catch {
       // Invalid/expired token on an optional route: proceed as guest.
     }

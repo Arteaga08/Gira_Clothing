@@ -82,11 +82,17 @@ import type { PeriodPreset, StatsGranularity } from "./constants/stats.js";
 import { PERIOD_PRESETS, STATS_GRANULARITIES, MAX_STATS_DAYS } from "./constants/stats.js";
 import { MAX_STATUS_HISTORY } from "./constants/order.js";
 import type { AuditLogEntry } from "./types/audit.js";
-import type { LoginRequest, LoginResponse, MeResponse, ApiErrorBody } from "./types/auth.js";
+import type {
+  LoginRequest,
+  LoginResponse,
+  TwoFactorCodeRequest,
+  EnrollmentStartResponse,
+  MeResponse,
+  ApiErrorBody,
+} from "./types/auth.js";
 import { ORDER_STATUS_LABELS, DISPUTE_STATUS_LABELS } from "./labels/orderStatus.js";
 import { SHIPMENT_STATUS_LABELS } from "./labels/shipmentStatus.js";
 import {
-  TWO_FACTOR_REQUIRED_MESSAGE,
   TWO_FACTOR_INVALID_MESSAGE,
   INVALID_CREDENTIALS_MESSAGE,
 } from "./labels/authMessages.js";
@@ -138,6 +144,13 @@ export type {
 export type { StatsGranularity, PeriodPreset };
 export { STATS_GRANULARITIES, MAX_STATS_DAYS, PERIOD_PRESETS };
 export { MAX_STATUS_HISTORY };
-export type { LoginRequest, LoginResponse, MeResponse, ApiErrorBody };
+export type {
+  LoginRequest,
+  LoginResponse,
+  TwoFactorCodeRequest,
+  EnrollmentStartResponse,
+  MeResponse,
+  ApiErrorBody,
+};
 export { ORDER_STATUS_LABELS, DISPUTE_STATUS_LABELS, SHIPMENT_STATUS_LABELS };
-export { TWO_FACTOR_REQUIRED_MESSAGE, TWO_FACTOR_INVALID_MESSAGE, INVALID_CREDENTIALS_MESSAGE };
+export { TWO_FACTOR_INVALID_MESSAGE, INVALID_CREDENTIALS_MESSAGE };

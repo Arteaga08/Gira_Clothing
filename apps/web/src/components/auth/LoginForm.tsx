@@ -1,21 +1,22 @@
 "use client";
 
-import type { LoginRequest } from "@gira/shared";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useReducer, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { Notice } from "@/components/ui/Notice";
 import { isApiError } from "@/lib/api/ApiError";
-import { login } from "@/lib/api/auth";
+import { login, verifyTwoFactor } from "@/lib/api/auth";
 import { initialLoginState, loginReducer } from "@/lib/auth/loginMachine";
+import { EnrollmentStep } from "./EnrollmentStep";
 
 /**
- * Single-step login form: the API takes `{email, password, code?}` in one
- * request. When 2FA is enabled and `code` is missing, it answers 401 with a
- * fixed message; on that response this form reveals the code field in place
- * instead of moving to a second screen, so the admin never loses what they
- * already typed (Manuel's explicit call — the API is one step, not two).
+ * Admin login in up to two requests. The first takes only the password and
+ * answers what comes next (`status`): a session, the 2FA code, or forced
+ * enrolment. The code is then sent on its own to `/auth/2fa/verify` — the
+ * password is never re-sent, and the short-lived challenge cookie the API set
+ * is what links the two steps. The code field appears in place so the admin
+ * does not lose what they typed.
  */
 const LoginForm = () => {
   const router = useRouter();
@@ -24,27 +25,55 @@ const LoginForm = () => {
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
 
+  const enter = () => {
+    router.replace("/resumen");
+    router.refresh();
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (state.pending) return;
     dispatch({ type: "submit" });
 
-    // exactOptionalPropertyTypes: `code` must be omitted outside the 2FA
-    // phase, never sent as an empty string or `undefined`.
-    const input: LoginRequest =
-      state.phase === "twoFactor" ? { email, password, code } : { email, password };
-
     try {
-      await login(input);
-      dispatch({ type: "success" });
-      router.replace("/resumen");
-      router.refresh();
+      if (state.phase === "twoFactor") {
+        await verifyTwoFactor(code);
+        dispatch({ type: "success" });
+        enter();
+        return;
+      }
+
+      const result = await login({ email, password });
+      if (result.status === "authenticated") {
+        dispatch({ type: "success" });
+        enter();
+      } else {
+        dispatch({
+          type: "challenge",
+          next: result.status === "two_factor_required" ? "twoFactor" : "enroll",
+        });
+      }
     } catch (error) {
       const message = isApiError(error) ? error.message : "Ocurrió un error inesperado.";
       const status = isApiError(error) ? error.status : 0;
+      // A 401 past the password step sends the form back to the start.
+      if (status === 401 && state.phase !== "credentials") setCode("");
       dispatch({ type: "failure", message, status });
     }
   };
+
+  const handleEnrollmentDone = () => {
+    dispatch({ type: "success" });
+    enter();
+  };
+
+  const handleEnrollmentExpired = (message: string) => {
+    dispatch({ type: "failure", message, status: 401 });
+  };
+
+  if (state.phase === "enroll") {
+    return <EnrollmentStep onDone={handleEnrollmentDone} onExpired={handleEnrollmentExpired} />;
+  }
 
   return (
     <form onSubmit={(event) => void handleSubmit(event)} noValidate className="flex flex-col gap-4">

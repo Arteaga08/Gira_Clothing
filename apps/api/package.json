@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "seed:admin": "tsx src/scripts/seedAdmin.ts"
+    "seed:admin": "tsx src/scripts/seedAdmin.ts",
+    "2fa:reset-admin": "tsx src/scripts/resetAdminTwoFactor.ts"
   },
   "dependencies": {
     "@gira/shared": "workspace:*",
@@ -29,6 +30,7 @@
     "otplib": "^12.0.1",
     "pino": "^9.5.0",
     "pino-http": "^10.3.0",
+    "qrcode": "1.5.4",
     "stripe": "^22.3.2",
     "xss": "^1.0.15"
   },

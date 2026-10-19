@@ -13,6 +13,12 @@ const SALT_ROUNDS = 12;
 interface TwoFactor {
   enabled: boolean;
   secret?: string | undefined; // AES-256-GCM encrypted at rest, select: false
+  /** TOTP time step of the last accepted code: a step can be used once (anti-replay). */
+  lastUsedStep?: number | undefined;
+  /** Wrong codes since the last success or lock; reset when the account locks. */
+  failedAttempts: number;
+  /** While in the future, the account accepts no codes at all. */
+  lockedUntil?: Date | undefined;
 }
 
 interface UserAttrs {
@@ -36,6 +42,9 @@ const twoFactorSchema = new Schema<TwoFactor>(
   {
     enabled: { type: Boolean, default: false },
     secret: { type: String, select: false },
+    lastUsedStep: { type: Number },
+    failedAttempts: { type: Number, default: 0 },
+    lockedUntil: { type: Date },
   },
   { _id: false },
 );
@@ -60,11 +69,11 @@ const userSchema = new Schema<UserAttrs, UserModel, UserMethods>(
     },
     twoFactor: {
       type: twoFactorSchema,
-      default: () => ({ enabled: false }),
+      default: () => ({ enabled: false, failedAttempts: 0 }),
     },
     isActive: { type: Boolean, default: true },
     // Bumped whenever every existing session must be invalidated at once
-    // (today: enabling/disabling 2FA). The JWT carries the version it was
+    // (logout, enrolling or resetting 2FA). The JWT carries the version it was
     // signed with; `protect` rejects a token whose version doesn't match
     // the user's current one (BACKEND_SECURITY_GUIDELINES §2, session
     // revocation on 2FA changes).

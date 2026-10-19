@@ -22,7 +22,11 @@ enum AuditAction {
   LOGOUT = "logout",
   TWO_FACTOR_SETUP = "two_factor_setup",
   TWO_FACTOR_ENABLED = "two_factor_enabled",
+  // Kept: historical audit rows still carry it, even though the endpoint is gone (M8.4).
   TWO_FACTOR_DISABLED = "two_factor_disabled",
+  TWO_FACTOR_FAILED = "two_factor_failed",
+  TWO_FACTOR_LOCKED = "two_factor_locked",
+  TWO_FACTOR_RESET = "two_factor_reset",
   PRINT_FAMILY_CREATED = "print_family_created",
   PRINT_FAMILY_UPDATED = "print_family_updated",
   PRINT_FAMILY_DEACTIVATED = "print_family_deactivated",
