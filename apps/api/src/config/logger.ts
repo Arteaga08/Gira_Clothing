@@ -14,7 +14,17 @@ import { env } from "./env.js";
  * is listed explicitly; `**` is deliberately avoided (it walks the whole object
  * on every log line).
  */
-const SENSITIVE = ["password", "token", "secret", "email", "phone", "twoFactor"];
+const SENSITIVE = [
+  "password",
+  "token",
+  "secret",
+  "email",
+  "phone",
+  "twoFactor",
+  // Enrolment payload: the TOTP key and the QR that encodes it.
+  "manualKey",
+  "qrDataUrl",
+];
 
 const redactPaths = [
   "req.headers.cookie",

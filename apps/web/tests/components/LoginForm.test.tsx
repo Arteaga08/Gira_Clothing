@@ -16,97 +16,124 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/login",
 }));
 
+const ok = (data: unknown) => jsonResponse(200, { status: "success", message: "ok", data });
+const AUTHENTICATED = { status: "authenticated", user: { id: "1" } };
+const EXPIRED = { status: "fail", message: "Tu verificación expiró. Inicia sesión de nuevo." };
+
 const fillCredentials = async (email = "admin@gira.mx", password = "secret123") => {
   await userEvent.type(screen.getByLabelText("Correo"), email);
   await userEvent.type(screen.getByLabelText("Contraseña"), password);
 };
 
+const submit = () => userEvent.click(screen.getByRole("button", { name: "Entrar" }));
+
 describe("LoginForm", () => {
-  it("éxito sin 2FA: el body no lleva code, la llamada es con credentials include y navega a /resumen", async () => {
+  it("cliente/sesión directa: llama con credentials include y navega a /resumen", async () => {
     const fetchMock = stubFetch();
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse(200, { status: "success", message: "ok", data: { user: { id: "1" } } }),
-    );
+    fetchMock.mockResolvedValueOnce(ok(AUTHENTICATED));
 
     render(<LoginForm />);
     await fillCredentials();
-    await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
+    await submit();
 
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/resumen"));
     expect(router.refresh).toHaveBeenCalled();
-
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(init.credentials).toBe("include");
-    const body = JSON.parse(init.body as string) as Record<string, unknown>;
-    expect(body).not.toHaveProperty("code");
+    expect(JSON.parse(init.body as string)).toEqual({ email: "admin@gira.mx", password: "secret123" });
   });
 
-  it("cuando el API pide el segundo factor, aparece el campo de código y recibe el foco", async () => {
+  it("two_factor_required: aparece el campo de código con foco, sin error", async () => {
     const fetchMock = stubFetch();
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse(401, {
-        status: "fail",
-        message: "Se requiere el código de verificación de dos factores.",
-      }),
-    );
+    fetchMock.mockResolvedValueOnce(ok({ status: "two_factor_required" }));
 
     render(<LoginForm />);
     await fillCredentials();
-    await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
+    await submit();
 
     const codeField = await screen.findByLabelText("Código de verificación");
     expect(codeField).toHaveFocus();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("el segundo envío manda el código y conserva correo y contraseña", async () => {
+  it("el código se envía SOLO a /auth/2fa/verify: la contraseña no se reenvía", async () => {
     const fetchMock = stubFetch();
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse(401, {
-        status: "fail",
-        message: "Se requiere el código de verificación de dos factores.",
-      }),
-    );
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse(200, { status: "success", message: "ok", data: { user: { id: "1" } } }),
-    );
+    fetchMock.mockResolvedValueOnce(ok({ status: "two_factor_required" }));
+    fetchMock.mockResolvedValueOnce(ok(AUTHENTICATED));
 
     render(<LoginForm />);
-    await fillCredentials("admin@gira.mx", "secret123");
-    await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
-    const codeField = await screen.findByLabelText("Código de verificación");
-    await userEvent.type(codeField, "123456");
-    await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
+    await fillCredentials();
+    await submit();
+    await userEvent.type(await screen.findByLabelText("Código de verificación"), "123456");
+    await submit();
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
-    const [, secondInit] = fetchMock.mock.calls[1] as [string, RequestInit];
-    const body = JSON.parse(secondInit.body as string) as Record<string, unknown>;
-    expect(body).toEqual({ email: "admin@gira.mx", password: "secret123", code: "123456" });
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/resumen"));
+    const [url, init] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect(url).toContain("/auth/2fa/verify");
+    expect(JSON.parse(init.body as string)).toEqual({ code: "123456" });
   });
 
   it("código incorrecto: se queda en la fase de código y anuncia el error exacto del API", async () => {
     const fetchMock = stubFetch();
+    fetchMock.mockResolvedValueOnce(ok({ status: "two_factor_required" }));
     fetchMock.mockResolvedValueOnce(
-      jsonResponse(401, {
-        status: "fail",
-        message: "Se requiere el código de verificación de dos factores.",
-      }),
-    );
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse(401, { status: "fail", message: "El código de verificación es incorrecto." }),
+      jsonResponse(400, { status: "fail", message: "El código de verificación es incorrecto." }),
     );
 
     render(<LoginForm />);
     await fillCredentials();
-    await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
-    const codeField = await screen.findByLabelText("Código de verificación");
-    await userEvent.type(codeField, "000000");
-    await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
+    await submit();
+    await userEvent.type(await screen.findByLabelText("Código de verificación"), "000000");
+    await submit();
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "El código de verificación es incorrecto.",
-    );
+    expect(await screen.findByRole("alert")).toHaveTextContent("El código de verificación es incorrecto.");
     expect(screen.getByLabelText("Código de verificación")).toBeInTheDocument();
+  });
+
+  it("reto expirado (401 en la fase de código): vuelve a correo/contraseña con el error", async () => {
+    const fetchMock = stubFetch();
+    fetchMock.mockResolvedValueOnce(ok({ status: "two_factor_required" }));
+    fetchMock.mockResolvedValueOnce(jsonResponse(401, EXPIRED));
+
+    render(<LoginForm />);
+    await fillCredentials();
+    await submit();
+    await userEvent.type(await screen.findByLabelText("Código de verificación"), "123456");
+    await submit();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Tu verificación expiró.");
+    expect(screen.queryByLabelText("Código de verificación")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Correo")).toBeInTheDocument();
+  });
+
+  it("enrollment_required: reemplaza los campos por la pantalla de enrolamiento", async () => {
+    const fetchMock = stubFetch();
+    fetchMock.mockResolvedValueOnce(ok({ status: "enrollment_required" }));
+    fetchMock.mockResolvedValueOnce(ok({ qrDataUrl: "data:image/png;base64,AAAA", manualKey: "ABCDEFGH" }));
+
+    render(<LoginForm />);
+    await fillCredentials();
+    await submit();
+
+    expect(await screen.findByAltText("Código QR para tu app de autenticación")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Contraseña")).not.toBeInTheDocument();
+  });
+
+  it("enrolamiento completo: activa y navega a /resumen", async () => {
+    const fetchMock = stubFetch();
+    fetchMock.mockResolvedValueOnce(ok({ status: "enrollment_required" }));
+    fetchMock.mockResolvedValueOnce(ok({ qrDataUrl: "data:image/png;base64,AAAA", manualKey: "ABCDEFGH" }));
+    fetchMock.mockResolvedValueOnce(ok(AUTHENTICATED));
+
+    render(<LoginForm />);
+    await fillCredentials();
+    await submit();
+    await userEvent.type(await screen.findByLabelText("Código de verificación"), "123456");
+    await userEvent.click(screen.getByRole("button", { name: "Activar y entrar" }));
+
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/resumen"));
+    const [url] = fetchMock.mock.calls[2] as [string, RequestInit];
+    expect(url).toContain("/auth/2fa/enroll/complete");
   });
 
   it("credenciales incorrectas: muestra el error y no revela el campo de código", async () => {
@@ -117,7 +144,7 @@ describe("LoginForm", () => {
 
     render(<LoginForm />);
     await fillCredentials();
-    await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
+    await submit();
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Correo o contraseña incorrectos.");
     expect(screen.queryByLabelText("Código de verificación")).not.toBeInTheDocument();
@@ -134,7 +161,7 @@ describe("LoginForm", () => {
 
     render(<LoginForm />);
     await fillCredentials();
-    await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
+    await submit();
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Demasiados intentos de inicio de sesión. Intenta de nuevo más tarde.",
@@ -147,11 +174,9 @@ describe("LoginForm", () => {
 
     render(<LoginForm />);
     await fillCredentials();
-    await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
+    await submit();
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "No se pudo conectar con el servidor.",
-    );
+    expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo conectar con el servidor.");
     expect(screen.getByRole("button", { name: "Entrar" })).toBeEnabled();
   });
 
@@ -176,7 +201,7 @@ describe("LoginForm", () => {
     // Flush the pending request instead of leaving it dangling: an
     // unresolved promise from one test can update state in the next.
     const callsBefore = router.replace.mock.calls.length;
-    resolveFetch(jsonResponse(200, { status: "success", message: "ok", data: { user: { id: "1" } } }));
+    resolveFetch(ok(AUTHENTICATED));
     await waitFor(() => expect(router.replace.mock.calls.length).toBeGreaterThan(callsBefore));
   });
 });

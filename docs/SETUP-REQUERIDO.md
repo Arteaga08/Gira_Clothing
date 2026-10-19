@@ -118,6 +118,28 @@ pnpm --filter @gira/api seed:admin -- \
 
 Es idempotente: correrlo dos veces con el mismo correo no hace nada.
 
+### Verificación en dos pasos (obligatoria para el admin)
+
+- [ ] En su **primer inicio de sesión** el admin escribe correo y contraseña y el panel
+      le muestra un código QR. Lo escanea con una app de autenticación (Google
+      Authenticator, Authy, 1Password…), escribe el primer código de 6 dígitos y entra.
+      Tiene 5 minutos para completar ese paso; si expira, vuelve a iniciar sesión.
+- [ ] Un admin que ya existía sin 2FA hace lo mismo en su próximo inicio de sesión: no
+      hace falta ningún paso previo ni variable de entorno nueva.
+- [ ] 5 códigos incorrectos seguidos bloquean la cuenta 15 minutos.
+
+**Si el admin pierde su app de autenticación** (no hay códigos de respaldo a propósito):
+con acceso a la base de datos, ejecutar
+
+```bash
+pnpm --filter @gira/api 2fa:reset-admin -- --email tucorreo@ejemplo.com
+```
+
+Apaga el segundo factor, quita cualquier bloqueo y cierra todas sus sesiones; en su
+siguiente inicio de sesión vuelve a configurarlo. El correo hay que pasarlo siempre con
+`--email` (no lee `ADMIN_EMAIL`, para que no se ejecute por accidente) y la acción queda
+en la auditoría como acción del sistema.
+
 ## A.4 — Telegram (obligatorio en producción)
 
 Es la única integración externa que funciona igual en todos los entornos, así que

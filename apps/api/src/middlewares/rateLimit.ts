@@ -8,7 +8,8 @@ import { parseBooleanFlag } from "../config/env.js";
  * tests). Enforcement follows the explicit RATE_LIMIT_ENABLED switch (ON by
  * default; loadEnv refuses to boot a production process with it off). It is
  * read per request from process.env so a test can opt in without re-importing.
- * Admin routes are NOT limited — their barrier is auth + role.
+ * Admin routes are NOT limited — their barrier is auth + role. The only
+ * exception is `/auth/2fa/*`, which is reachable before a session exists.
  *
  * IPv6 clients are bucketed by /56 (`ipKeyGenerator`, via our own keyGenerator
  * because v8 rejects `ipv6Subnet` next to a custom one): a single host owns a
@@ -94,6 +95,16 @@ const loginIpLimiter = createLimiter({
   message: "Demasiados intentos de inicio de sesión desde esta dirección. Intenta más tarde.",
 });
 
+// Second-factor attempts: the per-account lock (5 wrong codes) stops one
+// account, this stops one address cycling through many. Only failures count, so
+// a legitimate admin finishing the flow never spends it.
+const twoFactorLimiter = createLimiter({
+  windowMs: FIFTEEN_MIN,
+  limit: 10,
+  skipSuccessfulRequests: true,
+  message: "Demasiados intentos de verificación desde esta dirección. Intenta más tarde.",
+});
+
 const registerLimiter = createLimiter({
   windowMs: FIFTEEN_MIN,
   limit: 10,
@@ -155,6 +166,7 @@ export {
   webhookLimiter,
   loginIpLimiter,
   loginLimiter,
+  twoFactorLimiter,
   registerLimiter,
   catalogLimiter,
   cartLimiter,

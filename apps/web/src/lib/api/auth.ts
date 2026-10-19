@@ -1,29 +1,54 @@
-import type { LoginRequest, PublicUser, Wire } from "@gira/shared";
+import type {
+  EnrollmentStartResponse,
+  LoginRequest,
+  LoginResponse,
+  PublicUser,
+  TwoFactorCodeRequest,
+  Wire,
+} from "@gira/shared";
 import { isApiError } from "./ApiError";
 import { browserRequest } from "./browser";
 import { expectData } from "./request";
 
-/**
- * `POST /auth/login`. The API is a single step: credentials plus an optional
- * TOTP `code`. When 2FA is enabled and `code` is missing, the API answers
- * 401 with `TWO_FACTOR_REQUIRED_MESSAGE` — the caller (the login state
- * machine) is the one that recognises that message and re-submits with a
- * code, not this function.
- */
-const login = async (input: LoginRequest): Promise<Wire<PublicUser>> => {
-  // exactOptionalPropertyTypes: `code` must be omitted, never sent as
-  // `undefined` — the API's Joi schema tolerates absence, not garbage.
-  const body: LoginRequest = input.code
-    ? { email: input.email, password: input.password, code: input.code }
-    : { email: input.email, password: input.password };
+type AuthenticatedResponse = Extract<LoginResponse, { status: "authenticated" }>;
 
-  const result = await browserRequest<{ user: PublicUser }>("/auth/login", {
+/**
+ * `POST /auth/login`: the password step only. It answers 200 in every success
+ * case and `status` says what comes next — a session (customers), the 2FA code
+ * (admin with the factor on) or enrolment (admin without it). Admins get a
+ * short-lived challenge cookie, never a session, from this call; the code goes
+ * in a separate request so the password is never sent twice.
+ */
+const login = async (input: LoginRequest): Promise<Wire<LoginResponse>> => {
+  const result = await browserRequest<LoginResponse>("/auth/login", {
     method: "POST",
-    body,
+    body: { email: input.email, password: input.password },
   });
 
+  return expectData(result);
+};
+
+const finishWithCode = async (path: string, code: string): Promise<Wire<PublicUser>> => {
+  const body: TwoFactorCodeRequest = { code };
+  const result = await browserRequest<AuthenticatedResponse>(path, { method: "POST", body });
   return expectData(result).user;
 };
+
+/** `POST /auth/2fa/verify`: second step for an admin who already has the factor. */
+const verifyTwoFactor = (code: string): Promise<Wire<PublicUser>> =>
+  finishWithCode("/auth/2fa/verify", code);
+
+/** `POST /auth/2fa/enroll/start`: QR (PNG data URL) plus the key for manual entry. */
+const startEnrollment = async (): Promise<Wire<EnrollmentStartResponse>> => {
+  const result = await browserRequest<EnrollmentStartResponse>("/auth/2fa/enroll/start", {
+    method: "POST",
+  });
+  return expectData(result);
+};
+
+/** `POST /auth/2fa/enroll/complete`: confirms the first code, turns the factor on, opens the session. */
+const completeEnrollment = (code: string): Promise<Wire<PublicUser>> =>
+  finishWithCode("/auth/2fa/enroll/complete", code);
 
 /**
  * `POST /auth/logout`. Requires an existing session (`protect`), so a 401
@@ -39,4 +64,4 @@ const logout = async (): Promise<void> => {
   }
 };
 
-export { login, logout };
+export { login, verifyTwoFactor, startEnrollment, completeEnrollment, logout };
