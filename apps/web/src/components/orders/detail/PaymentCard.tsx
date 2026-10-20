@@ -7,7 +7,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { T_PANEL_TITLE } from "@/components/ui/typography";
 import { formatShortDateTime } from "@/lib/format";
 import { formatMoney } from "@/lib/orders/money";
-import { PAYMENT_STATUS_LABELS, paymentProviderLabel } from "@/lib/orders/payment";
+import { PAYMENT_STATUS_LABELS, isRefundPending, paymentProviderLabel } from "@/lib/orders/payment";
 import type { PanelOrder } from "@/lib/orders/panelOrder";
 
 interface PaymentCardProps {
@@ -38,8 +38,10 @@ const PaymentCard = ({ order, onRefund }: PaymentCardProps) => {
   const [confirming, setConfirming] = useState(false);
   // The order stays "pagado" until Stripe's webhook confirms, so without this the button would come back
   // right after the dialog closes and invite a second refund request.
-  const [refundRequested, setRefundRequested] = useState(false);
+  const [refundRequestedHere, setRefundRequestedHere] = useState(false);
   const { payment } = order;
+  // The API also remembers it (a reload keeps it); the local flag only covers the moment before the refetch.
+  const refundRequested = refundRequestedHere || isRefundPending(payment);
   const canRefund =
     Boolean(payment.intentId) && REFUNDABLE.includes(order.status) && payment.status !== PaymentStatus.REFUNDED;
   const showRefundButton = canRefund && !refundRequested;
@@ -82,7 +84,7 @@ const PaymentCard = ({ order, onRefund }: PaymentCardProps) => {
         onCancel={() => setConfirming(false)}
         onConfirm={async () => {
           if (await onRefund()) {
-            setRefundRequested(true);
+            setRefundRequestedHere(true);
             setConfirming(false);
           }
         }}

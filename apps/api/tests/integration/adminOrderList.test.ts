@@ -140,6 +140,20 @@ describe("GET /admin/orders · filtros", () => {
     expect(ordersOf(res)).toHaveLength(0);
   });
 
+  it("ninguna respuesta admin de pedidos expone publicId (es una credencial)", async () => {
+    await seedOrder({ status: OrderStatus.PAID, total: 1000, createdAt: now() });
+    const doc = await Order.findOne({}).lean();
+
+    const list = await get();
+    const detail = await get("", `/${String(doc!._id)}`);
+
+    expect(ordersOf(list)).toHaveLength(1);
+    expect(JSON.stringify(list.body)).not.toContain(doc!.publicId);
+    expect(JSON.stringify(detail.body)).not.toContain(doc!.publicId);
+    expect(detail.body.data.order).not.toHaveProperty("publicId");
+    expect(detail.body.data.order.orderNumber).toBe(doc!.orderNumber);
+  });
+
   it("sort solo acepta la lista blanca", async () => {
     await seedOrder({ status: OrderStatus.PAID, total: 1000, createdAt: now() });
 

@@ -72,6 +72,8 @@ interface OrderPayment {
   /** Cumulative amount the provider returned, minor units. Overwritten (never summed) from the provider. */
   refundedAmount?: number;
   refundedAt?: Date;
+  /** Claimed atomically before the provider is asked; cleared if that call fails. */
+  refundRequestedAt?: Date;
   /** When the provider took the money. */
   capturedAt?: Date;
   /** Brand + last4 ONLY (PCI SAQ-A): nothing here is enough to charge the card again. */
@@ -259,6 +261,7 @@ const orderPaymentSchema = new Schema<OrderPayment>(
     lastError: { type: String },
     refundedAmount: { type: Number, min: 0 },
     refundedAt: { type: Date },
+    refundRequestedAt: { type: Date },
     capturedAt: { type: Date },
     card: {
       type: new Schema(

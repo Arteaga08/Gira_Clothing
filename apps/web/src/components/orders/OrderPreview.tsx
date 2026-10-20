@@ -1,7 +1,8 @@
 
 import { OrderStatus, SHIPPING_CARRIER_LABELS } from "@gira/shared";
-import { ArrowUpRightIcon, CheckIcon, TruckIcon } from "@phosphor-icons/react/dist/ssr";
+import { ArrowUpRightIcon, CheckIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
+import { ShipButton } from "@/components/orders/ShipButton";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -103,10 +104,13 @@ const OrderPreview = ({ order, busy, primaryAction, onPrepare, onShip }: OrderPr
           </Button>
         ) : null}
         {logistics.canShip ? (
-          <Button variant={primaryAction ? "primary" : "secondary"} loading={busy} onClick={onShip} className="flex-1">
-            <Icon icon={TruckIcon} />
-            Marcar enviado
-          </Button>
+          <ShipButton
+            orderNumber={order.orderNumber}
+            variant={primaryAction ? "primary" : "secondary"}
+            loading={busy}
+            onShip={onShip}
+            className="flex-1"
+          />
         ) : null}
         <Link
           href={`/pedidos/${order.id}`}

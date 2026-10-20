@@ -7,6 +7,7 @@ import {
   NotificationType,
   DisputeStatus,
   MAX_ORDER_ACTIVITY,
+  REFUND_REQUEST_STALE_MS,
   ORDER_STATUS_GROUPS,
   ORDER_STATUS_TO_GROUP,
   OrderPriority,
@@ -15,6 +16,7 @@ import {
   ShippingLabelStatus,
   type AdminOrder,
   type BulkStatusResult,
+  type CustomerOrder,
   type OrderActivityEntry,
   type OrderStatusGroup,
   type ShipmentTrackingStatus,
@@ -78,8 +80,15 @@ interface AdminOrderLean extends OrderLean {
   updatedAt: Date;
 }
 
+/** The customer view minus `publicId`: a credential staff never need (they use `id` and `orderNumber`). */
+const withoutPublicId = (order: CustomerOrder): Omit<CustomerOrder, "publicId"> => {
+  const { publicId, ...rest } = order;
+  void publicId;
+  return rest;
+};
+
 const toAdminOrder = (doc: AdminOrderLean): AdminOrder => ({
-  ...toCustomerOrder(doc),
+  ...withoutPublicId(toCustomerOrder(doc)),
   ...(doc.user ? { user: String(doc.user) } : {}),
   priority: doc.priority ?? OrderPriority.NORMAL,
   termsAcceptedAt: doc.termsAcceptedAt,
@@ -104,6 +113,7 @@ const toAdminOrder = (doc: AdminOrderLean): AdminOrder => ({
       ? { refundedAmount: doc.payment.refundedAmount }
       : {}),
     ...(doc.payment.refundedAt ? { refundedAt: doc.payment.refundedAt } : {}),
+    ...(doc.payment.refundRequestedAt ? { refundRequestedAt: doc.payment.refundRequestedAt } : {}),
   },
   ...(doc.disputeStatus ? { disputeStatus: doc.disputeStatus } : {}),
   ...(doc.disputedAt ? { disputedAt: doc.disputedAt } : {}),
@@ -501,13 +511,48 @@ const REFUNDABLE_STATUSES = new Set<OrderStatus>([
  * failed refund leave the books saying money went back when it did not.
  */
 const requestRefund = async (id: string, ctx: RequestContext): Promise<AdminOrder> => {
-  const order: OrderDocument | null = await Order.findById(id);
-  if (!order) throw new AppError("La orden no existe.", 404);
-  if (!order.payment.intentId || !REFUNDABLE_STATUSES.has(order.status)) {
-    throw new AppError("Solo se puede reembolsar una orden que ya fue cobrada.", 409);
+  const requestedAt = new Date();
+  // The claim is the guard: a second request while the webhook is pending (or a
+  // parallel one) matches nothing. A request the webhook never confirmed is
+  // retryable once it is stale.
+  const order: OrderDocument | null = await Order.findOneAndUpdate(
+    {
+      _id: id,
+      status: { $in: [...REFUNDABLE_STATUSES] },
+      "payment.intentId": { $exists: true, $ne: null },
+      $or: [
+        { "payment.refundRequestedAt": { $exists: false } },
+        {
+          "payment.refundRequestedAt": {
+            $lt: new Date(requestedAt.getTime() - REFUND_REQUEST_STALE_MS),
+          },
+        },
+      ],
+    },
+    { $set: { "payment.refundRequestedAt": requestedAt } },
+    { new: true },
+  );
+  if (!order) {
+    const current = await Order.findById(id).select(
+      "status payment.intentId payment.refundRequestedAt",
+    );
+    if (!current) throw new AppError("La orden no existe.", 404);
+    if (!current.payment.intentId || !REFUNDABLE_STATUSES.has(current.status)) {
+      throw new AppError("Solo se puede reembolsar una orden que ya fue cobrada.", 409);
+    }
+    throw new AppError("Ya hay un reembolso en curso para esta orden.", 409);
   }
 
-  await getPaymentProvider().refundPayment(order.payment.intentId);
+  try {
+    await getPaymentProvider().refundPayment(order.payment.intentId as string);
+  } catch (err) {
+    // Release only our own claim, so a retry is possible right away.
+    await Order.updateOne(
+      { _id: order._id, "payment.refundRequestedAt": requestedAt },
+      { $unset: { "payment.refundRequestedAt": 1 } },
+    );
+    throw err;
+  }
 
   await recordAudit({
     actorId: ctx.actorId,

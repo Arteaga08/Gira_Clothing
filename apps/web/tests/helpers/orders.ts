@@ -8,7 +8,7 @@ import {
   type AdminOrder,
   type Wire,
 } from "@gira/shared";
-import { toPanelOrder, type PanelOrder } from "@/lib/orders/panelOrder";
+import { toPanelOrder, type PanelOrder, type RawAdminOrder } from "@/lib/orders/panelOrder";
 
 const DEFAULT_ID = "68f2ab12c3d4e5f6a7b8c9d0";
 
@@ -20,11 +20,11 @@ const ACTOR_ID_SENTINEL = "ACTOR-ID-INTERNO-NO-MOSTRAR";
 type OrderOverrides = Partial<PanelOrder>;
 
 /**
- * An admin order exactly as the API sends it: with the credential (`publicId`),
- * the internal `user` id and the `statusHistory` the panel must never keep.
+ * An admin order as the API sends it, plus a leaked credential (`publicId`, which the API no longer
+ * sends) to prove the panel drops it, the internal `user` id and the `statusHistory` it must never keep.
  * Only API-client tests use this; components receive `makeOrder` (a PanelOrder).
  */
-const makeRawOrder = (overrides: Partial<Wire<AdminOrder>> = {}): Wire<AdminOrder> => ({
+const makeRawOrder = (overrides: Partial<RawAdminOrder> = {}): RawAdminOrder => ({
   id: DEFAULT_ID,
   publicId: PUBLIC_ID_SENTINEL,
   user: USER_ID_SENTINEL,

@@ -94,9 +94,16 @@ interface OrderPayment {
   /** Cumulative amount returned by the provider, in minor units. */
   refundedAmount?: number;
   refundedAt?: Date;
+  /** Set when a refund was asked of the provider and the webhook has not confirmed it yet. */
+  refundRequestedAt?: Date;
 }
 
-interface AdminOrder extends CustomerOrder {
+/**
+ * The admin DTO does NOT extend the customer view as-is: `publicId` is a
+ * credential (whoever holds it reads the public order page), and staff address
+ * orders by `id` and `orderNumber`.
+ */
+interface AdminOrder extends Omit<CustomerOrder, "publicId"> {
   user?: string;
   priority: OrderPriority;
   /** Admin-only: the customer never sees their own consent record. */
