@@ -18,6 +18,7 @@ import { recordAudit } from "./auditService.js";
 import { enqueueNotification } from "./notificationService.js";
 import { flagForReview } from "./paymentAlertService.js";
 import { clearCart } from "./cartService.js";
+import { enqueueLabel, requestLabelCancellation } from "./shippingLabelService.js";
 import { AppError } from "../utils/AppError.js";
 import { logger } from "../config/logger.js";
 import { getPaymentProvider, type ChargeDetails } from "../adapters/payment/index.js";
@@ -191,6 +192,10 @@ const runPaidEffects = async (order: OrderDocument): Promise<void> => {
   // fully (the order lists everything that was in it) and only once — the stamp
   // below stops a redelivery from wiping what they added afterwards.
   if (order.fromCart && order.user && !order.paidEffectsAt) await clearCart(order.user);
+
+  // The label is part of "payment effects" so the reconciler retries it if we die
+  // here; the purchase itself runs in the background and has its own retries.
+  await enqueueLabel(order._id);
 
   await Order.updateOne(
     { _id: order._id, paidEffectsAt: { $exists: false } },
@@ -446,6 +451,7 @@ const refundPaidOrder = async (orderId: Types.ObjectId): Promise<void> => {
   let restocked = false;
   let reservationWasActive = false;
   let unaccountedStock = false;
+  let beforeShipment = false;
 
   const session = await mongoose.startSession();
   try {
@@ -455,6 +461,7 @@ const refundPaidOrder = async (orderId: Types.ObjectId): Promise<void> => {
       restocked = false;
       reservationWasActive = false;
       unaccountedStock = false;
+      beforeShipment = false;
 
       const before = await Order.findById(orderId).session(session);
       if (!before || before.status === OrderStatus.REFUNDED) return;
@@ -464,6 +471,7 @@ const refundPaidOrder = async (orderId: Types.ObjectId): Promise<void> => {
       const reservation = await StockReservation.findOne({ order: orderId }).session(session);
       const committed = stockWasCommitted(before, reservation?.status);
       const started = fulfillmentStarted(before);
+      beforeShipment = before.status === OrderStatus.PAID || before.status === OrderStatus.PROCESSING;
 
       const order = await applyOrderTransition({
         orderId,
@@ -515,6 +523,14 @@ const refundPaidOrder = async (orderId: Types.ObjectId): Promise<void> => {
     module: AuditModule.PAYMENTS,
     targetId: String(orderId),
   });
+
+  // The parcel never left: void its label so the balance comes back. Best-effort:
+  // a failure here must not undo a refund that already happened.
+  if (beforeShipment) {
+    await requestLabelCancellation(orderId).catch((err: unknown) =>
+      logger.error({ err, orderId: String(orderId) }, "No se pudo iniciar la cancelación de la guía"),
+    );
+  }
 
   if (unaccountedStock) {
     // Refunded money, but the stock was never taken out (hold released before
@@ -595,6 +611,12 @@ const applyDisputeClosed = async (
       },
       { strict: true },
     );
+    // The goods are still here, the money is gone: void the label if it has not left.
+    if (order.status === OrderStatus.PAID || order.status === OrderStatus.PROCESSING) {
+      await requestLabelCancellation(order._id).catch((err: unknown) =>
+        logger.error({ err, orderId: String(order._id) }, "No se pudo iniciar la cancelación de la guía"),
+      );
+    }
   }
 };
 

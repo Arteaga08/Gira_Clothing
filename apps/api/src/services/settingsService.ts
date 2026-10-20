@@ -1,4 +1,9 @@
 import { AuditAction, AuditModule } from "@gira/shared";
+import type {
+  ShippingOrigin,
+  ShippingParcelSettings,
+  ShippingSettings as PublicShippingSettings,
+} from "@gira/shared";
 import {
   Settings,
   SINGLETON_KEY,
@@ -23,15 +28,34 @@ import type { RequestContext } from "../utils/requestContext.js";
 
 interface PublicSettings {
   id: string;
-  shipping: ShippingSettings;
+  shipping: PublicShippingSettings;
   currency: CurrencySettings;
   reservation: ReservationSettings;
   inventory: InventorySettings;
 }
 
+const toShippingView = (shipping: ShippingSettings): PublicShippingSettings => ({
+  // Explicit mapping: spreading a Mongoose subdocument would leak its internals.
+  origin: shipping.origin
+    ? {
+        name: shipping.origin.name,
+        phone: shipping.origin.phone,
+        ...(shipping.origin.email ? { email: shipping.origin.email } : {}),
+        line1: shipping.origin.line1,
+        district: shipping.origin.district,
+        city: shipping.origin.city,
+        state: shipping.origin.state,
+        postalCode: shipping.origin.postalCode,
+      }
+    : null,
+  freeShippingThreshold: shipping.freeShippingThreshold,
+  parcel: { ...shipping.parcel },
+  quoteTtlMinutes: shipping.quoteTtlMinutes,
+});
+
 const toPublicSettings = (doc: SettingsDocument): PublicSettings => ({
   id: doc.id as string,
-  shipping: doc.shipping,
+  shipping: toShippingView(doc.shipping),
   currency: doc.currency,
   reservation: doc.reservation,
   inventory: doc.inventory,
@@ -48,20 +72,48 @@ const getSettings = async (): Promise<SettingsDocument> => {
 
 const getPublicSettings = async (): Promise<PublicSettings> => toPublicSettings(await getSettings());
 
+interface UpdateShippingInput {
+  origin?: ShippingOrigin;
+  freeShippingThreshold?: number | null;
+  parcel?: Partial<ShippingParcelSettings>;
+  quoteTtlMinutes?: number;
+}
+
 const updateShippingSettings = async (
-  input: Partial<ShippingSettings>,
+  input: UpdateShippingInput,
   ctx: RequestContext,
 ): Promise<PublicSettings> => {
   const settings = await getSettings();
-  const before = { ...settings.shipping };
+  const before = toShippingView(settings.shipping);
 
   // Explicit field assignment — never spread the payload (anti mass-assignment).
-  if (input.nationalFee !== undefined) settings.shipping.nationalFee = input.nationalFee;
-  if (input.internationalFee !== undefined) {
-    settings.shipping.internationalFee = input.internationalFee;
+  if (input.origin !== undefined) {
+    settings.shipping.origin = {
+      name: input.origin.name,
+      phone: input.origin.phone,
+      ...(input.origin.email ? { email: input.origin.email } : {}),
+      line1: input.origin.line1,
+      district: input.origin.district,
+      city: input.origin.city,
+      state: input.origin.state,
+      postalCode: input.origin.postalCode,
+    };
   }
   if (input.freeShippingThreshold !== undefined) {
     settings.shipping.freeShippingThreshold = input.freeShippingThreshold;
+  }
+  if (input.parcel !== undefined) {
+    const p = input.parcel;
+    const target = settings.shipping.parcel;
+    if (p.tareGrams !== undefined) target.tareGrams = p.tareGrams;
+    if (p.boxLengthCm !== undefined) target.boxLengthCm = p.boxLengthCm;
+    if (p.boxWidthCm !== undefined) target.boxWidthCm = p.boxWidthCm;
+    if (p.boxHeightCm !== undefined) target.boxHeightCm = p.boxHeightCm;
+    if (p.extraUnitHeightCm !== undefined) target.extraUnitHeightCm = p.extraUnitHeightCm;
+    if (p.maxWeightGrams !== undefined) target.maxWeightGrams = p.maxWeightGrams;
+  }
+  if (input.quoteTtlMinutes !== undefined) {
+    settings.shipping.quoteTtlMinutes = input.quoteTtlMinutes;
   }
 
   await settings.save();
@@ -71,8 +123,8 @@ const updateShippingSettings = async (
     action: AuditAction.SETTINGS_SHIPPING_UPDATED,
     module: AuditModule.SETTINGS,
     targetId: settings.id as string,
-    before,
-    after: { ...settings.shipping },
+    before: { ...before },
+    after: { ...toShippingView(settings.shipping) },
     ip: ctx.ip,
   });
 

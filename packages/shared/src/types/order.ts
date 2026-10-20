@@ -3,6 +3,12 @@ import type { DisputeStatus, OrderStatus, PaymentStatus } from "../enums/orderSt
 import type { OrderPriority } from "../enums/orderPriority.js";
 import type { OrderStatusGroup } from "../constants/orderStatusGroups.js";
 import type { AuditAction } from "../enums/auditAction.js";
+import type {
+  OrderLabelAdmin,
+  OrderShippingSelection,
+  PublicShippingSelection,
+  ShippingParcel,
+} from "./shipping.js";
 
 interface OrderCustomer {
   email: string;
@@ -14,6 +20,7 @@ interface ShippingAddress {
   recipient: string;
   line1: string;
   line2?: string;
+  district: string;
   city: string;
   state: string;
   postalCode: string;
@@ -49,6 +56,7 @@ interface PublicOrder {
   subtotal: number;
   discount: number;
   shippingCost: number;
+  shippingSelection?: PublicShippingSelection;
   /** IVA included in `total` (a breakdown, not an addition). */
   tax: number;
   taxRateBps: number;
@@ -94,6 +102,9 @@ interface AdminOrder extends CustomerOrder {
   payment: OrderPayment;
   disputeStatus?: DisputeStatus;
   disputedAt?: Date;
+  shippingSelection?: OrderShippingSelection;
+  parcel?: ShippingParcel;
+  label?: OrderLabelAdmin;
   updatedAt: Date;
 }
 

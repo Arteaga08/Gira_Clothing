@@ -5,7 +5,7 @@ import { buildApp } from "../../src/app.js";
 import { Variant } from "../../src/models/Variant.js";
 import { Product } from "../../src/models/Product.js";
 import { Print } from "../../src/models/Print.js";
-import { updateCurrencySettings, updateShippingSettings } from "../../src/services/settingsService.js";
+import { updateCurrencySettings } from "../../src/services/settingsService.js";
 import { resolveOrderLines, quoteTotals } from "../../src/services/pricingService.js";
 import type { RequestContext } from "../../src/utils/requestContext.js";
 import { loginAsAdmin, ORIGIN } from "../helpers/auth.js";
@@ -64,7 +64,7 @@ const seedVariant = async (
     .post(PRODUCTS_BASE)
     .set("Origin", ORIGIN)
     .set("Cookie", cookie)
-    .send({ name: `Producto ${suffix}`, category: categoryId, basePrice: opts.basePrice ?? 20000 });
+    .send({ name: `Producto ${suffix}`, category: categoryId, basePrice: opts.basePrice ?? 20000, weightGrams: 400 });
   const productId = productRes.body.data.product.id as string;
 
   const variantPayload: Record<string, unknown> = {
@@ -163,7 +163,7 @@ describe("pricingService · quoteTotals · subtotal", () => {
       { variantId: a.variantId, qty: 2 },
       { variantId: b.variantId, qty: 3 },
     ]);
-    const quote = await quoteTotals(lines, { currency: Currency.MXN, destinationCountry: "MX" });
+    const quote = await quoteTotals(lines, { currency: Currency.MXN, shippingMxn: 0 });
     expect(quote.subtotal).toBe(10000 * 2 + 7000 * 3);
   });
 
@@ -171,65 +171,39 @@ describe("pricingService · quoteTotals · subtotal", () => {
     const cookie = await loginAsAdmin(app);
     const v = await seedVariant(cookie, "S3", { basePrice: 8000 });
     const lines = await resolveOrderLines([{ variantId: v.variantId, qty: 3 }]);
-    const quote = await quoteTotals(lines, { currency: Currency.MXN, destinationCountry: "MX" });
+    const quote = await quoteTotals(lines, { currency: Currency.MXN, shippingMxn: 0 });
     expect(quote.subtotal).toBe(8000 * 3);
     expect(quote.lines[0]?.lineTotal).toBe(8000 * 3);
   });
 });
 
 describe("pricingService · quoteTotals · envío", () => {
-  it("destino MX usa nationalFee", async () => {
+  it("suma el envío (MXN) tal cual al total en MXN", async () => {
     const cookie = await loginAsAdmin(app);
-    await updateShippingSettings({ nationalFee: 15000, internationalFee: 60000 }, CTX);
     const v = await seedVariant(cookie, "SH1", { basePrice: 1000 });
     const lines = await resolveOrderLines([{ variantId: v.variantId, qty: 1 }]);
-    const quote = await quoteTotals(lines, { currency: Currency.MXN, destinationCountry: "MX" });
-    expect(quote.shippingCost).toBe(15000);
+    const quote = await quoteTotals(lines, { currency: Currency.MXN, shippingMxn: 12_000 });
+    expect(quote.shippingCost).toBe(12_000);
+    expect(quote.total).toBe(quote.subtotal + 12_000);
   });
 
-  it("destino distinto de MX usa internationalFee", async () => {
+  it("convierte el envío a USD con el mismo tipo de cambio y redondeo que los precios", async () => {
     const cookie = await loginAsAdmin(app);
-    await updateShippingSettings({ nationalFee: 15000, internationalFee: 60000 }, CTX);
+    await updateCurrencySettings({ mxnPerUsdCents: 1800, rounding: PriceRounding.NONE }, CTX);
     const v = await seedVariant(cookie, "SH2", { basePrice: 1000 });
     const lines = await resolveOrderLines([{ variantId: v.variantId, qty: 1 }]);
-    const quote = await quoteTotals(lines, { currency: Currency.MXN, destinationCountry: "US" });
-    expect(quote.shippingCost).toBe(60000);
+    const quote = await quoteTotals(lines, { currency: Currency.USD, shippingMxn: 18_000 });
+    // 18 000 centavos MXN a 18.00 MXN/USD = 1 000 centavos USD
+    expect(quote.shippingCost).toBe(1_000);
+    expect(quote.total).toBe(quote.subtotal + 1_000);
   });
 
-  it("subtotal exactamente igual al umbral: envío 0", async () => {
+  it("envío gratis (0) no agrega nada", async () => {
     const cookie = await loginAsAdmin(app);
-    await updateShippingSettings(
-      { nationalFee: 15000, internationalFee: 60000, freeShippingThreshold: 20000 },
-      CTX,
-    );
-    const v = await seedVariant(cookie, "SH3", { basePrice: 20000 });
+    const v = await seedVariant(cookie, "SH3", { basePrice: 1000 });
     const lines = await resolveOrderLines([{ variantId: v.variantId, qty: 1 }]);
-    const quote = await quoteTotals(lines, { currency: Currency.MXN, destinationCountry: "MX" });
+    const quote = await quoteTotals(lines, { currency: Currency.MXN, shippingMxn: 0 });
     expect(quote.shippingCost).toBe(0);
-  });
-
-  it("un centavo por debajo del umbral: se cobra envío", async () => {
-    const cookie = await loginAsAdmin(app);
-    await updateShippingSettings(
-      { nationalFee: 15000, internationalFee: 60000, freeShippingThreshold: 20000 },
-      CTX,
-    );
-    const v = await seedVariant(cookie, "SH4", { basePrice: 19999 });
-    const lines = await resolveOrderLines([{ variantId: v.variantId, qty: 1 }]);
-    const quote = await quoteTotals(lines, { currency: Currency.MXN, destinationCountry: "MX" });
-    expect(quote.shippingCost).toBe(15000);
-  });
-
-  it("freeShippingThreshold null: siempre se cobra envío", async () => {
-    const cookie = await loginAsAdmin(app);
-    await updateShippingSettings(
-      { nationalFee: 15000, internationalFee: 60000, freeShippingThreshold: null },
-      CTX,
-    );
-    const v = await seedVariant(cookie, "SH5", { basePrice: 5_000_000 });
-    const lines = await resolveOrderLines([{ variantId: v.variantId, qty: 1 }]);
-    const quote = await quoteTotals(lines, { currency: Currency.MXN, destinationCountry: "MX" });
-    expect(quote.shippingCost).toBe(15000);
   });
 });
 
@@ -239,7 +213,7 @@ describe("pricingService · quoteTotals · moneda", () => {
     await updateCurrencySettings({ mxnPerUsdCents: 1785, rounding: PriceRounding.NONE }, CTX);
     const v = await seedVariant(cookie, "M1", { basePrice: 10000 });
     const lines = await resolveOrderLines([{ variantId: v.variantId, qty: 1 }]);
-    const quote = await quoteTotals(lines, { currency: Currency.MXN, destinationCountry: "MX" });
+    const quote = await quoteTotals(lines, { currency: Currency.MXN, shippingMxn: 0 });
     expect(quote.subtotal).toBe(10000);
     expect(quote.exchangeRate).toBe(1785);
   });
@@ -253,26 +227,9 @@ describe("pricingService · quoteTotals · moneda", () => {
       { variantId: a.variantId, qty: 2 },
       { variantId: b.variantId, qty: 3 },
     ]);
-    const quote = await quoteTotals(lines, { currency: Currency.USD, destinationCountry: "MX" });
+    const quote = await quoteTotals(lines, { currency: Currency.USD, shippingMxn: 0 });
     const summedFromLines = quote.lines.reduce((sum, l) => sum + l.unitPrice * l.qty, 0);
     expect(quote.subtotal).toBe(summedFromLines);
-  });
-});
-
-describe("pricingService · quoteTotals · umbral y moneda", () => {
-  it("el umbral de envío gratis se compara siempre contra el subtotal en MXN", async () => {
-    const cookie = await loginAsAdmin(app);
-    await updateCurrencySettings({ mxnPerUsdCents: 1785, rounding: PriceRounding.NONE }, CTX);
-    await updateShippingSettings(
-      { nationalFee: 15000, internationalFee: 60000, freeShippingThreshold: 20000 },
-      CTX,
-    );
-    // basePrice 20000 MXN centavos == exactly the MXN threshold, but converts to
-    // a much smaller USD number — the threshold must still compare in MXN.
-    const v = await seedVariant(cookie, "TH1", { basePrice: 20000 });
-    const lines = await resolveOrderLines([{ variantId: v.variantId, qty: 1 }]);
-    const quote = await quoteTotals(lines, { currency: Currency.USD, destinationCountry: "MX" });
-    expect(quote.shippingCost).toBe(0);
   });
 });
 
@@ -282,7 +239,7 @@ describe("pricingService · quoteTotals · snapshot", () => {
     await updateCurrencySettings({ mxnPerUsdCents: 1900, rounding: PriceRounding.UP_TO_UNIT }, CTX);
     const v = await seedVariant(cookie, "SN1", { basePrice: 5000 });
     const lines = await resolveOrderLines([{ variantId: v.variantId, qty: 1 }]);
-    const quote = await quoteTotals(lines, { currency: Currency.USD, destinationCountry: "MX" });
+    const quote = await quoteTotals(lines, { currency: Currency.USD, shippingMxn: 0 });
     expect(quote.exchangeRate).toBe(1900);
     expect(quote.rounding).toBe(PriceRounding.UP_TO_UNIT);
   });
@@ -294,7 +251,7 @@ describe("pricingService · quoteTotals · IVA incluido", () => {
     const { variantId } = await seedVariant(cookie, "TAX1", { basePrice: 10000 });
     const lines = await resolveOrderLines([{ variantId, qty: 1 }]);
 
-    const quote = await quoteTotals(lines, { currency: Currency.MXN, destinationCountry: "MX" });
+    const quote = await quoteTotals(lines, { currency: Currency.MXN, shippingMxn: 0 });
 
     expect(quote.discount).toBe(0);
     expect(quote.taxRateBps).toBe(1600);
@@ -309,7 +266,7 @@ describe("pricingService · quoteTotals · IVA incluido", () => {
     const { variantId } = await seedVariant(cookie, "TAX2", { basePrice: 20000 });
     const lines = await resolveOrderLines([{ variantId, qty: 2 }]);
 
-    const quote = await quoteTotals(lines, { currency: Currency.USD, destinationCountry: "MX" });
+    const quote = await quoteTotals(lines, { currency: Currency.USD, shippingMxn: 0 });
 
     const net = Math.round((quote.total * 10000) / 11600);
     expect(quote.tax).toBe(quote.total - net);

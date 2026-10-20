@@ -5,6 +5,7 @@ import { OrderStatus, PaymentStatus, DisputeStatus, ReservationStatus } from "./
 import { OrderPriority } from "./enums/orderPriority.js";
 import { Currency, PriceRounding } from "./enums/money.js";
 import { ShipmentStatus } from "./enums/shipment.js";
+import { ShippingProviderName, ShippingCarrier, ShippingLabelStatus } from "./enums/shipping.js";
 import {
   NotificationChannelKind,
   NotificationType,
@@ -24,6 +25,9 @@ export {
   Currency,
   PriceRounding,
   ShipmentStatus,
+  ShippingProviderName,
+  ShippingCarrier,
+  ShippingLabelStatus,
   NotificationChannelKind,
   NotificationType,
   NotificationStatus,
@@ -56,6 +60,24 @@ import type {
   PublicVariant,
 } from "./types/catalog.js";
 import type { PublicUser, AdminUser } from "./types/user.js";
+import type {
+  ShippingOrigin,
+  ShippingParcel,
+  ShippingParcelSettings,
+  ShippingRate,
+  ShippingQuoteResponse,
+  OrderShippingSelection,
+  PublicShippingSelection,
+  OrderLabelAdmin,
+} from "./types/shipping.js";
+import type { MexicanState } from "./constants/shipping.js";
+import {
+  MEXICAN_STATES,
+  MEXICAN_STATE_CODES,
+  POSTAL_CODE_PATTERN,
+  PHONE_PATTERN,
+} from "./constants/shipping.js";
+import { SHIPPING_CARRIER_LABELS } from "./labels/shipping.js";
 import type {
   ShipmentEvent,
   PublicTracking,
@@ -154,6 +176,15 @@ export type {
   PublicVariant,
   PublicUser,
   AdminUser,
+  ShippingOrigin,
+  ShippingParcel,
+  ShippingParcelSettings,
+  ShippingRate,
+  ShippingQuoteResponse,
+  OrderShippingSelection,
+  PublicShippingSelection,
+  OrderLabelAdmin,
+  MexicanState,
   ShipmentEvent,
   PublicTracking,
   AdminShipment,
@@ -217,3 +248,4 @@ export {
   SHIPMENT_STATUS_LABELS,
 };
 export { TWO_FACTOR_INVALID_MESSAGE, INVALID_CREDENTIALS_MESSAGE };
+export { MEXICAN_STATES, MEXICAN_STATE_CODES, POSTAL_CODE_PATTERN, PHONE_PATTERN, SHIPPING_CARRIER_LABELS };

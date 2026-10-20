@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import request from "supertest";
 import { AuditAction, OrderStatus } from "@gira/shared";
 import { buildApp } from "../../src/app.js";
@@ -6,6 +6,13 @@ import { Order } from "../../src/models/Order.js";
 import { AuditLog } from "../../src/models/AuditLog.js";
 import { loginAsAdmin, loginAsCustomer, ORIGIN } from "../helpers/auth.js";
 import { seedOrder } from "../helpers/seedOrder.js";
+import { createPendingOrder, seedCatalogVariant } from "../helpers/orders.js";
+import { applyPaymentSucceeded } from "../../src/services/orderPaymentService.js";
+import { settleLabelWork } from "../../src/services/shippingLabelService.js";
+import {
+  installFakeShippingProvider,
+  restoreShippingProvider,
+} from "../helpers/fakeShippingProvider.js";
 
 const app = buildApp();
 const BASE = "/api/v1/admin/orders";
@@ -14,9 +21,10 @@ const newAddress = {
   recipient: "Luis Gómez",
   line1: "Av. Reforma 10",
   line2: "Piso 3",
-  city: "CDMX",
-  state: "CDMX",
-  postalCode: "06600",
+  district: "Condesa",
+  city: "Ciudad de México",
+  state: "CX",
+  postalCode: "01000",
   country: "MX",
 };
 
@@ -38,7 +46,7 @@ describe("PATCH /admin/orders/:id/shipping-address", () => {
 
       expect(res.status).toBe(200);
       expect(res.body.data.order.shipping).toMatchObject({ recipient: "Luis Gómez", line1: "Av. Reforma 10" });
-      expect((await Order.findById(id).lean())?.shipping.postalCode).toBe("06600");
+      expect((await Order.findById(id).lean())?.shipping.district).toBe("Condesa");
     },
   );
 
@@ -106,5 +114,70 @@ describe("PATCH /admin/orders/:id/shipping-address", () => {
       .send(newAddress);
     expect(anonymous.status).toBe(401);
     expect((await patchAddress(await loginAsCustomer(app), id, newAddress)).status).toBe(403);
+  });
+});
+
+describe("corrección de dirección · guía de envío", () => {
+  afterEach(() => restoreShippingProvider());
+
+  const paidWithLabel = async (cookie: string) => {
+    const variantId = await seedCatalogVariant(app, cookie, "ADDRLBL", 50);
+    const order = await createPendingOrder(variantId);
+    await applyPaymentSucceeded(order._id);
+    await settleLabelWork();
+    return order;
+  };
+
+  it("con guía lista y mismo CP: cancela la guía vieja y compra una nueva", async () => {
+    const cookie = await loginAsAdmin(app);
+    const fake = installFakeShippingProvider();
+    fake.createLabel
+      .mockResolvedValueOnce({
+        providerShipmentId: "s1", trackingNumber: "OLD111", carrier: "estafeta" as never,
+        labelUrl: "https://stub.invalid/1.pdf", trackUrl: "https://stub.invalid/t1", costMxn: 12_000,
+      })
+      .mockResolvedValueOnce({
+        providerShipmentId: "s2", trackingNumber: "NEW222", carrier: "estafeta" as never,
+        labelUrl: "https://stub.invalid/2.pdf", trackUrl: "https://stub.invalid/t2", costMxn: 12_000,
+      });
+    const order = await paidWithLabel(cookie);
+    expect((await Order.findById(order._id).lean())?.label?.trackingNumber).toBe("OLD111");
+
+    const res = await patchAddress(cookie, order._id, newAddress);
+    expect(res.status).toBe(200);
+    await settleLabelWork();
+
+    expect(fake.cancelLabel).toHaveBeenCalledWith(
+      { carrier: "estafeta", trackingNumber: "OLD111" },
+      expect.anything(),
+    );
+    const label = (await Order.findById(order._id).lean())?.label;
+    expect(label?.status).toBe("ready");
+    expect(label?.trackingNumber).toBe("NEW222");
+  });
+
+  it("con otro CP: 409 y la dirección no cambia", async () => {
+    const cookie = await loginAsAdmin(app);
+    const order = await paidWithLabel(cookie);
+    const res = await patchAddress(cookie, order._id, { ...newAddress, postalCode: "06600" });
+    expect(res.status).toBe(409);
+    expect((await Order.findById(order._id).lean())?.shipping.postalCode).toBe("01000");
+  });
+
+  it("con una compra de guía en vuelo (requested): 409", async () => {
+    const cookie = await loginAsAdmin(app);
+    const id = await seedOrder({ status: OrderStatus.PAID, total: 1000, createdAt: new Date() });
+    await Order.updateOne(
+      { _id: id },
+      { $set: { label: { status: "requested", attempts: 1, cancelAttempts: 0, requestedAt: new Date() } } },
+    );
+    expect((await patchAddress(cookie, id, newAddress)).status).toBe(409);
+  });
+
+  it("exige colonia y un estado válido", async () => {
+    const cookie = await loginAsAdmin(app);
+    const id = await seedOrder({ status: OrderStatus.PAID, total: 1000, createdAt: new Date() });
+    expect((await patchAddress(cookie, id, { ...newAddress, district: undefined })).status).toBe(400);
+    expect((await patchAddress(cookie, id, { ...newAddress, state: "CDMX" })).status).toBe(400);
   });
 });

@@ -31,6 +31,10 @@ enum NotificationType {
    * swallow, or be swallowed by, an unrelated review on the same order.
    */
   TEAM_DISPUTE_LOST = "team_dispute_lost",
+  /** The label could not be bought (retries exhausted, uncertain outcome or bad setup). One per order. */
+  TEAM_SHIPPING_LABEL_FAILED = "team_shipping_label_failed",
+  /** The provider refused to cancel a label of a refunded order. One per order. */
+  TEAM_SHIPPING_LABEL_CANCEL_FAILED = "team_shipping_label_cancel_failed",
 }
 
 enum NotificationStatus {

@@ -6,6 +6,8 @@ import {
   renderTeamPaymentNeedsReview,
   renderTeamDisputeLost,
   renderTeamShipmentIncident,
+  renderTeamShippingLabelFailed,
+  renderTeamShippingLabelCancelFailed,
 } from "../../src/templates/teamMessages.js";
 
 const ORDER_NUMBER = "GC-7KQ2M9XA";
@@ -33,6 +35,8 @@ describe("avisos de equipo (Telegram)", () => {
     ["revisión", () => renderTeamPaymentNeedsReview(ORDER_NUMBER, "payment_after_expiry")],
     ["disputa perdida", () => renderTeamDisputeLost(ORDER_NUMBER)],
     ["incidencia de envío", () => renderTeamShipmentIncident(ORDER_NUMBER, "lost", "Estafeta")],
+    ["guía fallida", () => renderTeamShippingLabelFailed(ORDER_NUMBER, "origin_not_configured")],
+    ["cancelación de guía fallida", () => renderTeamShippingLabelCancelFailed(ORDER_NUMBER)],
   ])("%s lleva el folio", (_name, render) => {
     expect(textOf(render())).toContain(`Folio: ${ORDER_NUMBER}`);
   });

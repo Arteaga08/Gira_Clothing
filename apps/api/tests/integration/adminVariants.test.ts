@@ -49,7 +49,7 @@ const seedProductAndPrint = async (
     .post(PRODUCTS_BASE)
     .set("Origin", ORIGIN)
     .set("Cookie", cookie)
-    .send({ name: `Producto ${suffix}`, category: categoryId, basePrice: 30000 });
+    .send({ name: `Producto ${suffix}`, category: categoryId, basePrice: 30000, weightGrams: 400 });
   const productId = productRes.body.data.product.id as string;
 
   return { productId, printId };

@@ -12,13 +12,21 @@ import {
   OrderPriority,
   OrderStatus,
   PaymentStatus,
+  ShippingLabelStatus,
   type AdminOrder,
   type BulkStatusResult,
   type OrderActivityEntry,
   type OrderStatusGroup,
   type OrderSummary,
 } from "@gira/shared";
-import { Order, type OrderDocument, type OrderPayment, type ShippingAddress } from "../models/Order.js";
+import {
+  Order,
+  type OrderDocument,
+  type OrderLabel,
+  type OrderPayment,
+  type ParcelAttrs,
+  type ShippingAddress,
+} from "../models/Order.js";
 import { AuditLog } from "../models/AuditLog.js";
 import { AppError } from "../utils/AppError.js";
 import { assertAdminTransition } from "../utils/orderTransitions.js";
@@ -36,6 +44,7 @@ import {
   type RawListQuery,
 } from "../utils/parseListQuery.js";
 import { toCustomerOrder, type OrderLean } from "./orderService.js";
+import { requestLabelCancellation } from "./shippingLabelService.js";
 import type { RequestContext } from "../utils/requestContext.js";
 
 /**
@@ -49,6 +58,8 @@ interface AdminOrderLean extends OrderLean {
   priority?: OrderPriority;
   termsAcceptedAt: Date;
   cancelReason?: string;
+  parcel: ParcelAttrs;
+  label?: OrderLabel;
   statusHistory: {
     status: OrderStatus;
     at: Date;
@@ -91,6 +102,23 @@ const toAdminOrder = (doc: AdminOrderLean): AdminOrder => ({
   },
   ...(doc.disputeStatus ? { disputeStatus: doc.disputeStatus } : {}),
   ...(doc.disputedAt ? { disputedAt: doc.disputedAt } : {}),
+  shippingSelection: { ...doc.shippingSelection },
+  parcel: { ...doc.parcel },
+  ...(doc.label
+    ? {
+        label: {
+          status: doc.label.status,
+          attempts: doc.label.attempts,
+          ...(doc.label.lastError ? { lastError: doc.label.lastError } : {}),
+          ...(doc.label.trackingNumber ? { trackingNumber: doc.label.trackingNumber } : {}),
+          ...(doc.label.carrier ? { carrier: doc.label.carrier } : {}),
+          ...(doc.label.labelUrl ? { labelUrl: doc.label.labelUrl } : {}),
+          ...(doc.label.trackUrl ? { trackUrl: doc.label.trackUrl } : {}),
+          ...(doc.label.readyAt ? { readyAt: doc.label.readyAt } : {}),
+          ...(doc.label.cancelledAt ? { cancelledAt: doc.label.cancelledAt } : {}),
+        },
+      }
+    : {}),
   updatedAt: doc.updatedAt,
 });
 
@@ -238,19 +266,45 @@ const updateShippingAddress = async (
   address: ShippingAddress,
   ctx: RequestContext,
 ): Promise<AdminOrder> => {
+  const current = await Order.findById(id).select("status shipping.postalCode label.status").lean();
+  if (!current) throw new AppError("La orden no existe.", 404);
+
+  // The quote (and the carrier's price) were made for ONE postal code: a different
+  // one means a different price, which a correction cannot silently absorb.
+  if (current.shipping.postalCode !== address.postalCode) {
+    throw new AppError(
+      "No se puede cambiar el código postal: cambia el costo del envío. Cancela el pedido y créalo de nuevo.",
+      409,
+    );
+  }
+  if (current.label?.status === ShippingLabelStatus.REQUESTED) {
+    throw new AppError("Se está generando la guía. Intenta de nuevo en un minuto.", 409);
+  }
+
+  // The status/label guards live IN THE FILTER, not in a read-then-write: a purchase
+  // or shipment landing between the check and the update could otherwise redirect a
+  // parcel already on its way. The audit entry carries no address (PII).
   const updated = await Order.findOneAndUpdate(
-    { _id: id, status: { $in: ADDRESS_EDITABLE_STATUSES } },
+    {
+      _id: id,
+      status: { $in: ADDRESS_EDITABLE_STATUSES },
+      "shipping.postalCode": address.postalCode,
+      "label.status": { $ne: ShippingLabelStatus.REQUESTED },
+    },
     { $set: { shipping: address } },
     { new: true, runValidators: true },
   ).lean();
 
   if (!updated) {
-    const exists = await Order.exists({ _id: id });
-    if (!exists) throw new AppError("La orden no existe.", 404);
     throw new AppError(
-      "La dirección ya no se puede corregir: la orden está enviada o cerrada.",
+      "La dirección ya no se puede corregir: la orden está enviada o cerrada, o se está generando la guía.",
       409,
     );
+  }
+
+  // A label bought for the old address is void: cancel it and buy a fresh one.
+  if (current.label?.status === ShippingLabelStatus.READY) {
+    await requestLabelCancellation(updated._id, { requeue: true });
   }
 
   await recordAudit({

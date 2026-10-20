@@ -27,7 +27,7 @@ const createProduct = async (
     .post(BASE)
     .set("Origin", ORIGIN)
     .set("Cookie", cookie)
-    .send({ name: "Tote", category: categoryId, basePrice: 45000, ...overrides });
+    .send({ name: "Tote", category: categoryId, basePrice: 45000, weightGrams: 400, ...overrides });
 
 describe("Admin · Product · autorización", () => {
   it("GET anónimo responde 401", async () => {
@@ -271,5 +271,32 @@ describe("Admin · Product · guard de reactivación bajo categoría retirada", 
 
     expect(res.status).toBe(200);
     expect(res.body.data.product.isActive).toBe(true);
+  });
+});
+
+describe("Admin · Product · peso para envío", () => {
+  it("exige weightGrams al crear y lo devuelve en el DTO", async () => {
+    const cookie = await loginAsAdmin(app);
+    const categoryId = await createCategory(cookie);
+
+    const missing = await request(app)
+      .post(BASE)
+      .set("Origin", ORIGIN)
+      .set("Cookie", cookie)
+      .send({ name: "Sin peso", category: categoryId, basePrice: 10000 });
+    expect(missing.status).toBe(400);
+
+    const ok = await createProduct(cookie, categoryId, { name: "Con peso", weightGrams: 450 });
+    expect(ok.status).toBe(201);
+    expect(ok.body.data.product.weightGrams).toBe(450);
+  });
+
+  it("rechaza pesos fuera de 1–20000 g o no enteros", async () => {
+    const cookie = await loginAsAdmin(app);
+    const categoryId = await createCategory(cookie);
+    for (const weightGrams of [0, 20_001, 12.5]) {
+      const res = await createProduct(cookie, categoryId, { name: `P ${weightGrams}`, weightGrams });
+      expect(res.status).toBe(400);
+    }
   });
 });

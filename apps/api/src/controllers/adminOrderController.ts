@@ -15,6 +15,7 @@ import {
   bulkChangeStatus,
 } from "../services/adminOrderService.js";
 import { getOrderStats } from "../services/orderStatsService.js";
+import { retryLabel } from "../services/shippingLabelService.js";
 
 /**
  * Admin order controllers — orchestrate req/res only, never touch models.
@@ -53,6 +54,11 @@ const updateAddress = asyncHandler(async (req: Request, res: Response) => {
   sendResponse(res, 200, "Dirección de envío actualizada correctamente.", { order });
 });
 
+const retryOrderLabel = asyncHandler(async (req: Request, res: Response) => {
+  await retryLabel(req.params.id as string, buildContext(req));
+  sendResponse(res, 200, "Reintentamos generar la guía. Revisa el pedido en unos segundos.");
+});
+
 const bulkStatus = asyncHandler(async (req: Request, res: Response) => {
   const { ids, status } = req.body as { ids: string[]; status: OrderStatus };
   const result = await bulkChangeStatus(ids, status, buildContext(req));
@@ -74,4 +80,16 @@ const stats = asyncHandler(async (req: Request, res: Response) => {
   sendResponse(res, 200, "Estadísticas de órdenes obtenidas correctamente.", data);
 });
 
-export { list, summary, detail, updateStatus, updatePriority, updateAddress, bulkStatus, refund, activity, stats };
+export {
+  list,
+  summary,
+  detail,
+  updateStatus,
+  updatePriority,
+  updateAddress,
+  retryOrderLabel,
+  bulkStatus,
+  refund,
+  activity,
+  stats,
+};

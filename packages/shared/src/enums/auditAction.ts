@@ -86,6 +86,13 @@ enum AuditAction {
   SETTINGS_INVENTORY_UPDATED = "settings_inventory_updated",
   SHIPMENT_CREATED = "shipment_created",
   SHIPMENT_STATUS_CHANGED = "shipment_status_changed",
+  LABEL_REQUESTED = "label_requested",
+  LABEL_CREATED = "label_created",
+  LABEL_FAILED = "label_failed",
+  LABEL_NEEDS_REVIEW = "label_needs_review",
+  LABEL_RETRY_REQUESTED = "label_retry_requested",
+  LABEL_CANCEL_REQUESTED = "label_cancel_requested",
+  LABEL_CANCELLED = "label_cancelled",
   NOTIFICATION_FAILED = "notification_failed",
 }
 

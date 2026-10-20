@@ -63,7 +63,7 @@ mockCreate.mockImplementation(() =>
 );
 
 const { buildApp } = await import("../../src/app.js");
-const { createOrder } = await import("../../src/services/orderService.js");
+const { createOrderWithQuote: createOrder } = await import("../helpers/orders.js");
 const { Order } = await import("../../src/models/Order.js");
 const { Variant } = await import("../../src/models/Variant.js");
 const { WebhookEvent } = await import("../../src/models/WebhookEvent.js");
@@ -90,12 +90,13 @@ const validImage = {
 const validShipping = {
   recipient: "Ana Pérez",
   line1: "Calle Falsa 123",
-  city: "CDMX",
-  state: "CDMX",
+  district: "Juárez",
+  city: "Ciudad de México",
+  state: "CX",
   postalCode: "01000",
   country: "MX",
 };
-const validCustomer = { email: "cliente@example.com", name: "Ana Pérez" };
+const validCustomer = { email: "cliente@example.com", name: "Ana Pérez", phone: "5512345678" };
 const uniqueKey = (): string => `key-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 const seedVariant = async (adminCookie: string, suffix: string, onHand = 10): Promise<string> => {
@@ -124,7 +125,7 @@ const seedVariant = async (adminCookie: string, suffix: string, onHand = 10): Pr
     .post(PRODUCTS_BASE)
     .set("Origin", ORIGIN)
     .set("Cookie", adminCookie)
-    .send({ name: `Producto ${suffix}`, category: categoryId, basePrice: 10000 });
+    .send({ name: `Producto ${suffix}`, category: categoryId, basePrice: 10000, weightGrams: 400 });
   const productId = productRes.body.data.product.id as string;
 
   const variantRes = await request(app)

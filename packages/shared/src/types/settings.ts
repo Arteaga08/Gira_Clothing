@@ -1,9 +1,12 @@
 import type { Currency, PriceRounding } from "../enums/money.js";
+import type { ShippingOrigin, ShippingParcelSettings } from "./shipping.js";
 
 interface ShippingSettings {
-  nationalFee: number;
-  internationalFee: number;
+  /** null until the owner fills it in Ajustes: quoting and labels stay disabled. */
+  origin: ShippingOrigin | null;
   freeShippingThreshold: number | null;
+  parcel: ShippingParcelSettings;
+  quoteTtlMinutes: number;
 }
 
 interface CurrencySettings {

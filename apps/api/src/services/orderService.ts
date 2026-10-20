@@ -1,12 +1,13 @@
 import mongoose, { Types } from "mongoose";
 import { AuditAction, AuditModule, OrderStatus, PaymentStatus } from "@gira/shared";
-import type { ApiMeta, Currency, CustomerOrder } from "@gira/shared";
+import type { ApiMeta, Currency, CustomerOrder, ShippingCarrier } from "@gira/shared";
 import {
   Order,
   type OrderDocument,
   type OrderCustomer,
   type ShippingAddress,
   type OrderLineSnapshot,
+  type ShippingSelectionAttrs,
 } from "../models/Order.js";
 import { Cart } from "../models/Cart.js";
 import { AppError } from "../utils/AppError.js";
@@ -17,6 +18,7 @@ import { idempotencyOwner, scopeIdempotencyKey } from "../utils/idempotency.js";
 import { resolveOrderLines, quoteTotals, type RequestedLine, type QuotedLine } from "./pricingService.js";
 import { reserveStock, releaseReservation } from "./reservationService.js";
 import { getSettings } from "./settingsService.js";
+import { resolveQuotedRate } from "./shippingQuoteService.js";
 import { getPaymentProvider, type PaymentView } from "../adapters/payment/index.js";
 import { recordAudit } from "./auditService.js";
 import { parseListQuery, buildMeta, type ListQueryConfig, type RawListQuery } from "../utils/parseListQuery.js";
@@ -48,6 +50,8 @@ interface CreateOrderInput {
   currency: Currency;
   customer: OrderCustomer;
   shipping: ShippingAddress;
+  /** The stored quote + rate the customer picked; the amount is never taken from the client. */
+  shippingQuote: { quoteId: string; rateId: string };
   idempotencyKey: string;
   /** Checkout consent. Validated by Joi; the service only stamps `termsAcceptedAt`. */
   termsAccepted: true;
@@ -79,6 +83,7 @@ interface PublicOrder {
   subtotal: number;
   discount: number;
   shippingCost: number;
+  shippingSelection: { carrier: ShippingCarrier; serviceName: string; estimatedDays: number };
   tax: number;
   taxRateBps: number;
   total: number;
@@ -103,6 +108,7 @@ interface OrderLean {
   subtotal: number;
   discount: number;
   shippingCost: number;
+  shippingSelection: ShippingSelectionAttrs;
   tax: number;
   taxRateBps: number;
   total: number;
@@ -135,6 +141,11 @@ const toPublicOrder = (doc: OrderLean): PublicOrder => ({
   subtotal: doc.subtotal,
   discount: doc.discount,
   shippingCost: doc.shippingCost,
+  shippingSelection: {
+    carrier: doc.shippingSelection.carrier,
+    serviceName: doc.shippingSelection.serviceName,
+    estimatedDays: doc.shippingSelection.estimatedDays,
+  },
   tax: doc.tax,
   taxRateBps: doc.taxRateBps,
   total: doc.total,
@@ -225,9 +236,18 @@ const createOrder = async (input: CreateOrderInput, ctx: OrderContext): Promise<
   }
 
   const resolved = await resolveOrderLines(requested);
+  // Before reserving anything: an invalid or expired quote must cost no stock.
+  const { rate, parcel } = await resolveQuotedRate({
+    quoteId: input.shippingQuote.quoteId,
+    rateId: input.shippingQuote.rateId,
+    resolved,
+    postalCode: input.shipping.postalCode,
+    currency: input.currency,
+    userId: ctx.userId,
+  });
   const quote = await quoteTotals(resolved, {
     currency: input.currency,
-    destinationCountry: input.shipping.country,
+    shippingMxn: rate.amountMxn,
   });
 
   const settings = await getSettings();
@@ -257,6 +277,16 @@ const createOrder = async (input: CreateOrderInput, ctx: OrderContext): Promise<
         subtotal: quote.subtotal,
         discount: quote.discount,
         shippingCost: quote.shippingCost,
+        shippingSelection: {
+          provider: rate.provider,
+          carrier: rate.carrier,
+          service: rate.service,
+          serviceName: rate.serviceName,
+          estimatedDays: rate.estimatedDays,
+          amountMxn: rate.amountMxn,
+          costMxn: rate.costMxn,
+        },
+        parcel,
         tax: quote.tax,
         taxRateBps: quote.taxRateBps,
         total: quote.total,
@@ -390,4 +420,12 @@ const getMyOrder = async (userId: Types.ObjectId, id: string): Promise<CustomerO
 };
 
 export type { CreateOrderInput, OrderContext, CreatedOrder, PublicOrder, PublicOrderLine, OrderLean };
-export { createOrder, toPublicOrder, toCustomerOrder, getOrderByPublicId, listMyOrders, getMyOrder };
+export {
+  createOrder,
+  toPublicOrder,
+  toCustomerOrder,
+  getOrderByPublicId,
+  listMyOrders,
+  getMyOrder,
+  takeCartLines,
+};

@@ -1,5 +1,5 @@
 import Joi from "joi";
-import { Currency } from "@gira/shared";
+import { Currency, MEXICAN_STATE_CODES, PHONE_PATTERN, POSTAL_CODE_PATTERN } from "@gira/shared";
 import { objectId } from "./commonValidator.js";
 import { listQueryBase } from "./listQueryValidator.js";
 
@@ -15,18 +15,43 @@ const shippingAddressSchema = Joi.object({
   recipient: Joi.string().trim().min(2).max(120).required(),
   line1: Joi.string().trim().min(3).max(200).required(),
   line2: Joi.string().trim().max(200).allow(""),
+  district: Joi.string().trim().min(2).max(120).required().messages({
+    "any.required": "Escribe tu colonia.",
+    "string.empty": "Escribe tu colonia.",
+  }),
   city: Joi.string().trim().min(2).max(120).required(),
-  state: Joi.string().trim().min(2).max(120).required(),
-  postalCode: Joi.string().trim().max(20).required(),
-  country: Joi.string().trim().uppercase().length(2).required().messages({
-    "string.length": "Usa el código de país de 2 letras (por ejemplo, MX).",
+  state: Joi.string()
+    .valid(...MEXICAN_STATE_CODES)
+    .required()
+    .messages({ "any.only": "Elige un estado válido." }),
+  postalCode: Joi.string().trim().pattern(POSTAL_CODE_PATTERN).required().messages({
+    "string.pattern.base": "El código postal debe tener 5 dígitos.",
+  }),
+  // Mexico only for now: international needs customs data we do not collect.
+  country: Joi.string().trim().uppercase().valid("MX").required().messages({
+    "any.only": "Por ahora solo enviamos dentro de México.",
   }),
 });
+
+/** Digits only, ten of them: carriers reject anything else. Accepts "55 1234-5678". */
+const phone = Joi.string()
+  .trim()
+  .custom((value: string, helpers) => {
+    const digits = value.replace(/\D/g, "");
+    return PHONE_PATTERN.test(digits) ? digits : helpers.error("string.pattern.base");
+  })
+  .required()
+  .messages({
+    "string.pattern.base": "El teléfono debe tener 10 dígitos.",
+    "any.required": "El teléfono es obligatorio.",
+    "string.empty": "El teléfono es obligatorio.",
+  });
 
 /**
  * NOTE: there is no `total`, `subtotal`, `unitPrice` or `shippingCost` key
  * here, on purpose. stripUnknown drops them if a client sends them; the
- * server is the only origin of an amount (pricingService).
+ * server is the only origin of an amount (pricingService). Shipping comes from
+ * the stored quote the client points at with `shippingQuote`.
  */
 const createOrderSchema = Joi.object({
   lines: Joi.array().items(orderLineSchema).min(1).max(30),
@@ -39,9 +64,15 @@ const createOrderSchema = Joi.object({
       "string.email": "Escribe un correo electrónico válido.",
     }),
     name: Joi.string().trim().min(2).max(120).required(),
-    phone: Joi.string().trim().max(30).allow(""),
+    phone,
   }).required(),
   shipping: shippingAddressSchema.required(),
+  shippingQuote: Joi.object({
+    quoteId: Joi.string().trim().min(10).max(80).required(),
+    rateId: Joi.string().trim().min(10).max(40).required(),
+  })
+    .required()
+    .messages({ "any.required": "Elige una opción de envío." }),
   termsAccepted: Joi.boolean().valid(true).required().messages({
     "any.only": "Debes aceptar los términos y condiciones.",
     "any.required": "Debes aceptar los términos y condiciones.",

@@ -16,6 +16,14 @@ const basePrice = Joi.number().integer().min(0).max(10_000_000).messages({
   "any.required": "El precio base es obligatorio.",
 });
 
+const weightGrams = Joi.number().integer().min(1).max(20_000).messages({
+  "number.base": "El peso debe ser un número en gramos.",
+  "number.integer": "El peso debe ser un entero en gramos.",
+  "number.min": "El peso mínimo es 1 g.",
+  "number.max": "El peso máximo es 20,000 g.",
+  "any.required": "El peso es obligatorio.",
+});
+
 const measurements = Joi.object({
   widthCm: Joi.number().min(0).max(500),
   heightCm: Joi.number().min(0).max(500),
@@ -33,6 +41,7 @@ const createProductSchema = Joi.object({
   category: objectId.required().messages({ "any.required": "La categoría es obligatoria." }),
   description: Joi.string().trim().max(2000).allow(""),
   basePrice: basePrice.required(),
+  weightGrams: weightGrams.required(),
   measurements,
   materials,
 });
@@ -42,6 +51,7 @@ const updateProductSchema = Joi.object({
   category: objectId,
   description: Joi.string().trim().max(2000).allow(""),
   basePrice,
+  weightGrams,
   measurements,
   materials,
   isActive: Joi.boolean(),

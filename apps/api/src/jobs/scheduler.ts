@@ -2,6 +2,7 @@ import { logger } from "../config/logger.js";
 import { expireReservations } from "./expireReservations.js";
 import { reconcilePayments } from "./reconcilePayments.js";
 import { dispatchNotifications } from "./dispatchNotifications.js";
+import { processShippingLabels } from "./processShippingLabels.js";
 
 /**
  * Lightweight cron: plain intervals, no BullMQ and no Redis (spec trade-off —
@@ -27,6 +28,7 @@ const startJobs = (): void => {
     setInterval(runSafely("expireReservations", expireReservations), EVERY_MINUTE),
     setInterval(runSafely("reconcilePayments", reconcilePayments), EVERY_FIVE_MINUTES),
     setInterval(runSafely("dispatchNotifications", dispatchNotifications), EVERY_MINUTE),
+    setInterval(runSafely("processShippingLabels", processShippingLabels), EVERY_MINUTE),
   ];
   for (const timer of timers) timer.unref();
   logger.info("Jobs en background iniciados");

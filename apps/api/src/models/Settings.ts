@@ -1,5 +1,6 @@
 import { Schema, model, type HydratedDocument, type Model } from "mongoose";
 import { Currency, DEFAULT_TAX_RATE_BPS, PriceRounding } from "@gira/shared";
+import type { ShippingOrigin, ShippingParcelSettings } from "@gira/shared";
 
 /**
  * Business configuration singleton (ECOMMERCE_ARCHITECTURE_GUIDELINES,
@@ -14,10 +15,13 @@ import { Currency, DEFAULT_TAX_RATE_BPS, PriceRounding } from "@gira/shared";
 const SINGLETON_KEY = "global";
 
 interface ShippingSettings {
-  nationalFee: number;
-  internationalFee: number;
+  /** undefined until the owner fills it in Ajustes: quoting and labels stay disabled. */
+  origin?: ShippingOrigin;
   /** null disables free shipping entirely. Compared against the MXN subtotal. */
   freeShippingThreshold: number | null;
+  parcel: ShippingParcelSettings;
+  /** How long a quote stays valid at checkout. */
+  quoteTtlMinutes: number;
 }
 
 interface CurrencySettings {
@@ -61,21 +65,31 @@ const settingsSchema = new Schema<SettingsAttrs, SettingsModel>(
   {
     key: { type: String, required: true, unique: true, default: SINGLETON_KEY },
     shipping: {
-      nationalFee: {
-        type: Number,
-        required: true,
-        min: 0,
-        validate: { validator: Number.isInteger, message: "La tarifa debe ser un entero." },
-        default: 15000,
-      },
-      internationalFee: {
-        type: Number,
-        required: true,
-        min: 0,
-        validate: { validator: Number.isInteger, message: "La tarifa debe ser un entero." },
-        default: 60000,
+      origin: {
+        type: new Schema(
+          {
+            name: { type: String, required: true, trim: true, maxlength: 120 },
+            phone: { type: String, required: true, trim: true },
+            email: { type: String, trim: true, lowercase: true },
+            line1: { type: String, required: true, trim: true, maxlength: 200 },
+            district: { type: String, required: true, trim: true, maxlength: 120 },
+            city: { type: String, required: true, trim: true, maxlength: 120 },
+            state: { type: String, required: true, trim: true },
+            postalCode: { type: String, required: true, trim: true },
+          },
+          { _id: false },
+        ),
       },
       freeShippingThreshold: { type: Number, min: 0, default: null },
+      parcel: {
+        tareGrams: { type: Number, required: true, min: 0, max: 5_000, default: 150 },
+        boxLengthCm: { type: Number, required: true, min: 1, max: 200, default: 30 },
+        boxWidthCm: { type: Number, required: true, min: 1, max: 200, default: 25 },
+        boxHeightCm: { type: Number, required: true, min: 1, max: 200, default: 5 },
+        extraUnitHeightCm: { type: Number, required: true, min: 0, max: 100, default: 3 },
+        maxWeightGrams: { type: Number, required: true, min: 1, max: 70_000, default: 20_000 },
+      },
+      quoteTtlMinutes: { type: Number, required: true, min: 5, max: 240, default: 30 },
     },
     currency: {
       mxnPerUsdCents: { type: Number, required: true, min: 1, default: 1800 },

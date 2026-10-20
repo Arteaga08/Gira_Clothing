@@ -19,8 +19,8 @@ import type { ImageAttrs } from "../models/schemas/image.js";
  * cent or two — and Stripe charges the total, so the customer's receipt would
  * not add up.
  *
- * The free-shipping threshold is always compared against the MXN subtotal,
- * whatever the charge currency: one configured threshold, one meaning.
+ * Shipping arrives already decided (MXN centavos) from the stored shipping quote,
+ * which also applies the free-shipping threshold against the MXN subtotal.
  */
 
 interface RequestedLine {
@@ -37,6 +37,8 @@ interface ResolvedLine {
   image?: ImageAttrs;
   qty: number;
   unitPriceMxn: number;
+  /** Packed weight of one unit; 0 = the product has no weight configured yet. */
+  weightGrams: number;
 }
 
 interface QuotedLine extends ResolvedLine {
@@ -65,6 +67,7 @@ interface ProductRef {
   _id: Types.ObjectId;
   name: string;
   basePrice: number;
+  weightGrams?: number;
   isActive: boolean;
 }
 
@@ -89,7 +92,7 @@ const resolveOrderLines = async (requested: RequestedLine[]): Promise<ResolvedLi
   }
 
   const variants = await Variant.find({ _id: { $in: ids } })
-    .populate("product", "name basePrice isActive")
+    .populate("product", "name basePrice weightGrams isActive")
     .populate("print", "name isActive")
     .lean();
 
@@ -114,14 +117,18 @@ const resolveOrderLines = async (requested: RequestedLine[]): Promise<ResolvedLi
       ...(variant.images[0] ? { image: variant.images[0] } : {}),
       qty: line.qty,
       unitPriceMxn: variant.priceOverride ?? product.basePrice,
+      weightGrams: product.weightGrams ?? 0,
     };
   });
 };
 
 interface QuoteInput {
   currency: Currency;
-  /** ISO-3166 alpha-2. "MX" is national, anything else international. */
-  destinationCountry: string;
+  /**
+   * Shipping charged to the customer, MXN centavos. It was decided by the stored
+   * shipping quote (already 0 when free shipping applied), never by the client.
+   */
+  shippingMxn: number;
 }
 
 const quoteTotals = async (lines: ResolvedLine[], input: QuoteInput): Promise<Quote> => {
@@ -141,13 +148,7 @@ const quoteTotals = async (lines: ResolvedLine[], input: QuoteInput): Promise<Qu
 
   const subtotal = quotedLines.reduce((sum, l) => sum + l.lineTotal, 0);
 
-  const { nationalFee, internationalFee, freeShippingThreshold } = settings.shipping;
-  const feeMxn = input.destinationCountry === "MX" ? nationalFee : internationalFee;
-  // Threshold is always read against the MXN subtotal, whatever we charge in.
-  const shipsFree = freeShippingThreshold !== null && subtotalMxn >= freeShippingThreshold;
-  const shippingCost = shipsFree
-    ? 0
-    : convertFromMxn(feeMxn, input.currency, mxnPerUsdCents, rounding);
+  const shippingCost = convertFromMxn(input.shippingMxn, input.currency, mxnPerUsdCents, rounding);
 
   const discount = 0;
   const total = Math.max(0, subtotal - discount + shippingCost);
