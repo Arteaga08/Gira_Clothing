@@ -1,7 +1,7 @@
 "use client";
 
 import type { ImageAttrs } from "@gira/shared";
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { Notice } from "@/components/ui/Notice";
@@ -39,6 +39,7 @@ type NewPrintFormProps = Omit<NewPrintSlideOverProps, "open">;
 /** Mounted only while the panel is open, so every opening starts with an empty form. */
 const NewPrintForm = ({ onClose, families, onCreated, upload, uploading }: NewPrintFormProps) => {
   const { toast } = useToast();
+  const imageErrorId = useId();
   const [name, setName] = useState("");
   const [sku, setSku] = useState("");
   const [familyId, setFamilyId] = useState("");
@@ -111,12 +112,13 @@ const NewPrintForm = ({ onClose, families, onCreated, upload, uploading }: NewPr
             label={image ? "Reemplazar imagen" : "Subir imagen"}
             hint="JPG, PNG, WEBP o AVIF · 5 MB"
             busy={uploading}
+            describedBy={errors.image ? imageErrorId : undefined}
             className="aspect-square w-32"
             onFiles={(files) => void pickImage(files[0] as File)}
           />
         </div>
         {errors.image ? (
-          <p role="alert" className="text-xs text-danger">
+          <p id={imageErrorId} role="alert" className="text-xs text-danger">
             {errors.image}
           </p>
         ) : null}

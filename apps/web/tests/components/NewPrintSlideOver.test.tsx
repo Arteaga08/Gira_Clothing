@@ -104,4 +104,14 @@ describe("NewPrintSlideOver", () => {
     expect(props.onClose).not.toHaveBeenCalled();
     expect(props.onCreated).not.toHaveBeenCalled();
   });
+
+  it("un error de subida queda enlazado al input con aria-describedby", async () => {
+    setup({ upload: vi.fn().mockResolvedValue({ ok: false, message: "La imagen pesa más de 5 MB." }) });
+    await userEvent.upload(
+      within(dialog()).getByLabelText(/Subir imagen/),
+      new File(["x"], "grande.png", { type: "image/png" }),
+    );
+    expect(await within(dialog()).findByRole("alert")).toHaveTextContent("La imagen pesa más de 5 MB.");
+    expect(within(dialog()).getByLabelText(/Subir imagen/)).toHaveAccessibleDescription("La imagen pesa más de 5 MB.");
+  });
 });

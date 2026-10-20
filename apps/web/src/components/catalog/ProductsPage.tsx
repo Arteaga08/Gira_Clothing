@@ -11,6 +11,7 @@ import { useCategoryOptions } from "@/hooks/useCategoryOptions";
 import { useProductList } from "@/hooks/useProductList";
 import {
   applyFilterPatch,
+  DEFAULT_SORT,
   toSearchParams,
   type CatalogFilterPatch,
   type CatalogFilters,
@@ -67,7 +68,7 @@ const ProductsPage = ({ initialFilters }: ProductsPageProps) => {
   }, [incomingQuery, initialFilters]);
 
   const groups = useMemo(() => groupProductsByCategory(list.products), [list.products]);
-  const clearFilters = () => updateFilters({ category: undefined, search: undefined, status: "active" });
+  const clearFilters = () => updateFilters({ category: undefined, search: undefined, status: "active", sort: DEFAULT_SORT });
 
   return (
     <div className="flex flex-col gap-6">

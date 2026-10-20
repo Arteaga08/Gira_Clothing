@@ -1,5 +1,11 @@
 import Joi from "joi";
-import { STOCK_DELTA_MAX, STOCK_ON_HAND_MAX, STOCK_REASON_MAX } from "@gira/shared";
+import {
+  STOCK_DELTA_MAX,
+  STOCK_ON_HAND_MAX,
+  STOCK_REASON_MAX,
+  VARIANT_IMAGES_MAX,
+  VARIANT_PRICE_OVERRIDE_MAX,
+} from "@gira/shared";
 import { listQueryBase } from "./listQueryValidator.js";
 import { objectId, imageObjectSchema } from "./commonValidator.js";
 
@@ -11,12 +17,12 @@ const sku = Joi.string()
   .pattern(/^[A-Z0-9-]+$/)
   .messages({ "string.pattern.base": "El SKU solo puede tener letras, números y guiones." });
 
-const priceOverride = Joi.number().integer().min(0).max(10_000_000).messages({
+const priceOverride = Joi.number().integer().min(0).max(VARIANT_PRICE_OVERRIDE_MAX).messages({
   "number.integer": "El precio override debe ser un entero en centavos MXN.",
   "number.min": "El precio override no puede ser negativo.",
 });
 
-const images = Joi.array().items(imageObjectSchema).max(10).messages({
+const images = Joi.array().items(imageObjectSchema).max(VARIANT_IMAGES_MAX).messages({
   "array.max": "No puedes registrar más de 10 imágenes.",
 });
 

@@ -43,6 +43,17 @@ const ButtonSpinner = () => (
   />
 );
 
+const buttonClassName = (variant: ButtonVariant = "secondary", size: ButtonSize = "md", className?: string): string =>
+  cn(
+    "inline-flex items-center justify-center gap-2 whitespace-nowrap font-bold",
+    NB_CONTROL,
+    "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none",
+    NB_PRESSABLE,
+    VARIANT_CLASSES[variant],
+    SIZE_CLASSES[size],
+    className,
+  );
+
 const Button = ({
   variant = "secondary",
   size = "md",
@@ -58,15 +69,7 @@ const Button = ({
       type={type}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
-      className={cn(
-        "inline-flex items-center justify-center gap-2 whitespace-nowrap font-bold",
-        NB_CONTROL,
-        "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none",
-        NB_PRESSABLE,
-        VARIANT_CLASSES[variant],
-        SIZE_CLASSES[size],
-        className,
-      )}
+      className={buttonClassName(variant, size, className)}
       {...rest}
     >
       {loading && <ButtonSpinner />}
@@ -76,4 +79,4 @@ const Button = ({
 };
 
 export type { ButtonProps, ButtonVariant, ButtonSize };
-export { Button };
+export { Button, buttonClassName };

@@ -111,12 +111,6 @@ const createVariant = async (
   return toPublicVariant(created.toObject());
 };
 
-const getVariant = async (id: string): Promise<PublicVariant> => {
-  const doc = await Variant.findById(id).lean();
-  if (!doc) throw new AppError("La variante no existe.", 404);
-  return toPublicVariant(doc);
-};
-
 const updateVariant = async (
   id: string,
   input: UpdateVariantInput,
@@ -188,4 +182,4 @@ const deactivateVariant = async (id: string, ctx: RequestContext): Promise<Publi
 };
 
 export type { CreateVariantInput, UpdateVariantInput, PublicVariant };
-export { createVariant, getVariant, updateVariant, deactivateVariant };
+export { createVariant, updateVariant, deactivateVariant };

@@ -1,4 +1,5 @@
 import multer from "multer";
+import { UPLOAD_MAX_BYTES, UPLOAD_MIME_TYPES } from "@gira/shared";
 import { AppError } from "../utils/AppError.js";
 
 /**
@@ -7,8 +8,8 @@ import { AppError } from "../utils/AppError.js";
  * so the 10kb JSON body limit stays untouched everywhere else.
  */
 
-const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
-const MAX_FILE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_MIME = new Set<string>(UPLOAD_MIME_TYPES);
+const MAX_FILE_BYTES = UPLOAD_MAX_BYTES;
 
 const uploadSingleImage = multer({
   storage: multer.memoryStorage(),

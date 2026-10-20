@@ -13,7 +13,6 @@ interface PanelProduct {
   /** MXN centavos. */
   basePrice: number;
   isActive: boolean;
-  variantCount: number;
   activeVariantCount: number;
   cover?: { url: string };
   /** Up to 5 active prints, for the thumbnails on the card. */
@@ -27,7 +26,6 @@ const toPanelProduct = (product: Wire<AdminProduct>): PanelProduct => ({
   category: { id: product.category.id, name: product.category.name },
   basePrice: product.basePrice,
   isActive: product.isActive,
-  variantCount: product.variantCount,
   activeVariantCount: product.activeVariantCount,
   ...(product.cover ? { cover: { url: product.cover.url } } : {}),
   prints: product.prints.map((print) => ({ id: print.id, name: print.name, image: { url: print.image.url } })),

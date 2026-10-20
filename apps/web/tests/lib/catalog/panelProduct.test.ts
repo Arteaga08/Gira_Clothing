@@ -10,7 +10,6 @@ describe("toPanelProduct", () => {
       category: { name: "Cosmetiquera" },
       basePrice: 18900,
       isActive: true,
-      variantCount: 3,
       activeVariantCount: 2,
       cover: { url: "https://res.cloudinary.com/gira/portada.jpg" },
     });
@@ -25,6 +24,7 @@ describe("toPanelProduct", () => {
     expect(json).not.toContain("Una cosmetiquera");
     expect(json).not.toContain("weightGrams");
     expect(json).not.toContain("measurements");
+    expect(json).not.toContain("variantCount");
   });
 
   it("sin portada no inventa la clave", () => {
