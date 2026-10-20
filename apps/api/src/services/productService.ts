@@ -1,11 +1,9 @@
-import type { ApiMeta } from "@gira/shared";
 import { AuditAction, AuditModule } from "@gira/shared";
 import { Product, type Measurements } from "../models/Product.js";
 import { ProductCategory } from "../models/ProductCategory.js";
 import { Variant } from "../models/Variant.js";
 import { AppError } from "../utils/AppError.js";
 import { slugify, resolveUniqueSlug } from "../utils/slug.js";
-import { parseListQuery, buildMeta, type ListQueryConfig } from "../utils/parseListQuery.js";
 import type { ImageAttrs } from "../models/schemas/image.js";
 import { recordAudit } from "./auditService.js";
 import type { RequestContext } from "../utils/requestContext.js";
@@ -15,12 +13,6 @@ import type { RequestContext } from "../utils/requestContext.js";
  * is a soft delete guarded by referential integrity: a product with active
  * variants cannot be retired.
  */
-
-const LIST_CONFIG: ListQueryConfig = {
-  sortable: ["name", "basePrice", "createdAt", "updatedAt"],
-  searchable: ["name"],
-  defaultSort: "name",
-};
 
 interface CreateProductInput {
   name: string;
@@ -42,15 +34,6 @@ interface UpdateProductInput {
   measurements?: Measurements;
   materials?: string[];
   sizeImage?: ImageAttrs | null;
-  isActive?: boolean;
-}
-
-interface ProductListQuery {
-  page?: unknown;
-  limit?: unknown;
-  sort?: unknown;
-  search?: unknown;
-  category?: string;
   isActive?: boolean;
 }
 
@@ -144,38 +127,11 @@ const createProduct = async (
   return toPublicProduct({ ...created.toObject(), category });
 };
 
-const listProducts = async (
-  query: ProductListQuery,
-): Promise<{ items: PublicProduct[]; meta: ApiMeta }> => {
-  const filters: Record<string, unknown> = {};
-  if (query.category) filters.category = query.category;
-  if (query.isActive !== undefined) filters.isActive = query.isActive;
-
-  const { filter, sort, skip, limit, page } = parseListQuery(query, LIST_CONFIG, filters);
-  const [docs, total] = await Promise.all([
-    Product.find(filter)
-      .sort(sort)
-      .skip(skip)
-      .limit(limit)
-      .populate("category", "name slug")
-      .lean(),
-    Product.countDocuments(filter),
-  ]);
-
-  return { items: docs.map(toPublicProduct), meta: buildMeta(total, { page, limit }) };
-};
-
-const getProduct = async (id: string): Promise<PublicProduct> => {
-  const doc = await Product.findById(id).populate("category", "name slug").lean();
-  if (!doc) throw new AppError("El producto no existe.", 404);
-  return toPublicProduct(doc);
-};
-
 const updateProduct = async (
   id: string,
   input: UpdateProductInput,
   ctx: RequestContext,
-): Promise<PublicProduct> => {
+): Promise<void> => {
   const product = await Product.findById(id);
   if (!product) throw new AppError("El producto no existe.", 404);
 
@@ -229,8 +185,6 @@ const updateProduct = async (
     targetId: id,
     ip: ctx.ip,
   });
-
-  return getProduct(id);
 };
 
 /** Throws 409 if the product still has active variants. */
@@ -245,7 +199,7 @@ const assertNoActiveVariants = async (productId: string): Promise<void> => {
 };
 
 /** Soft delete guarded by referential integrity against active Variant children. */
-const deactivateProduct = async (id: string, ctx: RequestContext): Promise<PublicProduct> => {
+const deactivateProduct = async (id: string, ctx: RequestContext): Promise<void> => {
   const product = await Product.findById(id);
   if (!product) throw new AppError("El producto no existe.", 404);
 
@@ -262,9 +216,7 @@ const deactivateProduct = async (id: string, ctx: RequestContext): Promise<Publi
     targetId: id,
     ip: ctx.ip,
   });
-
-  return getProduct(id);
 };
 
-export type { CreateProductInput, UpdateProductInput, ProductListQuery, PublicProduct };
-export { createProduct, listProducts, getProduct, updateProduct, deactivateProduct };
+export type { CreateProductInput, UpdateProductInput, PublicProduct };
+export { createProduct, updateProduct, deactivateProduct };

@@ -1,8 +1,6 @@
-"use client";
-
 import { PlusIcon } from "@phosphor-icons/react/dist/ssr";
-import { useRouter } from "next/navigation";
-import { Button, type ButtonVariant } from "@/components/ui/Button";
+import Link from "next/link";
+import { buttonClassName, type ButtonVariant } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 
 interface NewProductButtonProps {
@@ -10,15 +8,12 @@ interface NewProductButtonProps {
   variant?: ButtonVariant;
 }
 
-const NewProductButton = ({ variant = "primary" }: NewProductButtonProps) => {
-  const router = useRouter();
-  return (
-    <Button variant={variant} onClick={() => router.push("/productos/nuevo")}>
-      <Icon icon={PlusIcon} />
-      Nuevo producto
-    </Button>
-  );
-};
+const NewProductButton = ({ variant = "primary" }: NewProductButtonProps) => (
+  <Link href="/productos/nuevo" className={buttonClassName(variant)}>
+    <Icon icon={PlusIcon} />
+    Nuevo producto
+  </Link>
+);
 
 export type { NewProductButtonProps };
 export { NewProductButton };

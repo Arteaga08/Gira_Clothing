@@ -102,13 +102,12 @@ describe("ProductsPage", () => {
     products.listProducts.mockResolvedValue(page([]));
     renderPage();
     expect(await screen.findByText("Todavía no hay modelos")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: /Nuevo producto/ }));
-    expect(pushMock).toHaveBeenCalledWith("/productos/nuevo");
+    expect(screen.getByRole("link", { name: /Nuevo producto/ })).toHaveAttribute("href", "/productos/nuevo");
   });
 
   it("sin resultados con filtros ofrece limpiarlos", async () => {
     products.listProducts.mockResolvedValue(page([]));
-    renderPage({ q: "zzz" });
+    renderPage({ q: "zzz", orden: "name" });
     expect(await screen.findByText("Ningún modelo coincide")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Limpiar filtros" }));
     expect(replaceMock).toHaveBeenCalledWith("/productos", { scroll: false });
@@ -126,6 +125,6 @@ describe("ProductsPage", () => {
   it("solo hay un botón principal en la pantalla: el de la cabecera vive en la página, no aquí", async () => {
     renderPage();
     await screen.findByRole("region", { name: "Cosmetiquera" });
-    expect(screen.queryByRole("button", { name: /Nuevo producto/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Nuevo producto/ })).not.toBeInTheDocument();
   });
 });

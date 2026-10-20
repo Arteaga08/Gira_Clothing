@@ -12,6 +12,8 @@ interface UploadTileProps {
   multiple?: boolean;
   busy?: boolean;
   disabled?: boolean;
+  /** Id of the element that describes the input (an upload error). */
+  describedBy?: string | undefined;
   className?: string;
   onFiles: (files: File[]) => void;
 }
@@ -22,7 +24,7 @@ interface UploadTileProps {
  * extra code. The input is cleared after every pick so choosing the same file
  * twice still fires.
  */
-const UploadTile = ({ label, hint, multiple = false, busy = false, disabled = false, className, onFiles }: UploadTileProps) => (
+const UploadTile = ({ label, hint, multiple = false, busy = false, disabled = false, describedBy, className, onFiles }: UploadTileProps) => (
   <label
     className={cn(
       "grid cursor-pointer place-content-center justify-items-center gap-1 rounded-nb-sm border-2 border-dashed border-ink bg-surface-raised p-3 text-center text-sm text-text-primary",
@@ -39,6 +41,7 @@ const UploadTile = ({ label, hint, multiple = false, busy = false, disabled = fa
       accept={IMAGE_ACCEPT}
       multiple={multiple}
       disabled={busy || disabled}
+      aria-describedby={describedBy}
       className="sr-only"
       onChange={(event) => {
         const files = Array.from(event.target.files ?? []);

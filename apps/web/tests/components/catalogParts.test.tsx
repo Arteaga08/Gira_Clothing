@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { EditorSection } from "@/components/catalog/EditorSection";
+import { SizePhotoField } from "@/components/catalog/SizePhotoField";
 import { ImageTile } from "@/components/catalog/ImageTile";
 import { UploadTile } from "@/components/catalog/UploadTile";
 
@@ -49,5 +50,17 @@ describe("EditorSection", () => {
     expect(screen.getByText("Cada una crea una variante")).toBeInTheDocument();
     expect(screen.getByText("2 elegidas")).toBeInTheDocument();
     expect(screen.getByText("contenido")).toBeInTheDocument();
+  });
+});
+
+describe("SizePhotoField", () => {
+  it("enlaza el error de subida con el input para lectores de pantalla", () => {
+    render(<SizePhotoField imageUrl={null} busy={false} error="La imagen pesa más de 5 MB." onPick={vi.fn()} onRemove={vi.fn()} />);
+    expect(screen.getByLabelText(/Subir foto de tamaño/)).toHaveAccessibleDescription("La imagen pesa más de 5 MB.");
+  });
+
+  it("sin error el input no declara descripción", () => {
+    render(<SizePhotoField imageUrl={null} busy={false} onPick={vi.fn()} onRemove={vi.fn()} />);
+    expect(screen.getByLabelText(/Subir foto de tamaño/)).not.toHaveAttribute("aria-describedby");
   });
 });
