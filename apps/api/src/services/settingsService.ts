@@ -62,6 +62,11 @@ const toPublicSettings = (doc: SettingsDocument): PublicSettings => ({
 });
 
 const getSettings = async (): Promise<SettingsDocument> => {
+  // Plain read first: the upsert below is a write, and it ran on every call
+  // although the document exists on every deployment after the first read.
+  const current = await Settings.findOne({ key: SINGLETON_KEY });
+  if (current) return current;
+
   const existing = await Settings.findOneAndUpdate(
     { key: SINGLETON_KEY },
     { $setOnInsert: { key: SINGLETON_KEY } },

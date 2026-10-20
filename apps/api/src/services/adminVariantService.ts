@@ -120,7 +120,9 @@ const listAdminVariants = async (
   query: AdminVariantListQuery,
 ): Promise<{ items: AdminVariant[]; meta: ApiMeta }> => {
   const { sort, skip, limit, page } = parseListQuery(query, LIST_CONFIG);
-  const threshold = (await getSettings()).inventory.lowStockThreshold;
+  // Only the stock-status filter needs the threshold; reading it for every list
+  // call put a whole extra database round trip in front of the aggregate.
+  const threshold = query.stock ? (await getSettings()).inventory.lowStockThreshold : 0;
 
   const base: Record<string, unknown> = {};
   if (query.product) base.product = new Types.ObjectId(query.product);
