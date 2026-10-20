@@ -1,11 +1,9 @@
-import type { ApiMeta } from "@gira/shared";
 import { AuditAction, AuditModule } from "@gira/shared";
 import { Variant } from "../models/Variant.js";
 import { Product } from "../models/Product.js";
 import { Print } from "../models/Print.js";
 import { AppError } from "../utils/AppError.js";
 import { buildVariantSku } from "../utils/sku.js";
-import { parseListQuery, buildMeta, type ListQueryConfig } from "../utils/parseListQuery.js";
 import { recordAudit } from "./auditService.js";
 import type { RequestContext } from "../utils/requestContext.js";
 import type { ImageAttrs } from "../models/schemas/image.js";
@@ -16,12 +14,6 @@ import type { ImageAttrs } from "../models/schemas/image.js";
  * recomputed on update. Deactivation is a soft delete with no referential
  * guard below it — nothing sits under a variant.
  */
-
-const LIST_CONFIG: ListQueryConfig = {
-  sortable: ["sku", "createdAt", "updatedAt"],
-  searchable: ["sku"],
-  defaultSort: "sku",
-};
 
 interface CreateVariantInput {
   product: string;
@@ -34,16 +26,6 @@ interface CreateVariantInput {
 interface UpdateVariantInput {
   images?: ImageAttrs[];
   priceOverride?: number;
-  isActive?: boolean;
-}
-
-interface VariantListQuery {
-  page?: unknown;
-  limit?: unknown;
-  sort?: unknown;
-  search?: unknown;
-  product?: string;
-  print?: string;
   isActive?: boolean;
 }
 
@@ -129,23 +111,6 @@ const createVariant = async (
   return toPublicVariant(created.toObject());
 };
 
-const listVariants = async (
-  query: VariantListQuery,
-): Promise<{ items: PublicVariant[]; meta: ApiMeta }> => {
-  const filters: Record<string, unknown> = {};
-  if (query.product) filters.product = query.product;
-  if (query.print) filters.print = query.print;
-  if (query.isActive !== undefined) filters.isActive = query.isActive;
-
-  const { filter, sort, skip, limit, page } = parseListQuery(query, LIST_CONFIG, filters);
-  const [docs, total] = await Promise.all([
-    Variant.find(filter).sort(sort).skip(skip).limit(limit).lean(),
-    Variant.countDocuments(filter),
-  ]);
-
-  return { items: docs.map(toPublicVariant), meta: buildMeta(total, { page, limit }) };
-};
-
 const getVariant = async (id: string): Promise<PublicVariant> => {
   const doc = await Variant.findById(id).lean();
   if (!doc) throw new AppError("La variante no existe.", 404);
@@ -221,5 +186,5 @@ const deactivateVariant = async (id: string, ctx: RequestContext): Promise<Publi
   return toPublicVariant(variant.toObject());
 };
 
-export type { CreateVariantInput, UpdateVariantInput, VariantListQuery, PublicVariant };
-export { createVariant, listVariants, getVariant, updateVariant, deactivateVariant };
+export type { CreateVariantInput, UpdateVariantInput, PublicVariant };
+export { createVariant, getVariant, updateVariant, deactivateVariant };

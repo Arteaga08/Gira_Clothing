@@ -7,9 +7,9 @@ describe("NAV_GROUPS / NAV_ITEMS", () => {
     expect(NAV_ITEMS).toHaveLength(total);
   });
 
-  it("Resumen y Pedidos están disponibles; el resto llega en M10-M12", () => {
+  it("Resumen, Pedidos e Inventario están disponibles; el resto llega en M11-M12", () => {
     const available = NAV_ITEMS.filter((item) => item.available).map((item) => item.key);
-    expect(available).toEqual(["summary", "orders"]);
+    expect(available).toEqual(["summary", "orders", "variants"]);
   });
 
   it("no hay entrada de Envíos: la logística se opera dentro de Pedidos", () => {

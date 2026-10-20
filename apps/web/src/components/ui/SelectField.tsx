@@ -1,6 +1,8 @@
+import { CaretDownIcon } from "@phosphor-icons/react/dist/ssr";
 import type { SelectHTMLAttributes } from "react";
 import { useId } from "react";
 import { cn } from "@/lib/cn";
+import { Icon } from "./Icon";
 
 interface SelectOption {
   value: string;
@@ -39,7 +41,7 @@ const SelectField = ({
       </label>
       <div
         className={cn(
-          "flex min-h-10 items-center gap-2 rounded-nb-sm border-2 bg-surface px-3 text-text-primary shadow-nb-sm",
+          "relative flex min-h-10 items-center rounded-nb-sm border-2 bg-surface pl-3 text-text-primary shadow-nb-sm",
           "focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus",
           hasError ? "border-danger" : "border-ink",
         )}
@@ -48,7 +50,10 @@ const SelectField = ({
           id={selectId}
           {...(hasError ? { "aria-invalid": true } : {})}
           {...(message ? { "aria-describedby": messageId } : {})}
-          className={cn("min-w-0 flex-1 bg-transparent text-sm outline-none", className)}
+          className={cn(
+            "min-h-9 min-w-0 flex-1 cursor-pointer appearance-none bg-transparent pr-10 text-sm outline-none",
+            className,
+          )}
           {...rest}
         >
           {options.map((option) => (
@@ -57,6 +62,11 @@ const SelectField = ({
             </option>
           ))}
         </select>
+        {/* The native arrow hugs the border; this one has its own room and never takes the click. */}
+        <Icon
+          icon={CaretDownIcon}
+          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary"
+        />
       </div>
       {message ? (
         <p id={messageId} className={cn("text-xs", hasError ? "text-danger" : "text-text-secondary")}>

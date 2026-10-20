@@ -71,6 +71,20 @@ describe("dispatchNotifications", () => {
     expect(mailerSpy).not.toHaveBeenCalled();
   });
 
+  it("los avisos de stock salen por el canal de equipo con modelo, print, SKU y disponible", async () => {
+    const channelSpy = vi.spyOn(getNotificationChannel(), "notify").mockResolvedValue({ delivered: true });
+    const payload = { sku: "HOOD-BRUMA", productName: "Hoodie", printName: "Bruma", available: 0, threshold: 3 };
+    await enqueueNotification({ channel: NotificationChannelKind.TEAM, type: NotificationType.TEAM_STOCK_OUT, to: "team", payload });
+    await enqueueNotification({ channel: NotificationChannelKind.TEAM, type: NotificationType.TEAM_STOCK_LOW, to: "team", payload: { ...payload, available: 2 } });
+
+    expect(await dispatchNotifications()).toEqual({ sent: 2, failed: 0, skipped: 0 });
+    const sent = JSON.stringify(channelSpy.mock.calls);
+    expect(sent).toContain("Producto agotado");
+    expect(sent).toContain("Stock bajo");
+    expect(sent).toContain("SKU: HOOD-BRUMA");
+    expect(sent).toContain("Print: Bruma");
+  });
+
   it("un mailer que falla vuelve el mensaje a pending con backoff y no lo retoma de inmediato", async () => {
     vi.spyOn(getMailer(), "send").mockRejectedValueOnce(new Error("timeout"));
 

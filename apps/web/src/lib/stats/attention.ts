@@ -27,7 +27,7 @@ const alertTilesFrom = (alerts: OrderStatsAlerts): AttentionTile[] => [
   },
   {
     key: "stuckInProcessing",
-    label: "Atoradas en preparación (+72 h)",
+    label: "Atoradas en proceso (+72 h)",
     count: alerts.stuckInProcessing,
     level: alerts.stuckInProcessing > 0 ? "danger" : "clear",
   },

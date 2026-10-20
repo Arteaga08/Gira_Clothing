@@ -11,6 +11,7 @@ const STATS_TIMESERIES_PATH = "/admin/stats/timeseries";
 const STATS_TOP_PRODUCTS_PATH = "/admin/stats/top-products";
 const OUTBOX_HEALTH_PATH = "/admin/notifications/health";
 const ADMIN_ORDERS_PATH = "/admin/orders";
+const ADMIN_VARIANTS_PATH = "/admin/variants";
 
 export {
   STATS_OVERVIEW_PATH,
@@ -18,4 +19,5 @@ export {
   STATS_TOP_PRODUCTS_PATH,
   OUTBOX_HEALTH_PATH,
   ADMIN_ORDERS_PATH,
+  ADMIN_VARIANTS_PATH,
 };

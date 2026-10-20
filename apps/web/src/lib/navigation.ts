@@ -108,7 +108,7 @@ const NAV_GROUPS: readonly NavGroupConfig[] = [
         href: "/inventario",
         icon: PackageIcon,
         keywords: ["inventario", "stock", "variantes"],
-        available: false,
+        available: true,
       },
     ],
   },

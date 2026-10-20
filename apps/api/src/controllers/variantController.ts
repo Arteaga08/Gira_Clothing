@@ -4,13 +4,17 @@ import { sendResponse } from "../utils/sendResponse.js";
 import { buildContext } from "../utils/requestContext.js";
 import {
   createVariant,
-  listVariants,
   getVariant,
   updateVariant,
   deactivateVariant,
   type CreateVariantInput,
   type UpdateVariantInput,
 } from "../services/variantService.js";
+import {
+  listAdminVariants,
+  getAdminVariantOrThrow,
+  getVariantActivity,
+} from "../services/adminVariantService.js";
 import { setOnHand, adjustOnHand } from "../services/inventoryService.js";
 import { getInventoryStats } from "../services/inventoryStatsService.js";
 
@@ -24,7 +28,7 @@ const create = asyncHandler(async (req: Request, res: Response) => {
 });
 
 const list = asyncHandler(async (req: Request, res: Response) => {
-  const { items, meta } = await listVariants(req.query);
+  const { items, meta } = await listAdminVariants(req.query);
   sendResponse(res, 200, "Variantes obtenidas correctamente.", { variants: items }, meta);
 });
 
@@ -48,14 +52,22 @@ const deactivate = asyncHandler(async (req: Request, res: Response) => {
 });
 
 const updateStock = asyncHandler(async (req: Request, res: Response) => {
-  const { onHand, delta } = req.body as { onHand?: number; delta?: number };
+  const { onHand, delta, reason } = req.body as {
+    onHand?: number;
+    delta?: number;
+    reason?: string;
+  };
   const id = req.params.id as string;
   const ctx = buildContext(req);
-  const variant =
-    onHand !== undefined
-      ? await setOnHand(id, onHand, ctx)
-      : await adjustOnHand(id, delta as number, ctx);
+  if (onHand !== undefined) await setOnHand(id, onHand, ctx, reason);
+  else await adjustOnHand(id, delta as number, ctx, reason);
+  const variant = await getAdminVariantOrThrow(id);
   sendResponse(res, 200, "Stock actualizado correctamente.", { variant });
+});
+
+const activity = asyncHandler(async (req: Request, res: Response) => {
+  const rows = await getVariantActivity(req.params.id as string);
+  sendResponse(res, 200, "Movimientos de inventario obtenidos correctamente.", { activity: rows });
 });
 
 const stats = asyncHandler(async (_req: Request, res: Response) => {
@@ -63,4 +75,4 @@ const stats = asyncHandler(async (_req: Request, res: Response) => {
   sendResponse(res, 200, "Estadísticas de inventario obtenidas correctamente.", data);
 });
 
-export { create, list, detail, update, deactivate, updateStock, stats };
+export { create, list, detail, update, deactivate, updateStock, stats, activity };

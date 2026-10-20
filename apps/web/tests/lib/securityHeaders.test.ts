@@ -16,6 +16,13 @@ describe("buildCsp", () => {
     expect(csp).toContain("form-action 'self'");
   });
 
+  it("img-src permite solo el host de imágenes de Cloudinary, no un comodín", () => {
+    const csp = buildCsp({ apiUrl: "https://api.gira.mx/api/v1", isProd: true });
+    expect(csp).toMatch(/img-src 'self' data: blob: https:\/\/res\.cloudinary\.com(;|$)/);
+    expect(csp).not.toMatch(/img-src[^;]*(\*|https:(;|\s))/);
+    expect(csp).toContain("default-src 'self'");
+  });
+
   it("connect-src permite solo el ORIGEN de la API (sin path)", () => {
     const csp = buildCsp({ apiUrl: API, isProd: true });
     expect(csp).toMatch(/connect-src 'self' https:\/\/api\.gira\.mx(;|$)/);

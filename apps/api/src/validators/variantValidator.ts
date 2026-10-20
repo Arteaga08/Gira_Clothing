@@ -1,4 +1,5 @@
 import Joi from "joi";
+import { STOCK_DELTA_MAX, STOCK_ON_HAND_MAX, STOCK_REASON_MAX } from "@gira/shared";
 import { listQueryBase } from "./listQueryValidator.js";
 import { objectId, imageObjectSchema } from "./commonValidator.js";
 
@@ -38,13 +39,20 @@ const updateVariantSchema = Joi.object({
 const variantListQuerySchema = listQueryBase.keys({
   product: objectId,
   print: objectId,
+  category: objectId,
   isActive: Joi.boolean(),
+  stock: Joi.string().valid("out", "low", "ok").messages({
+    "any.only": "El estado de stock debe ser out, low u ok.",
+  }),
 });
 
 // PATCH /:id/stock body — exactly one of onHand (absolute) or delta (relative).
 const stockUpdateSchema = Joi.object({
-  onHand: Joi.number().integer().min(0).max(1_000_000),
-  delta: Joi.number().integer().invalid(0).min(-100_000).max(100_000),
+  onHand: Joi.number().integer().min(0).max(STOCK_ON_HAND_MAX),
+  delta: Joi.number().integer().invalid(0).min(-STOCK_DELTA_MAX).max(STOCK_DELTA_MAX),
+  reason: Joi.string().trim().max(STOCK_REASON_MAX).allow("").messages({
+    "string.max": `El motivo no puede pasar de ${STOCK_REASON_MAX} caracteres.`,
+  }),
 })
   .xor("onHand", "delta")
   .messages({

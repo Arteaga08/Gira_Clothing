@@ -70,10 +70,12 @@ describe("CommandPalette", () => {
     await userEvent.keyboard("{ArrowDown}");
     expect(screen.getByRole("option", { name: "Resumen" })).toHaveAttribute("aria-selected", "true");
 
-    // Resumen y Pedidos son los disponibles: la segunda flecha va a Pedidos y la
-    // tercera da la vuelta a Resumen saltando todos los deshabilitados de en medio.
+    // Resumen, Pedidos e Inventario son los disponibles: las siguientes flechas los recorren y la
+    // cuarta da la vuelta a Resumen saltando todos los deshabilitados de en medio.
     await userEvent.keyboard("{ArrowDown}");
     expect(screen.getByRole("option", { name: "Pedidos" })).toHaveAttribute("aria-selected", "true");
+    await userEvent.keyboard("{ArrowDown}");
+    expect(screen.getByRole("option", { name: "Variantes" })).toHaveAttribute("aria-selected", "true");
     await userEvent.keyboard("{ArrowDown}");
     expect(screen.getByRole("option", { name: "Resumen" })).toHaveAttribute("aria-selected", "true");
   });
