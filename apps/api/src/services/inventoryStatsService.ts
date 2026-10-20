@@ -36,41 +36,44 @@ const getInventoryStats = async (): Promise<InventoryStats> => {
   const threshold = settings.inventory.lowStockThreshold;
   const available = { $subtract: ["$onHand", "$reserved"] };
 
-  const [totals] = await Variant.aggregate<{
-    activeVariants: number;
-    outOfStock: number;
-    lowStock: number;
-    unitsOnHand: number;
-    unitsReserved: number;
-  }>([
-    { $match: { isActive: true } },
-    {
-      $group: {
-        _id: null,
-        activeVariants: { $sum: 1 },
-        outOfStock: { $sum: { $cond: [{ $lte: [available, 0] }, 1, 0] } },
-        // Mutually exclusive with outOfStock: "low" means low, not empty.
-        lowStock: {
-          $sum: {
-            $cond: [{ $and: [{ $gt: [available, 0] }, { $lte: [available, threshold] }] }, 1, 0],
+  // Independent reads: sequential awaits would stack one database round trip each.
+  const [totalsRows, lowStockItems] = await Promise.all([
+    Variant.aggregate<{
+      activeVariants: number;
+      outOfStock: number;
+      lowStock: number;
+      unitsOnHand: number;
+      unitsReserved: number;
+    }>([
+      { $match: { isActive: true } },
+      {
+        $group: {
+          _id: null,
+          activeVariants: { $sum: 1 },
+          outOfStock: { $sum: { $cond: [{ $lte: [available, 0] }, 1, 0] } },
+          // Mutually exclusive with outOfStock: "low" means low, not empty.
+          lowStock: {
+            $sum: {
+              $cond: [{ $and: [{ $gt: [available, 0] }, { $lte: [available, threshold] }] }, 1, 0],
+            },
           },
+          unitsOnHand: { $sum: "$onHand" },
+          unitsReserved: { $sum: "$reserved" },
         },
-        unitsOnHand: { $sum: "$onHand" },
-        unitsReserved: { $sum: "$reserved" },
       },
-    },
+    ]),
+    Variant.aggregate<LowStockItem & { _id: unknown }>([
+      { $match: { isActive: true } },
+      { $addFields: { available } },
+      { $match: { available: { $lte: threshold } } },
+      { $sort: { available: 1 } },
+      { $limit: LOW_STOCK_SAMPLE },
+      { $lookup: { from: "products", localField: "product", foreignField: "_id", as: "productDoc" } },
+      { $unwind: "$productDoc" },
+      { $project: { sku: 1, available: 1, productName: "$productDoc.name" } },
+    ]),
   ]);
-
-  const lowStockItems = await Variant.aggregate<LowStockItem & { _id: unknown }>([
-    { $match: { isActive: true } },
-    { $addFields: { available } },
-    { $match: { available: { $lte: threshold } } },
-    { $sort: { available: 1 } },
-    { $limit: LOW_STOCK_SAMPLE },
-    { $lookup: { from: "products", localField: "product", foreignField: "_id", as: "productDoc" } },
-    { $unwind: "$productDoc" },
-    { $project: { sku: 1, available: 1, productName: "$productDoc.name" } },
-  ]);
+  const [totals] = totalsRows;
 
   const base = totals ?? {
     activeVariants: 0,
