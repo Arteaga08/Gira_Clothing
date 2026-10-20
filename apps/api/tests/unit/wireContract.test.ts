@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import type {
   AdminOrder,
   AdminUser,
-  AdminShipment,
-  AdminShipmentListItem,
+  AdminOrderTracking,
+  PublicTrackingView,
   TimeseriesStats,
   OutboxHealth,
   Overview,
@@ -23,8 +23,8 @@ describe("wire contract", () => {
     // rompe `tsc --noEmit` en este archivo.
     assertShape<AdminOrder>({} as AdminOrder);
     assertShape<AdminUser>({} as AdminUser);
-    assertShape<AdminShipment>({} as AdminShipment);
-    assertShape<AdminShipmentListItem>({} as AdminShipmentListItem);
+    assertShape<AdminOrderTracking>({} as AdminOrderTracking);
+    assertShape<PublicTrackingView>({} as PublicTrackingView);
     assertShape<TimeseriesStats>({} as TimeseriesStats);
     assertShape<OutboxHealth>({} as OutboxHealth);
     assertShape<Overview>({} as Overview);

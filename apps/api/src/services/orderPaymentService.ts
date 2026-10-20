@@ -20,6 +20,7 @@ import { flagForReview } from "./paymentAlertService.js";
 import { clearCart } from "./cartService.js";
 import { enqueueLabel, requestLabelCancellation } from "./shippingLabelService.js";
 import { AppError } from "../utils/AppError.js";
+import { toOrderEmailSnapshot } from "../utils/orderEmailSnapshot.js";
 import { logger } from "../config/logger.js";
 import { getPaymentProvider, type ChargeDetails } from "../adapters/payment/index.js";
 
@@ -56,21 +57,7 @@ const queueOrderPaidNotifications = async (order: OrderDocument): Promise<void> 
       type: NotificationType.ORDER_CONFIRMATION,
       to: order.customer.email,
       order: order._id,
-      payload: {
-        publicId: order.publicId,
-        orderNumber: order.orderNumber,
-        customerName: order.customer.name,
-        currency: order.currency,
-        subtotal: order.subtotal,
-        shippingCost: order.shippingCost,
-        total: order.total,
-        lines: order.lines.map((line) => ({
-          productName: line.productName,
-          printName: line.printName,
-          qty: line.qty,
-          lineTotal: line.lineTotal,
-        })),
-      },
+      payload: toOrderEmailSnapshot(order) as unknown as Record<string, unknown>,
     },
     { strict: true },
   );
@@ -165,7 +152,8 @@ const runPaidEffects = async (order: OrderDocument): Promise<void> => {
     // Money taken, stock not decremented, and the order already says `paid`: the
     // retry re-enters here, but a human should know NOW that it is stuck.
     await flagForReview(order, "stock_commit_failed", AuditAction.STOCK_COMMIT_FAILED).catch(
-      (flagErr: unknown) => logger.error({ err: flagErr }, "No se pudo alertar stock_commit_failed"),
+      (flagErr: unknown) =>
+        logger.error({ err: flagErr }, "No se pudo alertar stock_commit_failed"),
     );
     throw err;
   }
@@ -451,7 +439,7 @@ const refundPaidOrder = async (orderId: Types.ObjectId): Promise<void> => {
   let restocked = false;
   let reservationWasActive = false;
   let unaccountedStock = false;
-  let beforeShipment = false;
+  let beforePickup = false;
 
   const session = await mongoose.startSession();
   try {
@@ -461,7 +449,7 @@ const refundPaidOrder = async (orderId: Types.ObjectId): Promise<void> => {
       restocked = false;
       reservationWasActive = false;
       unaccountedStock = false;
-      beforeShipment = false;
+      beforePickup = false;
 
       const before = await Order.findById(orderId).session(session);
       if (!before || before.status === OrderStatus.REFUNDED) return;
@@ -471,7 +459,7 @@ const refundPaidOrder = async (orderId: Types.ObjectId): Promise<void> => {
       const reservation = await StockReservation.findOne({ order: orderId }).session(session);
       const committed = stockWasCommitted(before, reservation?.status);
       const started = fulfillmentStarted(before);
-      beforeShipment = before.status === OrderStatus.PAID || before.status === OrderStatus.PROCESSING;
+      beforePickup = before.status === OrderStatus.PAID || before.status === OrderStatus.PROCESSING;
 
       const order = await applyOrderTransition({
         orderId,
@@ -526,9 +514,12 @@ const refundPaidOrder = async (orderId: Types.ObjectId): Promise<void> => {
 
   // The parcel never left: void its label so the balance comes back. Best-effort:
   // a failure here must not undo a refund that already happened.
-  if (beforeShipment) {
+  if (beforePickup) {
     await requestLabelCancellation(orderId).catch((err: unknown) =>
-      logger.error({ err, orderId: String(orderId) }, "No se pudo iniciar la cancelación de la guía"),
+      logger.error(
+        { err, orderId: String(orderId) },
+        "No se pudo iniciar la cancelación de la guía",
+      ),
     );
   }
 
@@ -614,7 +605,10 @@ const applyDisputeClosed = async (
     // The goods are still here, the money is gone: void the label if it has not left.
     if (order.status === OrderStatus.PAID || order.status === OrderStatus.PROCESSING) {
       await requestLabelCancellation(order._id).catch((err: unknown) =>
-        logger.error({ err, orderId: String(order._id) }, "No se pudo iniciar la cancelación de la guía"),
+        logger.error(
+          { err, orderId: String(order._id) },
+          "No se pudo iniciar la cancelación de la guía",
+        ),
       );
     }
   }

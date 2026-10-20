@@ -35,8 +35,11 @@ interface OrderEmailSnapshot {
 }
 
 interface ShippedEmailSnapshot extends OrderEmailSnapshot {
-  carrier: string;
+  /** Display name ("Estafeta"), resolved at enqueue time. */
+  carrierName: string;
   trackingNumber: string;
+  /** The carrier's own tracking page; absent if the provider gave none. */
+  trackUrl?: string | undefined;
 }
 
 const MINOR_UNITS = 100;
@@ -110,20 +113,47 @@ const renderOrderPreparing = (snapshot: OrderEmailSnapshot): RenderedMail => ({
     `Ver mi pedido: ${orderUrl(snapshot.publicId)}`,
 });
 
+const parcelHtml = (s: ShippedEmailSnapshot): string =>
+  `<p>Paquetería: <strong>${escapeHtml(s.carrierName)}</strong><br>` +
+  `Número de guía: <strong>${escapeHtml(s.trackingNumber)}</strong></p>` +
+  (s.trackUrl ? `<p><a href="${escapeHtml(s.trackUrl)}">Rastrear con la paquetería</a></p>` : "");
+
+const parcelText = (s: ShippedEmailSnapshot): string =>
+  `Paquetería: ${s.carrierName}\nNúmero de guía: ${s.trackingNumber}` +
+  (s.trackUrl ? `\nRastrear con la paquetería: ${s.trackUrl}` : "");
+
 const renderOrderShipped = (snapshot: ShippedEmailSnapshot): RenderedMail => ({
   subject: `Tu pedido ${snapshot.orderNumber} va en camino`,
   html: layout(
     `${snapshot.customerName}, tu pedido ya salió`,
     folioHtml(snapshot) +
-      `<p>Paquetería: <strong>${escapeHtml(snapshot.carrier)}</strong><br>` +
-      `Número de guía: <strong>${escapeHtml(snapshot.trackingNumber)}</strong></p>` +
+      parcelHtml(snapshot) +
       `<p><a href="${trackingUrl(snapshot.publicId)}">Seguir mi envío</a></p>`,
   ),
   text:
     `${snapshot.customerName}, tu pedido ya salió.\nFolio: ${snapshot.orderNumber}\n\n` +
-    `Paquetería: ${snapshot.carrier}\nNúmero de guía: ${snapshot.trackingNumber}\n\n` +
-    `Seguir mi envío: ${trackingUrl(snapshot.publicId)}`,
+    `${parcelText(snapshot)}\n\nSeguir mi envío: ${trackingUrl(snapshot.publicId)}`,
+});
+
+const renderOrderDelivered = (snapshot: ShippedEmailSnapshot): RenderedMail => ({
+  subject: `Tu pedido ${snapshot.orderNumber} llegó`,
+  html: layout(
+    `${snapshot.customerName}, ¡tu pedido llegó!`,
+    `<p>La paquetería marcó tu pedido como entregado. Esperamos que lo disfrutes.</p>` +
+      folioHtml(snapshot) +
+      parcelHtml(snapshot) +
+      `<p><a href="${orderUrl(snapshot.publicId)}">Ver mi pedido</a></p>`,
+  ),
+  text:
+    `${snapshot.customerName}, ¡tu pedido llegó!\nFolio: ${snapshot.orderNumber}\n\n` +
+    `${parcelText(snapshot)}\n\nVer mi pedido: ${orderUrl(snapshot.publicId)}`,
 });
 
 export type { OrderEmailSnapshot, ShippedEmailSnapshot, OrderEmailLine, RenderedMail };
-export { formatMoney, renderOrderConfirmation, renderOrderPreparing, renderOrderShipped };
+export {
+  formatMoney,
+  renderOrderConfirmation,
+  renderOrderPreparing,
+  renderOrderShipped,
+  renderOrderDelivered,
+};

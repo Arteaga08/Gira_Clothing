@@ -1,9 +1,23 @@
 import mongoose, { Types } from "mongoose";
-import { AuditAction, AuditModule, OrderStatus, PaymentStatus } from "@gira/shared";
-import type { ApiMeta, Currency, CustomerOrder, ShippingCarrier } from "@gira/shared";
+import {
+  AuditAction,
+  AuditModule,
+  OrderStatus,
+  PaymentStatus,
+  SHIPPING_CARRIER_LABELS,
+} from "@gira/shared";
+import type {
+  ApiMeta,
+  Currency,
+  CustomerOrder,
+  CustomerShipment,
+  ShipmentTrackingStatus,
+  ShippingCarrier,
+} from "@gira/shared";
 import {
   Order,
   type OrderDocument,
+  type OrderLabel,
   type OrderCustomer,
   type ShippingAddress,
   type OrderLineSnapshot,
@@ -15,13 +29,23 @@ import { applyOrderTransition } from "./orderTransitionService.js";
 import { generatePublicId } from "../utils/publicId.js";
 import { generateOrderNumber } from "../utils/orderNumber.js";
 import { idempotencyOwner, scopeIdempotencyKey } from "../utils/idempotency.js";
-import { resolveOrderLines, quoteTotals, type RequestedLine, type QuotedLine } from "./pricingService.js";
+import {
+  resolveOrderLines,
+  quoteTotals,
+  type RequestedLine,
+  type QuotedLine,
+} from "./pricingService.js";
 import { reserveStock, releaseReservation } from "./reservationService.js";
 import { getSettings } from "./settingsService.js";
 import { resolveQuotedRate } from "./shippingQuoteService.js";
 import { getPaymentProvider, type PaymentView } from "../adapters/payment/index.js";
 import { recordAudit } from "./auditService.js";
-import { parseListQuery, buildMeta, type ListQueryConfig, type RawListQuery } from "../utils/parseListQuery.js";
+import {
+  parseListQuery,
+  buildMeta,
+  type ListQueryConfig,
+  type RawListQuery,
+} from "../utils/parseListQuery.js";
 import type { ImageAttrs } from "../models/schemas/image.js";
 
 /**
@@ -115,6 +139,10 @@ interface OrderLean {
   createdAt: Date;
   paidAt?: Date;
   payment: { intentId?: string };
+  label?: OrderLabel;
+  tracking?: { status: ShipmentTrackingStatus };
+  shippedAt?: Date;
+  deliveredAt?: Date;
 }
 
 /**
@@ -158,10 +186,28 @@ const toPublicOrder = (doc: OrderLean): PublicOrder => ({
  * id, which the account screens need to open an order. Ownership is enforced in
  * the query filter, so handing the id back to its owner reveals nothing.
  */
-const toCustomerOrder = (doc: OrderLean): CustomerOrder => ({
-  id: String(doc._id),
-  ...toPublicOrder(doc),
-});
+/**
+ * The carrier data the owning customer may see, only once the order is shipped.
+ * The label itself (cost, credential, PDF) never leaves through here.
+ */
+const toCustomerShipment = (doc: OrderLean): CustomerShipment | undefined => {
+  const shipped = doc.status === OrderStatus.SHIPPED || doc.status === OrderStatus.DELIVERED;
+  if (!shipped || !doc.label?.trackingNumber || !doc.label.carrier) return undefined;
+  return {
+    carrier: doc.label.carrier,
+    carrierName: SHIPPING_CARRIER_LABELS[doc.label.carrier],
+    trackingNumber: doc.label.trackingNumber,
+    ...(doc.label.trackUrl ? { trackUrl: doc.label.trackUrl } : {}),
+    ...(doc.tracking ? { status: doc.tracking.status } : {}),
+    ...(doc.shippedAt ? { shippedAt: doc.shippedAt } : {}),
+    ...(doc.deliveredAt ? { deliveredAt: doc.deliveredAt } : {}),
+  };
+};
+
+const toCustomerOrder = (doc: OrderLean): CustomerOrder => {
+  const shipment = toCustomerShipment(doc);
+  return { id: String(doc._id), ...toPublicOrder(doc), ...(shipment ? { shipment } : {}) };
+};
 
 const ORDER_NUMBER_ATTEMPTS = 3;
 
@@ -419,7 +465,14 @@ const getMyOrder = async (userId: Types.ObjectId, id: string): Promise<CustomerO
   return toCustomerOrder(doc);
 };
 
-export type { CreateOrderInput, OrderContext, CreatedOrder, PublicOrder, PublicOrderLine, OrderLean };
+export type {
+  CreateOrderInput,
+  OrderContext,
+  CreatedOrder,
+  PublicOrder,
+  PublicOrderLine,
+  OrderLean,
+};
 export {
   createOrder,
   toPublicOrder,

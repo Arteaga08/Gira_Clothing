@@ -92,6 +92,8 @@ interface Env {
   telegram: TelegramConfig | null;
   /** null outside production when no token is configured -> stub shipping adapter. */
   envia: EnviaConfig | null;
+  /** Dev/test only: lets the stub shipping adapter accept signed webhooks. Forbidden in production. */
+  stubShippingWebhookSecret: string | null;
 }
 
 const requireVar = (source: NodeJS.ProcessEnv, key: string, errors: string[]): string => {
@@ -133,7 +135,9 @@ const loadEnv = (source: NodeJS.ProcessEnv = process.env): Readonly<Env> => {
 
   const nodeEnvRaw = source.NODE_ENV?.trim();
   if (!nodeEnvRaw || !NODE_ENVS.includes(nodeEnvRaw as NodeEnv)) {
-    errors.push(`NODE_ENV debe ser uno de: ${NODE_ENVS.join(", ")} (recibido: ${nodeEnvRaw ?? "vacío"}).`);
+    errors.push(
+      `NODE_ENV debe ser uno de: ${NODE_ENVS.join(", ")} (recibido: ${nodeEnvRaw ?? "vacío"}).`,
+    );
   }
   const nodeEnv = nodeEnvRaw as NodeEnv;
 
@@ -323,10 +327,13 @@ const loadEnv = (source: NodeJS.ProcessEnv = process.env): Readonly<Env> => {
     };
   }
 
+  const stubShippingWebhookSecret = source.STUB_SHIPPING_WEBHOOK_SECRET?.trim() || null;
+  if (stubShippingWebhookSecret && nodeEnv === "production") {
+    errors.push("STUB_SHIPPING_WEBHOOK_SECRET no puede usarse en producción.");
+  }
+
   if (errors.length > 0) {
-    throw new Error(
-      `Configuración de entorno inválida:\n  - ${errors.join("\n  - ")}`,
-    );
+    throw new Error(`Configuración de entorno inválida:\n  - ${errors.join("\n  - ")}`);
   }
 
   return Object.freeze<Env>({
@@ -347,6 +354,7 @@ const loadEnv = (source: NodeJS.ProcessEnv = process.env): Readonly<Env> => {
     mail,
     telegram,
     envia,
+    stubShippingWebhookSecret,
   });
 };
 

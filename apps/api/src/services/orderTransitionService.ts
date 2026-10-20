@@ -37,14 +37,16 @@ interface TransitionInput {
   /** Extra fields written in the SAME atomic update (e.g. paidAt, payment.status). */
   set?: Record<string, unknown>;
   session?: ClientSession;
+  /** Extra conditions for the SAME atomic filter (e.g. the label is still ready). */
+  where?: Record<string, unknown>;
 }
 
 const applyOrderTransition = async (input: TransitionInput): Promise<OrderDocument | null> => {
-  const { orderId, from, to, actor, reason, set, session } = input;
+  const { orderId, from, to, actor, reason, set, session, where } = input;
   assertTransition(from, to);
 
   return Order.findOneAndUpdate(
-    { _id: orderId, status: from },
+    { ...where, _id: orderId, status: from },
     {
       $set: { ...set, status: to },
       // Same atomic update as the status change, so no writer can skip it.

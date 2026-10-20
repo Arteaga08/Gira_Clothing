@@ -28,7 +28,8 @@ interface LimiterOptions {
   skipSuccessfulRequests?: boolean;
 }
 
-const isRateLimitEnabled = (): boolean => parseBooleanFlag(process.env.RATE_LIMIT_ENABLED, true) !== false;
+const isRateLimitEnabled = (): boolean =>
+  parseBooleanFlag(process.env.RATE_LIMIT_ENABLED, true) !== false;
 
 const stores: MemoryStore[] = [];
 
@@ -181,6 +182,14 @@ const webhookLimiter = createLimiter({
   message: "Demasiadas solicitudes.",
 });
 
+// Envía's webhook has its own bucket so a burst of tracking events can never
+// starve (or be starved by) the payment webhook. Signature verification is the real barrier.
+const enviaWebhookLimiter = createLimiter({
+  windowMs: FIFTEEN_MIN,
+  limit: 1000,
+  message: "Demasiadas solicitudes.",
+});
+
 // Each quote fans out to one call per carrier at the provider: cheaper than
 // checkout, tighter than the catalog.
 const shippingQuoteLimiter = createLimiter({
@@ -195,6 +204,7 @@ export {
   resetRateLimitStores,
   globalLimiter,
   webhookLimiter,
+  enviaWebhookLimiter,
   loginIpLimiter,
   loginLimiter,
   twoFactorLimiter,

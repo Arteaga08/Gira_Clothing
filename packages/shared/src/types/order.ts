@@ -4,7 +4,9 @@ import type { OrderPriority } from "../enums/orderPriority.js";
 import type { OrderStatusGroup } from "../constants/orderStatusGroups.js";
 import type { AuditAction } from "../enums/auditAction.js";
 import type {
+  CustomerShipment,
   OrderLabelAdmin,
+  OrderTrackingAdmin,
   OrderShippingSelection,
   PublicShippingSelection,
   ShippingParcel,
@@ -68,6 +70,8 @@ interface PublicOrder {
 /** What the OWNING customer receives ("mis órdenes"): the public view plus the internal id. */
 interface CustomerOrder extends PublicOrder {
   id: string;
+  /** Present only once the order is shipped or delivered. */
+  shipment?: CustomerShipment;
 }
 
 interface StatusHistoryEntry {
@@ -105,6 +109,9 @@ interface AdminOrder extends CustomerOrder {
   shippingSelection?: OrderShippingSelection;
   parcel?: ShippingParcel;
   label?: OrderLabelAdmin;
+  tracking?: OrderTrackingAdmin;
+  shippedAt?: Date;
+  deliveredAt?: Date;
   updatedAt: Date;
 }
 

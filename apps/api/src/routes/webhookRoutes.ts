@@ -1,6 +1,6 @@
 import { Router, raw } from "express";
-import { webhookLimiter } from "../middlewares/rateLimit.js";
-import { stripeWebhook } from "../controllers/webhookController.js";
+import { webhookLimiter, enviaWebhookLimiter } from "../middlewares/rateLimit.js";
+import { stripeWebhook, enviaWebhook } from "../controllers/webhookController.js";
 
 /**
  * NOT under routes/v1/: this router mounts before the middleware chain in
@@ -9,6 +9,17 @@ import { stripeWebhook } from "../controllers/webhookController.js";
  */
 const webhookRouter = Router();
 
-webhookRouter.post("/stripe", webhookLimiter, raw({ type: "application/json", limit: "1mb" }), stripeWebhook);
+webhookRouter.post(
+  "/stripe",
+  webhookLimiter,
+  raw({ type: "application/json", limit: "1mb" }),
+  stripeWebhook,
+);
+webhookRouter.post(
+  "/envia",
+  enviaWebhookLimiter,
+  raw({ type: "application/json", limit: "256kb" }),
+  enviaWebhook,
+);
 
 export { webhookRouter };

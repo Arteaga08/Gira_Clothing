@@ -41,6 +41,11 @@ describe("rate limiters públicos", () => {
     expect(Number(res.headers["ratelimit-limit"])).toBe(1000);
   });
 
+  it("el webhook de Envía tiene su propio limiter", async () => {
+    const res = await request(app).post("/api/webhooks/envia").send("{}");
+    expect(Number(res.headers["ratelimit-limit"])).toBe(1000);
+  });
+
   it("con RATE_LIMIT_ENABLED=false no se aplica ningún límite", async () => {
     process.env.RATE_LIMIT_ENABLED = "false";
     const res = await request(app).get("/api/v1/catalog/products");
@@ -113,7 +118,8 @@ describe("acciones de cuenta: límite por correo (3/15 min) además de IP", () =
   it.each(["resend-verification", "forgot-password"])(
     "%s: el 4º intento con el mismo correo da 429, también con mayúsculas",
     async (path) => {
-      for (let i = 0; i < 3; i += 1) expect((await emailOnly(path, "ana@example.com")).status).toBe(200);
+      for (let i = 0; i < 3; i += 1)
+        expect((await emailOnly(path, "ana@example.com")).status).toBe(200);
       expect((await emailOnly(path, "ANA@Example.com")).status).toBe(429);
       expect((await emailOnly(path, "otra@example.com")).status).toBe(200);
     },
@@ -123,7 +129,8 @@ describe("acciones de cuenta: límite por correo (3/15 min) además de IP", () =
     const token = "a".repeat(64);
     for (let i = 0; i < 20; i += 1) {
       const path = ["verify-email", "reset-password"][i % 2]!;
-      const body = path === "verify-email" ? { token, password: "x" } : { token, password: "Segura1234" };
+      const body =
+        path === "verify-email" ? { token, password: "x" } : { token, password: "Segura1234" };
       await request(app).post(`/api/v1/auth/${path}`).set("Origin", ORIGIN).send(body);
     }
     expect((await emailOnly("forgot-password", "nueva@example.com")).status).toBe(429);

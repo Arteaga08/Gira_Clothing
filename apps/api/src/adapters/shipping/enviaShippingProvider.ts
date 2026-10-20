@@ -1,4 +1,4 @@
-import { ShippingCarrier, ShippingProviderName } from "@gira/shared";
+import { ShipmentTrackingStatus, ShippingCarrier, ShippingProviderName } from "@gira/shared";
 import type { ShippingOrigin } from "@gira/shared";
 import type { EnviaConfig } from "../../config/env.js";
 import {
@@ -11,7 +11,9 @@ import {
   type RatesInput,
   type ShippingDestination,
   type ShippingProvider,
+  type TrackingEvent,
 } from "./types.js";
+import { openEnvelope } from "./webhookEnvelope.js";
 
 /**
  * Envía (envia.com) adapter. The ONLY file that knows its endpoints, field names
@@ -84,6 +86,120 @@ const toPackage = (input: RatesInput): Record<string, unknown> => ({
     height: input.parcel.heightCm,
   },
 });
+
+const TRACKING_BATCH = 50;
+const TRACK_TIMEOUT_MS = 15_000;
+
+/**
+ * Envía status ids (docs.envia.com, "Track Shipments": 1–28) and the lower-cased
+ * names its webhook/tracking use. One table: ids and names map to the same value.
+ * Unknown or non-actionable statuses (canceled, information, N/A) map to null and are dropped.
+ */
+const STATUS_BY_ID: Record<number, ShipmentTrackingStatus> = {
+  1: ShipmentTrackingStatus.LABEL_CREATED, // Created
+  2: ShipmentTrackingStatus.IN_TRANSIT, // Shipped
+  3: ShipmentTrackingStatus.DELIVERED,
+  7: ShipmentTrackingStatus.LABEL_CREATED, // Pending
+  8: ShipmentTrackingStatus.PICKED_UP,
+  9: ShipmentTrackingStatus.OUT_FOR_DELIVERY,
+  10: ShipmentTrackingStatus.LOST,
+  11: ShipmentTrackingStatus.RETURNED,
+  12: ShipmentTrackingStatus.EXCEPTION, // Pickup at office
+  13: ShipmentTrackingStatus.RETURNED, // Delivered at origin
+  14: ShipmentTrackingStatus.EXCEPTION, // Damaged
+  15: ShipmentTrackingStatus.IN_TRANSIT, // Redirected
+  16: ShipmentTrackingStatus.LABEL_CREATED, // Out for pickup
+  17: ShipmentTrackingStatus.EXCEPTION,
+  18: ShipmentTrackingStatus.EXCEPTION,
+  19: ShipmentTrackingStatus.EXCEPTION,
+  20: ShipmentTrackingStatus.EXCEPTION, // Return problem
+  21: ShipmentTrackingStatus.EXCEPTION, // Address error
+  22: ShipmentTrackingStatus.EXCEPTION, // Undeliverable
+  23: ShipmentTrackingStatus.EXCEPTION, // Delayed
+  24: ShipmentTrackingStatus.EXCEPTION, // Rejected
+  25: ShipmentTrackingStatus.LABEL_CREATED, // 1 pickup attempt
+  26: ShipmentTrackingStatus.IN_TRANSIT, // Partially shipped
+  27: ShipmentTrackingStatus.EXCEPTION, // Partially delivered
+  28: ShipmentTrackingStatus.EXCEPTION, // Delivery attempt
+};
+
+const STATUS_BY_NAME: Record<string, ShipmentTrackingStatus> = {
+  created: ShipmentTrackingStatus.LABEL_CREATED,
+  pending: ShipmentTrackingStatus.LABEL_CREATED,
+  "label created": ShipmentTrackingStatus.LABEL_CREATED,
+  "out for pickup": ShipmentTrackingStatus.LABEL_CREATED,
+  "picked up": ShipmentTrackingStatus.PICKED_UP,
+  picked_up: ShipmentTrackingStatus.PICKED_UP,
+  pickedup: ShipmentTrackingStatus.PICKED_UP,
+  shipped: ShipmentTrackingStatus.IN_TRANSIT,
+  "in transit": ShipmentTrackingStatus.IN_TRANSIT,
+  in_transit: ShipmentTrackingStatus.IN_TRANSIT,
+  intransit: ShipmentTrackingStatus.IN_TRANSIT,
+  redirected: ShipmentTrackingStatus.IN_TRANSIT,
+  "out for delivery": ShipmentTrackingStatus.OUT_FOR_DELIVERY,
+  out_for_delivery: ShipmentTrackingStatus.OUT_FOR_DELIVERY,
+  delivered: ShipmentTrackingStatus.DELIVERED,
+  lost: ShipmentTrackingStatus.LOST,
+  returned: ShipmentTrackingStatus.RETURNED,
+  "delivered at origin": ShipmentTrackingStatus.RETURNED,
+  damaged: ShipmentTrackingStatus.EXCEPTION,
+  delayed: ShipmentTrackingStatus.EXCEPTION,
+  rejected: ShipmentTrackingStatus.EXCEPTION,
+  undeliverable: ShipmentTrackingStatus.EXCEPTION,
+  "address error": ShipmentTrackingStatus.EXCEPTION,
+  "return problem": ShipmentTrackingStatus.EXCEPTION,
+  "pickup at office": ShipmentTrackingStatus.EXCEPTION,
+  "delivery attempt": ShipmentTrackingStatus.EXCEPTION,
+  "1 delivery attempt": ShipmentTrackingStatus.EXCEPTION,
+  "2 delivery attempts": ShipmentTrackingStatus.EXCEPTION,
+  "3 delivery attempts": ShipmentTrackingStatus.EXCEPTION,
+  exception: ShipmentTrackingStatus.EXCEPTION,
+};
+
+/** Maps a provider status (id or text) to ours; null = not actionable. */
+const mapEnviaStatus = (raw: unknown): ShipmentTrackingStatus | null => {
+  if (typeof raw === "number") return STATUS_BY_ID[raw] ?? null;
+  if (typeof raw !== "string") return null;
+  const text = raw.trim().toLowerCase();
+  if (/^\d+$/.test(text)) return STATUS_BY_ID[Number(text)] ?? null;
+  return STATUS_BY_NAME[text] ?? null;
+};
+
+const parseDate = (value: unknown): Date | null => {
+  const date =
+    typeof value === "string" || typeof value === "number" ? new Date(value) : new Date(NaN);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+/**
+ * `requireDate` (polling): an undated entry is dropped, because a fallback to "now"
+ * would give it a new identity on every poll. Webhook deliveries are one-off, so
+ * they may fall back to the receipt time.
+ */
+const toTrackingEvent = (
+  entry: Record<string, unknown>,
+  requireDate = false,
+): TrackingEvent | null => {
+  const trackingNumber = entry.trackingNumber ?? entry.tracking_number;
+  const rawStatus = entry.status;
+  const status = mapEnviaStatus(rawStatus);
+  if (typeof trackingNumber !== "string" && typeof trackingNumber !== "number") return null;
+  if (!trackingNumber || !status) return null;
+  const rawText =
+    typeof rawStatus === "string" || typeof rawStatus === "number" ? String(rawStatus) : "";
+  const description = entry.statusDescription ?? entry.status_description;
+  const location = entry.location;
+  const occurredAt = parseDate(entry.date ?? entry.eventDate ?? entry.updatedAt);
+  if (!occurredAt && requireDate) return null;
+  return {
+    trackingNumber: String(trackingNumber),
+    status,
+    rawStatus: rawText,
+    ...(typeof description === "string" && description ? { description } : {}),
+    ...(typeof location === "string" && location ? { location } : {}),
+    occurredAt: occurredAt ?? new Date(),
+  };
+};
 
 const createEnviaShippingProvider = (
   config: EnviaConfig,
@@ -177,7 +293,8 @@ const createEnviaShippingProvider = (
         if (!KNOWN_CARRIERS.has(carrier)) continue;
         const cost = toCentavos(entry.totalPrice);
         if (!Number.isFinite(cost) || cost <= 0) continue;
-        const days = (entry.deliveryDate as { dateDifference?: number } | undefined)?.dateDifference;
+        const days = (entry.deliveryDate as { dateDifference?: number } | undefined)
+          ?.dateDifference;
         rates.push({
           carrier: carrier as ShippingCarrier,
           service: String(entry.service),
@@ -189,7 +306,9 @@ const createEnviaShippingProvider = (
     }
 
     if (rates.length === 0) {
-      const failures = perCarrier.filter((o): o is PromiseRejectedResult => o.status === "rejected");
+      const failures = perCarrier.filter(
+        (o): o is PromiseRejectedResult => o.status === "rejected",
+      );
       // Every carrier failed: tell WHY (bad address vs provider down). Otherwise just "no rates".
       if (failures.length === perCarrier.length && failures.length > 0) {
         const allRejected = failures.every(
@@ -221,19 +340,30 @@ const createEnviaShippingProvider = (
       );
     } catch {
       // Timeout / network: the purchase may have gone through. No idempotency key exists.
-      throw new ShippingProviderError("unknown_outcome", "No se pudo confirmar si Envía generó la guía.");
+      throw new ShippingProviderError(
+        "unknown_outcome",
+        "No se pudo confirmar si Envía generó la guía.",
+      );
     }
 
     if (res.status >= 500) {
-      throw new ShippingProviderError("unknown_outcome", "Envía respondió con un error al generar la guía.");
+      throw new ShippingProviderError(
+        "unknown_outcome",
+        "Envía respondió con un error al generar la guía.",
+      );
     }
     if (res.status === 429) {
-      throw new ShippingProviderError("unavailable", "Envía pidió esperar antes de generar la guía.");
+      throw new ShippingProviderError(
+        "unavailable",
+        "Envía pidió esperar antes de generar la guía.",
+      );
     }
     const unwrapped = unwrap(res);
     if (unwrapped.failed) {
       const message =
-        res.status === 402 ? "Saldo insuficiente en Envía para generar la guía." : unwrapped.message;
+        res.status === 402
+          ? "Saldo insuficiente en Envía para generar la guía."
+          : unwrapped.message;
       throw new ShippingProviderError("rejected", message);
     }
 
@@ -241,7 +371,10 @@ const createEnviaShippingProvider = (
       ? (unwrapped.data[0] as Record<string, unknown> | undefined)
       : undefined;
     if (!entry?.trackingNumber || !entry.shipmentId || !entry.label) {
-      throw new ShippingProviderError("unknown_outcome", "Envía respondió sin los datos de la guía.");
+      throw new ShippingProviderError(
+        "unknown_outcome",
+        "Envía respondió sin los datos de la guía.",
+      );
     }
     const result: LabelResult = {
       providerShipmentId: String(entry.shipmentId),
@@ -267,13 +400,89 @@ const createEnviaShippingProvider = (
       throw new ShippingProviderError("unavailable", "Envía no respondió al cancelar la guía.");
     }
     if (res.status >= 500 || res.status === 429) {
-      throw new ShippingProviderError("unavailable", "Envía no pudo procesar la cancelación ahora.");
+      throw new ShippingProviderError(
+        "unavailable",
+        "Envía no pudo procesar la cancelación ahora.",
+      );
     }
     const unwrapped = unwrap(res);
     if (unwrapped.failed) throw new ShippingProviderError("rejected", unwrapped.message);
   };
 
-  return { name: ShippingProviderName.ENVIA, getRates, createLabel, cancelLabel };
+  /**
+   * The response shape of /ship/generaltrack/ is NOT documented: this accepts the
+   * common envelopes defensively (data[] or data.shipments[]; entries may carry
+   * a history[] of events). Confirm against the sandbox (docs/SETUP-REQUERIDO.md).
+   */
+  const getTracking: ShippingProvider["getTracking"] = async (trackingNumbers, options) => {
+    const events: TrackingEvent[] = [];
+    for (let i = 0; i < trackingNumbers.length; i += TRACKING_BATCH) {
+      const batch = trackingNumbers.slice(i, i + TRACKING_BATCH);
+      let res: RawResponse;
+      try {
+        res = await post(
+          "/ship/generaltrack/",
+          { trackingNumbers: batch },
+          TRACK_TIMEOUT_MS,
+          options,
+        );
+      } catch {
+        throw new ShippingProviderError(
+          "unavailable",
+          "Envía no respondió al consultar el rastreo.",
+        );
+      }
+      const unwrapped = unwrap(res);
+      if (unwrapped.failed) {
+        throw new ShippingProviderError("unavailable", unwrapped.message);
+      }
+      const data = unwrapped.data;
+      const list = Array.isArray(data)
+        ? data
+        : Array.isArray((data as { shipments?: unknown } | undefined)?.shipments)
+          ? (data as { shipments: unknown[] }).shipments
+          : [];
+      for (const raw of list as Array<Record<string, unknown>>) {
+        const history = Array.isArray(raw.history)
+          ? (raw.history as Array<Record<string, unknown>>)
+          : [];
+        const carrierTracking = raw.trackingNumber ?? raw.tracking_number;
+        const candidates =
+          history.length > 0
+            ? history.map((h) => ({ trackingNumber: carrierTracking, ...h }))
+            : [raw];
+        for (const candidate of candidates) {
+          const event = toTrackingEvent(candidate, true);
+          if (event) events.push(event);
+        }
+      }
+    }
+    return events;
+  };
+
+  const verifyAndParseWebhook: ShippingProvider["verifyAndParseWebhook"] = (rawBody, headers) => {
+    if (!config.webhookSecret) throw new Error("ENVIA_WEBHOOK_SECRET is not configured.");
+    const { deliveryId, eventType, body } = openEnvelope(
+      rawBody,
+      headers,
+      config.webhookSecret,
+      config.webhookToleranceMs,
+    );
+    if (eventType !== "tracking.simple") return { deliveryId, eventType, events: [] };
+    const data = (body.data ?? {}) as Record<string, unknown>;
+    const event = toTrackingEvent({ ...data, date: body.created_at });
+    return { deliveryId, eventType, events: event ? [event] : [] };
+  };
+
+  return {
+    name: ShippingProviderName.ENVIA,
+    acceptsWebhooks: config.webhookSecret !== null,
+    getRates,
+    createLabel,
+    cancelLabel,
+    getTracking,
+    verifyAndParseWebhook,
+  };
 };
 
-export { createEnviaShippingProvider };
+export { createEnviaShippingProvider, mapEnviaStatus };

@@ -49,7 +49,9 @@ describe("loadEnv", () => {
     const source = validSource();
     delete source.MONGODB_URI;
     delete source.JWT_SECRET;
-    expect(() => loadEnv(source)).toThrow(/MONGODB_URI[\s\S]*JWT_SECRET|JWT_SECRET[\s\S]*MONGODB_URI/);
+    expect(() => loadEnv(source)).toThrow(
+      /MONGODB_URI[\s\S]*JWT_SECRET|JWT_SECRET[\s\S]*MONGODB_URI/,
+    );
   });
 
   it("en producción exige CLIENT_URL con https", () => {
@@ -170,12 +172,15 @@ describe("loadEnv", () => {
       expect(() => loadEnv(source)).toThrow(/MAIL_FROM/);
     });
 
-    it("acepta un MAIL_FROM en formato \"Nombre <correo@dominio>\"", () => {
+    it('acepta un MAIL_FROM en formato "Nombre <correo@dominio>"', () => {
       const source = validSource();
       source.RESEND_API_KEY = "re_test_x";
       source.MAIL_FROM = "Gira Clothing <hola@giraclothing.mx>";
       const env = loadEnv(source);
-      expect(env.mail).toEqual({ apiKey: "re_test_x", from: "Gira Clothing <hola@giraclothing.mx>" });
+      expect(env.mail).toEqual({
+        apiKey: "re_test_x",
+        from: "Gira Clothing <hola@giraclothing.mx>",
+      });
     });
 
     it("acepta un MAIL_FROM en formato correo simple", () => {
@@ -212,6 +217,14 @@ describe("loadEnv", () => {
       source.TELEGRAM_BOT_TOKEN = "123:abc";
       source.TELEGRAM_CHAT_ID = "-100";
       expect(loadEnv(source).telegram).toEqual({ botToken: "123:abc", chatId: "-100" });
+    });
+
+    it("en producción rechaza STUB_SHIPPING_WEBHOOK_SECRET", () => {
+      const source = productionSource();
+      source.TELEGRAM_BOT_TOKEN = "123:abc";
+      source.TELEGRAM_CHAT_ID = "-100";
+      source.STUB_SHIPPING_WEBHOOK_SECRET = "x";
+      expect(() => loadEnv(source)).toThrow(/STUB_SHIPPING_WEBHOOK_SECRET/);
     });
 
     it("fuera de producción deja telegram en null cuando no hay credenciales", () => {

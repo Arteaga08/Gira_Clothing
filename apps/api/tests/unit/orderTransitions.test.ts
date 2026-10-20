@@ -87,7 +87,10 @@ describe("matriz completa estado×estado", () => {
       });
       it(`${from} -> ${to}: assertTransition ${allowed ? "no lanza" : "lanza 409"}`, () => {
         if (allowed) expect(() => assertTransition(from, to)).not.toThrow();
-        else expect(() => assertTransition(from, to)).toThrow(expect.objectContaining({ statusCode: 409 }));
+        else
+          expect(() => assertTransition(from, to)).toThrow(
+            expect.objectContaining({ statusCode: 409 }),
+          );
       });
       it(`${from} -> ${to}: assertAdminTransition`, () => {
         if (!allowed) {
@@ -151,7 +154,10 @@ describe("assertAdminTransition", () => {
       [OrderStatus.SHIPPED, OrderStatus.DELIVERED],
     ] as const) {
       expect(() => assertAdminTransition(from, to)).toThrow(
-        expect.objectContaining({ statusCode: 403, message: expect.stringContaining("envío") }),
+        expect.objectContaining({
+          statusCode: 403,
+          message: expect.stringContaining("Marcar enviado"),
+        }),
       );
     }
   });

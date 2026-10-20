@@ -1,6 +1,6 @@
 "use client";
 
-import { OrderStatus, ShipmentStatus } from "@gira/shared";
+import { OrderStatus } from "@gira/shared";
 import {
   BellIcon,
   CheckCircleIcon,
@@ -44,7 +44,15 @@ const SURFACE_SWATCHES = [
   { token: "--color-accent", className: "bg-accent", label: "accent" },
 ];
 
-const TEXT_SCALE = ["text-xs", "text-sm", "text-base", "text-lg", "text-xl", "text-2xl", "text-3xl"] as const;
+const TEXT_SCALE = [
+  "text-xs",
+  "text-sm",
+  "text-base",
+  "text-lg",
+  "text-xl",
+  "text-2xl",
+  "text-3xl",
+] as const;
 
 const TABS_DEMO = [
   { id: "todos", label: "Todos", count: 12 },
@@ -76,7 +84,9 @@ const KitContent = () => {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {SURFACE_SWATCHES.map((swatch) => (
             <div key={swatch.token} className="flex flex-col gap-2">
-              <div className={`h-16 rounded-nb border-2 border-ink shadow-nb-sm ${swatch.className}`} />
+              <div
+                className={`h-16 rounded-nb border-2 border-ink shadow-nb-sm ${swatch.className}`}
+              />
               <p className="font-mono text-xs text-text-secondary">{swatch.label}</p>
             </div>
           ))}
@@ -98,7 +108,9 @@ const KitContent = () => {
         <div className="flex flex-col gap-4">
           {(["primary", "secondary", "ghost", "danger"] as const).map((variant) => (
             <div key={variant} className="flex flex-wrap items-center gap-3">
-              <span className="w-20 shrink-0 text-xs font-bold uppercase text-text-secondary">{variant}</span>
+              <span className="w-20 shrink-0 text-xs font-bold uppercase text-text-secondary">
+                {variant}
+              </span>
               <Button variant={variant} size="md">
                 Guardar
               </Button>
@@ -108,11 +120,15 @@ const KitContent = () => {
             </div>
           ))}
           <div className="flex flex-wrap items-center gap-3">
-            <span className="w-20 shrink-0 text-xs font-bold uppercase text-text-secondary">disabled</span>
+            <span className="w-20 shrink-0 text-xs font-bold uppercase text-text-secondary">
+              disabled
+            </span>
             <Button disabled>Guardar</Button>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <span className="w-20 shrink-0 text-xs font-bold uppercase text-text-secondary">loading</span>
+            <span className="w-20 shrink-0 text-xs font-bold uppercase text-text-secondary">
+              loading
+            </span>
             <Button loading={loadingDemo} onClick={() => setLoadingDemo(true)}>
               Guardar
             </Button>
@@ -121,7 +137,9 @@ const KitContent = () => {
             </Button>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <span className="w-20 shrink-0 text-xs font-bold uppercase text-text-secondary">icon</span>
+            <span className="w-20 shrink-0 text-xs font-bold uppercase text-text-secondary">
+              icon
+            </span>
             <IconButton icon={TrashIcon} label="Eliminar" />
             <IconButton icon={BellIcon} label="Notificaciones" />
           </div>
@@ -141,16 +159,11 @@ const KitContent = () => {
         </div>
       </Panel>
 
-      <Panel title="Chips de estado" hint="Los 9 de pedido + los 5 de envío, con su label real">
+      <Panel title="Chips de estado" hint="Los 9 de pedido, con su label real">
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap gap-2">
             {Object.values(OrderStatus).map((status) => (
               <StatusChip key={status} status={status} />
-            ))}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {Object.values(ShipmentStatus).map((status) => (
-              <StatusChip key={status} shipmentStatus={status} />
             ))}
           </div>
         </div>
@@ -211,7 +224,10 @@ const KitContent = () => {
         <p className="mt-3 text-sm text-text-secondary">Pestaña activa: {activeTab}</p>
       </Panel>
 
-      <Panel title="Segmented" hint="RangeSelector, GranularitySelector, toggle de serie, búsqueda del TopBar">
+      <Panel
+        title="Segmented"
+        hint="RangeSelector, GranularitySelector, toggle de serie, búsqueda del TopBar"
+      >
         <div className="flex gap-2">
           <Segmented selected onClick={() => {}}>
             7 días
@@ -236,8 +252,18 @@ const KitContent = () => {
       </Panel>
 
       <Panel title="ListRow" hint="Más vendidos, Top estampas, Stock bajo" flush>
-        <ListRow rank={1} title="Playera Cactus" sub="GIR-PC-001" right={<span className="font-mono text-sm font-bold">128</span>} />
-        <ListRow rank={2} title="Sudadera Ruta" sub="GIR-SR-004" right={<Badge variant="warn">8</Badge>} />
+        <ListRow
+          rank={1}
+          title="Playera Cactus"
+          sub="GIR-PC-001"
+          right={<span className="font-mono text-sm font-bold">128</span>}
+        />
+        <ListRow
+          rank={2}
+          title="Sudadera Ruta"
+          sub="GIR-SR-004"
+          right={<Badge variant="warn">8</Badge>}
+        />
       </Panel>
 
       <Panel title="MetricTile" hint="AttentionBand, salud de notificaciones">
