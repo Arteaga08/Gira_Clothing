@@ -21,6 +21,8 @@ interface ProductAttrs {
   description?: string;
   /** Base price in MXN centavos (integer). Money in floats drifts, and M3 snapshots this value. */
   basePrice: number;
+  /** Packed weight of ONE unit, grams. Drives the shipping parcel; every size weighs about the same. */
+  weightGrams: number;
   measurements: Measurements;
   materials: string[];
   isActive: boolean;
@@ -49,6 +51,13 @@ const productSchema = new Schema<ProductAttrs, ProductModel>(
       required: true,
       min: 0,
       validate: { validator: Number.isInteger, message: "El precio base debe ser un entero." },
+    },
+    weightGrams: {
+      type: Number,
+      required: true,
+      min: 1,
+      max: 20_000,
+      validate: { validator: Number.isInteger, message: "El peso debe ser un entero en gramos." },
     },
     measurements: { type: measurementsSchema, default: () => ({}) },
     materials: { type: [String], default: [] },

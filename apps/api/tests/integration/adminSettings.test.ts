@@ -45,7 +45,12 @@ describe("Admin · Settings", () => {
       const res = await request(app).get("/api/v1/admin/settings").set("Cookie", adminCookie);
       expect(res.status).toBe(200);
       expect(res.body.data.settings).toMatchObject({
-        shipping: { nationalFee: 15000, internationalFee: 60000, freeShippingThreshold: null },
+        shipping: {
+          origin: null,
+          freeShippingThreshold: null,
+          quoteTtlMinutes: 30,
+          parcel: { tareGrams: 150, boxLengthCm: 30, boxWidthCm: 25, boxHeightCm: 5, extraUnitHeightCm: 3, maxWeightGrams: 20000 },
+        },
         currency: { mxnPerUsdCents: 1800, rounding: "up_to_50_cents", supported: ["MXN", "USD"] },
         reservation: { ttlMinutes: 30, cartInactivityDays: 30 },
       });
@@ -60,14 +65,14 @@ describe("Admin · Settings", () => {
   });
 
   describe("envío", () => {
-    it("PATCH nationalFee persiste", async () => {
+    it("PATCH quoteTtlMinutes persiste", async () => {
       const res = await request(app)
         .patch("/api/v1/admin/settings/shipping")
         .set("Origin", ORIGIN)
         .set("Cookie", adminCookie)
-        .send({ nationalFee: 12000 });
+        .send({ quoteTtlMinutes: 45 });
       expect(res.status).toBe(200);
-      expect(res.body.data.settings.shipping.nationalFee).toBe(12000);
+      expect(res.body.data.settings.shipping.quoteTtlMinutes).toBe(45);
     });
 
     it("freeShippingThreshold: null desactiva el umbral", async () => {
@@ -86,22 +91,83 @@ describe("Admin · Settings", () => {
       expect(res.body.data.settings.shipping.freeShippingThreshold).toBeNull();
     });
 
-    it("nationalFee negativo responde 400", async () => {
+    it("quoteTtlMinutes fuera de rango responde 400", async () => {
       const res = await request(app)
         .patch("/api/v1/admin/settings/shipping")
         .set("Origin", ORIGIN)
         .set("Cookie", adminCookie)
-        .send({ nationalFee: -1 });
+        .send({ quoteTtlMinutes: 1 });
       expect(res.status).toBe(400);
     });
 
-    it("nationalFee no entero responde 400", async () => {
+    it("quoteTtlMinutes no entero responde 400", async () => {
       const res = await request(app)
         .patch("/api/v1/admin/settings/shipping")
         .set("Origin", ORIGIN)
         .set("Cookie", adminCookie)
-        .send({ nationalFee: 12.5 });
+        .send({ quoteTtlMinutes: 12.5 });
       expect(res.status).toBe(400);
+    });
+
+    it("guarda origen y paquete por sección, y rechaza estado/CP/teléfono inválidos", async () => {
+      const origin = {
+        name: "Gira Clothing",
+        phone: "5512345678",
+        email: "bodega@giraclothing.mx",
+        line1: "Av. Reforma 100",
+        district: "Juárez",
+        city: "Ciudad de México",
+        state: "CX",
+        postalCode: "06600",
+      };
+      const ok = await request(app)
+        .patch("/api/v1/admin/settings/shipping")
+        .set("Origin", ORIGIN)
+        .set("Cookie", adminCookie)
+        .send({
+          origin,
+          freeShippingThreshold: 150000,
+          quoteTtlMinutes: 45,
+          parcel: { tareGrams: 200, boxHeightCm: 6 },
+        });
+      expect(ok.status).toBe(200);
+      const shipping = ok.body.data.settings.shipping;
+      expect(shipping.origin.postalCode).toBe("06600");
+      expect(shipping.parcel.tareGrams).toBe(200);
+      expect(shipping.parcel.boxHeightCm).toBe(6);
+      expect(shipping.parcel.boxLengthCm).toBe(30);
+
+      for (const bad of [{ state: "ZZ" }, { postalCode: "123" }, { phone: "55" }]) {
+        const res = await request(app)
+          .patch("/api/v1/admin/settings/shipping")
+          .set("Origin", ORIGIN)
+          .set("Cookie", adminCookie)
+          .send({ origin: { ...origin, ...bad } });
+        expect(res.status).toBe(400);
+      }
+    });
+
+    it("un PATCH parcial no pisa el origen guardado", async () => {
+      const origin = {
+        name: "Gira Clothing",
+        phone: "5512345678",
+        line1: "Av. Reforma 100",
+        district: "Juárez",
+        city: "Ciudad de México",
+        state: "CX",
+        postalCode: "06600",
+      };
+      await request(app)
+        .patch("/api/v1/admin/settings/shipping")
+        .set("Origin", ORIGIN)
+        .set("Cookie", adminCookie)
+        .send({ origin });
+      const res = await request(app)
+        .patch("/api/v1/admin/settings/shipping")
+        .set("Origin", ORIGIN)
+        .set("Cookie", adminCookie)
+        .send({ quoteTtlMinutes: 20 });
+      expect(res.body.data.settings.shipping.origin.name).toBe("Gira Clothing");
     });
 
     it("descarta campos desconocidos (stripUnknown)", async () => {
@@ -109,7 +175,7 @@ describe("Admin · Settings", () => {
         .patch("/api/v1/admin/settings/shipping")
         .set("Origin", ORIGIN)
         .set("Cookie", adminCookie)
-        .send({ nationalFee: 11000, notAField: "x" });
+        .send({ quoteTtlMinutes: 40, notAField: "x" });
       expect(res.status).toBe(200);
       expect(res.body.data.settings.shipping.notAField).toBeUndefined();
     });
@@ -195,7 +261,7 @@ describe("Admin · Settings", () => {
         .patch("/api/v1/admin/settings/shipping")
         .set("Origin", ORIGIN)
         .set("Cookie", adminCookie)
-        .send({ nationalFee: 9999 });
+        .send({ quoteTtlMinutes: 99 });
 
       expect(res.body.data.settings.currency.mxnPerUsdCents).toBe(1900);
       expect(res.body.data.settings.reservation.ttlMinutes).toBe(20);
@@ -208,7 +274,7 @@ describe("Admin · Settings", () => {
         .patch("/api/v1/admin/settings/shipping")
         .set("Origin", ORIGIN)
         .set("Cookie", adminCookie)
-        .send({ nationalFee: 8000 });
+        .send({ quoteTtlMinutes: 60 });
       await request(app)
         .patch("/api/v1/admin/settings/currency")
         .set("Origin", ORIGIN)

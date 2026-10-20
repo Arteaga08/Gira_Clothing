@@ -7,6 +7,9 @@ import {
   PriceRounding,
   OrderStatus,
   PaymentStatus,
+  ShippingCarrier,
+  ShippingLabelStatus,
+  ShippingProviderName,
 } from "@gira/shared";
 import { imageSchema, type ImageAttrs } from "./schemas/image.js";
 
@@ -44,6 +47,8 @@ interface ShippingAddress {
   recipient: string;
   line1: string;
   line2?: string;
+  /** Colonia: carriers require it to route the parcel. */
+  district: string;
   city: string;
   state: string;
   postalCode: string;
@@ -54,7 +59,8 @@ interface ShippingAddress {
 interface OrderCustomer {
   email: string;
   name: string;
-  phone?: string;
+  /** Ten digits: the carrier contacts the recipient with it. */
+  phone: string;
 }
 
 interface OrderPayment {
@@ -69,6 +75,45 @@ interface OrderPayment {
   capturedAt?: Date;
   /** Brand + last4 ONLY (PCI SAQ-A): nothing here is enough to charge the card again. */
   card?: { brand: string; last4: string };
+}
+
+interface ShippingSelectionAttrs {
+  provider: ShippingProviderName;
+  carrier: ShippingCarrier;
+  service: string;
+  serviceName: string;
+  estimatedDays: number;
+  /** Charged to the customer, MXN centavos (0 when free). */
+  amountMxn: number;
+  /** Quoted to us by the provider, MXN centavos. */
+  costMxn: number;
+}
+
+interface ParcelAttrs {
+  weightGrams: number;
+  lengthCm: number;
+  widthCm: number;
+  heightCm: number;
+}
+
+interface OrderLabel {
+  status: ShippingLabelStatus;
+  attempts: number;
+  nextAttemptAt?: Date;
+  requestedAt?: Date;
+  providerShipmentId?: string;
+  trackingNumber?: string;
+  carrier?: ShippingCarrier;
+  labelUrl?: string;
+  trackUrl?: string;
+  /** What the provider charged us for the label, MXN centavos. */
+  costMxn?: number;
+  lastError?: string;
+  readyAt?: Date;
+  cancelAttempts: number;
+  cancelledAt?: Date;
+  /** Cancel the current label and buy a fresh one (address corrected). */
+  requeueAfterCancel?: boolean;
 }
 
 interface StatusHistoryEntry {
@@ -93,6 +138,9 @@ interface OrderAttrs {
   subtotal: number;
   discount: number;
   shippingCost: number;
+  /** The carrier option the customer picked, frozen at checkout. */
+  shippingSelection: ShippingSelectionAttrs;
+  parcel: ParcelAttrs;
   /** IVA included in `total` (a breakdown, not an addition). */
   tax: number;
   /** Rate used to derive `tax`, frozen so a later Settings change never rewrites a past order. */
@@ -135,6 +183,8 @@ interface OrderAttrs {
    * reconciliation job picks those up.
    */
   paidEffectsAt?: Date;
+  /** The purchased shipping label. Absent until the order is paid. */
+  label?: OrderLabel;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -163,6 +213,7 @@ const shippingAddressSchema = new Schema<ShippingAddress>(
     recipient: { type: String, required: true, trim: true },
     line1: { type: String, required: true, trim: true },
     line2: { type: String, trim: true },
+    district: { type: String, required: true, trim: true },
     city: { type: String, required: true, trim: true },
     state: { type: String, required: true, trim: true },
     postalCode: { type: String, required: true, trim: true },
@@ -175,7 +226,7 @@ const orderCustomerSchema = new Schema<OrderCustomer>(
   {
     email: { type: String, required: true, lowercase: true, trim: true },
     name: { type: String, required: true, trim: true },
-    phone: { type: String, trim: true },
+    phone: { type: String, required: true, trim: true },
   },
   { _id: false },
 );
@@ -198,6 +249,50 @@ const orderPaymentSchema = new Schema<OrderPayment>(
         { _id: false },
       ),
     },
+  },
+  { _id: false },
+);
+
+const shippingSelectionSchema = new Schema<ShippingSelectionAttrs>(
+  {
+    provider: { type: String, enum: Object.values(ShippingProviderName), required: true },
+    carrier: { type: String, enum: Object.values(ShippingCarrier), required: true },
+    service: { type: String, required: true },
+    serviceName: { type: String, required: true },
+    estimatedDays: { type: Number, required: true, min: 0 },
+    amountMxn: { type: Number, required: true, min: 0 },
+    costMxn: { type: Number, required: true, min: 0 },
+  },
+  { _id: false },
+);
+
+const parcelSchema = new Schema<ParcelAttrs>(
+  {
+    weightGrams: { type: Number, required: true, min: 1 },
+    lengthCm: { type: Number, required: true, min: 1 },
+    widthCm: { type: Number, required: true, min: 1 },
+    heightCm: { type: Number, required: true, min: 1 },
+  },
+  { _id: false },
+);
+
+const orderLabelSchema = new Schema<OrderLabel>(
+  {
+    status: { type: String, enum: Object.values(ShippingLabelStatus), required: true },
+    attempts: { type: Number, required: true, min: 0, default: 0 },
+    nextAttemptAt: { type: Date },
+    requestedAt: { type: Date },
+    providerShipmentId: { type: String },
+    trackingNumber: { type: String },
+    carrier: { type: String, enum: Object.values(ShippingCarrier) },
+    labelUrl: { type: String },
+    trackUrl: { type: String },
+    costMxn: { type: Number, min: 0 },
+    lastError: { type: String, maxlength: 500 },
+    readyAt: { type: Date },
+    cancelAttempts: { type: Number, required: true, min: 0, default: 0 },
+    cancelledAt: { type: Date },
+    requeueAfterCancel: { type: Boolean },
   },
   { _id: false },
 );
@@ -228,6 +323,8 @@ const orderSchema = new Schema<OrderAttrs, OrderModel>(
     subtotal: { type: Number, required: true, min: 0 },
     discount: { type: Number, required: true, min: 0, default: 0 },
     shippingCost: { type: Number, required: true, min: 0 },
+    shippingSelection: { type: shippingSelectionSchema, required: true },
+    parcel: { type: parcelSchema, required: true },
     tax: { type: Number, required: true, min: 0 },
     taxRateBps: { type: Number, required: true, min: 0, max: 10000 },
     total: { type: Number, required: true, min: 0 },
@@ -250,6 +347,7 @@ const orderSchema = new Schema<OrderAttrs, OrderModel>(
     fulfillmentStartedAt: { type: Date },
     fromCart: { type: Boolean },
     paidEffectsAt: { type: Date },
+    label: { type: orderLabelSchema },
   },
   { timestamps: true },
 );
@@ -281,6 +379,16 @@ orderSchema.index(
   { disputeStatus: 1 },
   { partialFilterExpression: { disputeStatus: { $type: "string" } } },
 );
+// Label job: due purchases and cancellations. Partial: most orders never have a pending label.
+orderSchema.index(
+  { "label.status": 1, "label.nextAttemptAt": 1 },
+  { partialFilterExpression: { "label.status": { $type: "string" } } },
+);
+// A tracking number belongs to exactly one order (also guards a duplicate purchase).
+orderSchema.index(
+  { "label.trackingNumber": 1 },
+  { unique: true, partialFilterExpression: { "label.trackingNumber": { $type: "string" } } },
+);
 // Timeseries aggregation scans the whole range by createdAt regardless of status.
 orderSchema.index({ createdAt: -1 });
 
@@ -294,5 +402,8 @@ export type {
   OrderCustomer,
   OrderPayment,
   StatusHistoryEntry,
+  ShippingSelectionAttrs,
+  ParcelAttrs,
+  OrderLabel,
 };
 export { Order };

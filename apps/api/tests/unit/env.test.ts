@@ -199,6 +199,7 @@ describe("loadEnv", () => {
       source.STRIPE_WEBHOOK_SECRET = "whsec_x";
       source.RESEND_API_KEY = "re_test_x";
       source.MAIL_FROM = "hola@giraclothing.mx";
+      source.ENVIA_API_TOKEN = "tok_live";
       return source;
     };
 
@@ -233,6 +234,82 @@ describe("loadEnv", () => {
   });
 });
 
+describe("loadEnv · Envía", () => {
+  const dev = (): NodeJS.ProcessEnv => ({
+    NODE_ENV: "development",
+    PORT: "4000",
+    MONGODB_URI: "mongodb://127.0.0.1:27017/gira",
+    JWT_SECRET: "x".repeat(48),
+    JWT_EXPIRES_IN: "7d",
+    ENCRYPTION_KEY: "y".repeat(48),
+    CLIENT_URL: "http://localhost:3000",
+    COOKIE_NAME: "gira_session",
+  });
+  const prod = (): NodeJS.ProcessEnv => ({
+    ...dev(),
+    NODE_ENV: "production",
+    CLIENT_URL: "https://gira.mx",
+    CLOUDINARY_CLOUD_NAME: "c",
+    CLOUDINARY_API_KEY: "k",
+    CLOUDINARY_API_SECRET: "s",
+    STRIPE_SECRET_KEY: "sk_test_x",
+    STRIPE_WEBHOOK_SECRET: "whsec_x",
+    RESEND_API_KEY: "re_x",
+    MAIL_FROM: "hola@giraclothing.mx",
+    TELEGRAM_BOT_TOKEN: "1:a",
+    TELEGRAM_CHAT_ID: "-1",
+  });
+
+  it("sin token fuera de producción usa el adapter stub (envia: null)", () => {
+    expect(loadEnv(dev()).envia).toBeNull();
+  });
+
+  it("con token arma la configuración con defaults sanos", () => {
+    const source = dev();
+    source.ENVIA_API_TOKEN = "tok_sandbox";
+    expect(loadEnv(source).envia).toEqual({
+      apiToken: "tok_sandbox",
+      environment: "sandbox",
+      carriers: ["estafeta", "fedex", "dhl", "paquetexpress", "redpack"],
+      webhookSecret: null,
+      webhookToleranceMs: 300_000,
+    });
+  });
+
+  it("acepta paqueterías, secreto y tolerancia propios", () => {
+    const source = dev();
+    source.ENVIA_API_TOKEN = "tok";
+    source.ENVIA_CARRIERS = "dhl, fedex";
+    source.ENVIA_WEBHOOK_SECRET = "whsec_x";
+    source.ENVIA_WEBHOOK_TOLERANCE_MS = "60000";
+    const env = loadEnv(source);
+    expect(env.envia?.carriers).toEqual(["dhl", "fedex"]);
+    expect(env.envia?.webhookSecret).toBe("whsec_x");
+    expect(env.envia?.webhookToleranceMs).toBe(60_000);
+  });
+
+  it("aborta con una paquetería fuera de la lista cerrada", () => {
+    const source = dev();
+    source.ENVIA_API_TOKEN = "tok";
+    source.ENVIA_CARRIERS = "dhl,paqueteria_falsa";
+    expect(() => loadEnv(source)).toThrow(/ENVIA_CARRIERS/);
+  });
+
+  it("aborta con un ambiente inválido", () => {
+    const source = dev();
+    source.ENVIA_API_TOKEN = "tok";
+    source.ENVIA_ENVIRONMENT = "staging";
+    expect(() => loadEnv(source)).toThrow(/ENVIA_ENVIRONMENT/);
+  });
+
+  it("en producción exige ENVIA_API_TOKEN y el ambiente por defecto es production", () => {
+    expect(() => loadEnv(prod())).toThrow(/ENVIA_API_TOKEN/);
+    const source = prod();
+    source.ENVIA_API_TOKEN = "tok_live";
+    expect(loadEnv(source).envia?.environment).toBe("production");
+  });
+});
+
 describe("loadEnv · flags de seguridad explícitos", () => {
   const base = (): NodeJS.ProcessEnv => ({
     NODE_ENV: "development",
@@ -257,6 +334,7 @@ describe("loadEnv · flags de seguridad explícitos", () => {
     MAIL_FROM: "hola@giraclothing.mx",
     TELEGRAM_BOT_TOKEN: "1:a",
     TELEGRAM_CHAT_ID: "-1",
+    ENVIA_API_TOKEN: "tok_live",
   });
 
   it("COOKIE_SECURE y RATE_LIMIT_ENABLED valen true cuando faltan, también en development", () => {

@@ -39,6 +39,8 @@ interface Product {
   category: string;
   description?: string;
   basePrice: number;
+  /** Packed weight of one unit, grams (drives the shipping parcel). */
+  weightGrams: number;
   measurements?: Measurements;
   materials?: string[];
   isActive: boolean;

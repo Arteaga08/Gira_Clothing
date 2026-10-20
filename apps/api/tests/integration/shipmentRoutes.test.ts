@@ -4,7 +4,7 @@ import { Currency, OrderStatus } from "@gira/shared";
 import { buildApp } from "../../src/app.js";
 import { Variant } from "../../src/models/Variant.js";
 import { Order, type OrderDocument } from "../../src/models/Order.js";
-import { createOrder } from "../../src/services/orderService.js";
+import { createOrderWithQuote as createOrder } from "../helpers/orders.js";
 import { applyPaymentSucceeded } from "../../src/services/orderPaymentService.js";
 import { changeOrderStatus } from "../../src/services/adminOrderService.js";
 import { loginAsAdmin, loginAsCustomer, ORIGIN } from "../helpers/auth.js";
@@ -27,12 +27,13 @@ const validImage = {
 const validShipping = {
   recipient: "Ana Pérez",
   line1: "Calle Falsa 123",
-  city: "CDMX",
-  state: "CDMX",
+  district: "Juárez",
+  city: "Ciudad de México",
+  state: "CX",
   postalCode: "01000",
   country: "MX",
 };
-const validCustomer = { email: "cliente@example.com", name: "Ana Pérez" };
+const validCustomer = { email: "cliente@example.com", name: "Ana Pérez", phone: "5512345678" };
 const uniqueKey = (): string => `key-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 const seedVariant = async (adminCookie: string, suffix: string, onHand = 10): Promise<string> => {
@@ -61,7 +62,7 @@ const seedVariant = async (adminCookie: string, suffix: string, onHand = 10): Pr
     .post(PRODUCTS_BASE)
     .set("Origin", ORIGIN)
     .set("Cookie", adminCookie)
-    .send({ name: `Producto ${suffix}`, category: categoryId, basePrice: 10000 });
+    .send({ name: `Producto ${suffix}`, category: categoryId, basePrice: 10000, weightGrams: 400 });
   const productId = productRes.body.data.product.id as string;
 
   const variantRes = await request(app)

@@ -1,5 +1,11 @@
 import Joi from "joi";
-import { Currency, PriceRounding } from "@gira/shared";
+import {
+  Currency,
+  MEXICAN_STATE_CODES,
+  PHONE_PATTERN,
+  POSTAL_CODE_PATTERN,
+  PriceRounding,
+} from "@gira/shared";
 
 const money = Joi.number()
   .integer()
@@ -11,10 +17,38 @@ const money = Joi.number()
     "number.min": "El monto no puede ser negativo.",
   });
 
+const originSchema = Joi.object({
+  name: Joi.string().trim().min(2).max(120).required(),
+  phone: Joi.string().trim().pattern(PHONE_PATTERN).required().messages({
+    "string.pattern.base": "El teléfono debe tener 10 dígitos.",
+  }),
+  email: Joi.string().trim().lowercase().email().max(160).allow(""),
+  line1: Joi.string().trim().min(3).max(200).required(),
+  district: Joi.string().trim().min(2).max(120).required(),
+  city: Joi.string().trim().min(2).max(120).required(),
+  state: Joi.string()
+    .valid(...MEXICAN_STATE_CODES)
+    .required()
+    .messages({ "any.only": "Elige un estado válido." }),
+  postalCode: Joi.string().trim().pattern(POSTAL_CODE_PATTERN).required().messages({
+    "string.pattern.base": "El código postal debe tener 5 dígitos.",
+  }),
+});
+
+const parcelSettingsSchema = Joi.object({
+  tareGrams: Joi.number().integer().min(0).max(5_000),
+  boxLengthCm: Joi.number().integer().min(1).max(200),
+  boxWidthCm: Joi.number().integer().min(1).max(200),
+  boxHeightCm: Joi.number().integer().min(1).max(200),
+  extraUnitHeightCm: Joi.number().integer().min(0).max(100),
+  maxWeightGrams: Joi.number().integer().min(1).max(70_000),
+}).min(1);
+
 const updateShippingSchema = Joi.object({
-  nationalFee: money,
-  internationalFee: money,
+  origin: originSchema,
   freeShippingThreshold: money.allow(null),
+  parcel: parcelSettingsSchema,
+  quoteTtlMinutes: Joi.number().integer().min(5).max(240),
 })
   .min(1)
   .messages({ "object.min": "Envía al menos un campo para actualizar." });

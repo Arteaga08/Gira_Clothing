@@ -65,7 +65,7 @@ const createProduct = async (cookie: string, categoryId: string, name: string) =
     .post(PRODUCTS_BASE)
     .set("Origin", ORIGIN)
     .set("Cookie", cookie)
-    .send({ name, category: categoryId, basePrice: 25000 });
+    .send({ name, category: categoryId, basePrice: 25000, weightGrams: 400 });
   return res.body.data.product as { id: string; slug: string };
 };
 

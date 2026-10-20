@@ -16,6 +16,7 @@ import {
   updateStatus,
   updatePriority,
   updateAddress,
+  retryOrderLabel,
   bulkStatus,
   refund,
   activity,
@@ -51,6 +52,11 @@ adminOrderRouter.patch(
   validate(objectIdParamSchema, "params"),
   validate(shippingAddressSchema.required()),
   updateAddress,
+);
+adminOrderRouter.post(
+  "/:id/label/retry",
+  validate(objectIdParamSchema, "params"),
+  retryOrderLabel,
 );
 adminOrderRouter.post("/:id/refund", validate(objectIdParamSchema, "params"), refund);
 

@@ -39,6 +39,13 @@ delete process.env.MAIL_FROM;
 delete process.env.TELEGRAM_BOT_TOKEN;
 delete process.env.TELEGRAM_CHAT_ID;
 
+// Force the stub shipping adapter: no test may reach Envía over the network.
+delete process.env.ENVIA_API_TOKEN;
+delete process.env.ENVIA_ENVIRONMENT;
+delete process.env.ENVIA_CARRIERS;
+delete process.env.ENVIA_WEBHOOK_SECRET;
+delete process.env.ENVIA_WEBHOOK_TOLERANCE_MS;
+
 import { beforeAll, afterAll, afterEach } from "vitest";
 import mongoose from "mongoose";
 import { randomBytes } from "node:crypto";

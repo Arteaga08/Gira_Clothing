@@ -6,6 +6,7 @@ import { Variant } from "../../src/models/Variant.js";
 import { Order } from "../../src/models/Order.js";
 import { resetRateLimitStores } from "../../src/middlewares/rateLimit.js";
 import { loginAsAdmin, loginAsCustomer, ORIGIN } from "../helpers/auth.js";
+import { quoteRateFor, withQuote } from "../helpers/orders.js";
 
 const app = buildApp();
 
@@ -26,13 +27,14 @@ const validImage = {
 const validShipping = {
   recipient: "Ana Pérez",
   line1: "Calle Falsa 123",
-  city: "CDMX",
-  state: "CDMX",
+  district: "Juárez",
+  city: "Ciudad de México",
+  state: "CX",
   postalCode: "01000",
   country: "MX",
 };
 
-const validCustomer = { email: "cliente@example.com", name: "Ana Pérez" };
+const validCustomer = { email: "cliente@example.com", name: "Ana Pérez", phone: "5512345678" };
 
 const seedVariant = async (adminCookie: string, suffix: string): Promise<string> => {
   const familyRes = await request(app)
@@ -60,7 +62,7 @@ const seedVariant = async (adminCookie: string, suffix: string): Promise<string>
     .post(PRODUCTS_BASE)
     .set("Origin", ORIGIN)
     .set("Cookie", adminCookie)
-    .send({ name: `Producto ${suffix}`, category: categoryId, basePrice: 12000 });
+    .send({ name: `Producto ${suffix}`, category: categoryId, basePrice: 12000, weightGrams: 400 });
   const productId = productRes.body.data.product.id as string;
 
   const variantRes = await request(app)
@@ -87,11 +89,11 @@ describe("Order routes · checkout", () => {
       .post(ORDERS_BASE)
       .set("Origin", ORIGIN)
       .set("Idempotency-Key", uniqueKey())
-      .send({
+      .send(await withQuote({
         lines: [{ variantId, qty: 1 }],
         termsAccepted: true, customer: validCustomer,
         shipping: validShipping,
-      });
+      }));
 
     expect(res.status).toBe(201);
     expect(res.body.data.order.publicId).toBeDefined();
@@ -114,7 +116,13 @@ describe("Order routes · checkout", () => {
       .set("Origin", ORIGIN)
       .set("Cookie", customerCookie)
       .set("Idempotency-Key", uniqueKey())
-      .send({ useCart: true, termsAccepted: true, customer: validCustomer, shipping: validShipping });
+      .send({
+        useCart: true,
+        termsAccepted: true,
+        customer: validCustomer,
+        shipping: validShipping,
+        shippingQuote: await quoteRateFor(variantId, 1),
+      });
 
     expect(res.status).toBe(201);
   });
@@ -127,7 +135,7 @@ describe("Order routes · checkout", () => {
       .post(ORDERS_BASE)
       .set("Origin", "http://evil.example.com")
       .set("Idempotency-Key", uniqueKey())
-      .send({ lines: [{ variantId, qty: 1 }], termsAccepted: true, customer: validCustomer, shipping: validShipping });
+      .send(await withQuote({ lines: [{ variantId, qty: 1 }], termsAccepted: true, customer: validCustomer, shipping: validShipping }));
 
     expect(res.status).toBe(403);
   });
@@ -139,7 +147,7 @@ describe("Order routes · checkout", () => {
     const res = await request(app)
       .post(ORDERS_BASE)
       .set("Origin", ORIGIN)
-      .send({ lines: [{ variantId, qty: 1 }], termsAccepted: true, customer: validCustomer, shipping: validShipping });
+      .send(await withQuote({ lines: [{ variantId, qty: 1 }], termsAccepted: true, customer: validCustomer, shipping: validShipping }));
 
     expect(res.status).toBe(400);
   });
@@ -149,7 +157,7 @@ describe("Order routes · checkout", () => {
       .post(ORDERS_BASE)
       .set("Origin", ORIGIN)
       .set("Idempotency-Key", uniqueKey())
-      .send({ lines: [], termsAccepted: true, customer: validCustomer, shipping: validShipping });
+      .send(await withQuote({ lines: [], termsAccepted: true, customer: validCustomer, shipping: validShipping }));
     expect(res.status).toBe(400);
   });
 
@@ -160,11 +168,11 @@ describe("Order routes · checkout", () => {
       .post(ORDERS_BASE)
       .set("Origin", ORIGIN)
       .set("Idempotency-Key", uniqueKey())
-      .send({
+      .send(await withQuote({
         lines: [{ variantId, qty: 1 }],
         customer: { email: "no-es-email", name: "Ana" },
         shipping: validShipping,
-      });
+      }));
     expect(res.status).toBe(400);
   });
 
@@ -186,16 +194,16 @@ describe("Order routes · checkout", () => {
       .post(ORDERS_BASE)
       .set("Origin", ORIGIN)
       .set("Idempotency-Key", uniqueKey())
-      .send({
+      .send(await withQuote({
         lines: [{ variantId, qty: 1, unitPrice: 1 }],
         termsAccepted: true, customer: validCustomer,
         shipping: validShipping,
         total: 1,
-      });
+      }));
     expect(res.status).toBe(201);
-    // Server-computed total: subtotal (12000) + national shipping (15000
-    // default) — never the fake `total: 1` the client sent.
-    expect(res.body.data.order.total).toBe(27000);
+    // Server-computed total: subtotal (12000) + the quoted shipping (the stub's
+    // cheapest rate, 12000) — never the fake `total: 1` the client sent.
+    expect(res.body.data.order.total).toBe(24000);
     expect(res.body.data.order.lines[0].unitPrice).toBe(12000);
   });
 });
@@ -208,7 +216,7 @@ describe("Order routes · consulta pública", () => {
       .post(ORDERS_BASE)
       .set("Origin", ORIGIN)
       .set("Idempotency-Key", uniqueKey())
-      .send({ lines: [{ variantId, qty: 1 }], termsAccepted: true, customer: validCustomer, shipping: validShipping });
+      .send(await withQuote({ lines: [{ variantId, qty: 1 }], termsAccepted: true, customer: validCustomer, shipping: validShipping }));
     const publicId = created.body.data.order.publicId as string;
 
     const res = await request(app).get(`${ORDERS_BASE}/${publicId}`);
@@ -231,7 +239,7 @@ describe("Order routes · consulta pública", () => {
       .post(ORDERS_BASE)
       .set("Origin", ORIGIN)
       .set("Idempotency-Key", uniqueKey())
-      .send({ lines: [{ variantId, qty: 1 }], termsAccepted: true, customer: validCustomer, shipping: validShipping });
+      .send(await withQuote({ lines: [{ variantId, qty: 1 }], termsAccepted: true, customer: validCustomer, shipping: validShipping }));
     const publicId = created.body.data.order.publicId as string;
 
     const res = await request(app).get(`${ORDERS_BASE}/${publicId}`);
@@ -264,13 +272,13 @@ describe("Order routes · panel de usuario", () => {
       .set("Origin", ORIGIN)
       .set("Cookie", customerA)
       .set("Idempotency-Key", uniqueKey())
-      .send({ lines: [{ variantId, qty: 1 }], termsAccepted: true, customer: validCustomer, shipping: validShipping });
+      .send(await withQuote({ lines: [{ variantId, qty: 1 }], termsAccepted: true, customer: validCustomer, shipping: validShipping }));
     await request(app)
       .post(ORDERS_BASE)
       .set("Origin", ORIGIN)
       .set("Cookie", customerB)
       .set("Idempotency-Key", uniqueKey())
-      .send({ lines: [{ variantId, qty: 1 }], termsAccepted: true, customer: validCustomer, shipping: validShipping });
+      .send(await withQuote({ lines: [{ variantId, qty: 1 }], termsAccepted: true, customer: validCustomer, shipping: validShipping }));
 
     const res = await request(app).get(`${ORDERS_BASE}/mine`).set("Cookie", customerA);
     expect(res.status).toBe(200);
@@ -296,7 +304,7 @@ describe("Order routes · panel de usuario", () => {
       .set("Origin", ORIGIN)
       .set("Cookie", customerB)
       .set("Idempotency-Key", uniqueKey())
-      .send({ lines: [{ variantId, qty: 1 }], termsAccepted: true, customer: validCustomer, shipping: validShipping });
+      .send(await withQuote({ lines: [{ variantId, qty: 1 }], termsAccepted: true, customer: validCustomer, shipping: validShipping }));
 
     const res = await request(app)
       .get(`${ORDERS_BASE}/mine?user=someone-else`)
@@ -317,7 +325,7 @@ describe("Order routes · ownership de /mine/:id", () => {
       .set("Origin", ORIGIN)
       .set("Cookie", customerB)
       .set("Idempotency-Key", uniqueKey())
-      .send({ lines: [{ variantId, qty: 1 }], termsAccepted: true, customer: validCustomer, shipping: validShipping });
+      .send(await withQuote({ lines: [{ variantId, qty: 1 }], termsAccepted: true, customer: validCustomer, shipping: validShipping }));
 
     // /mine/:id uses the internal ObjectId, not publicId.
     const doc = await Order.findOne({ publicId: created.body.data.order.publicId }).lean();

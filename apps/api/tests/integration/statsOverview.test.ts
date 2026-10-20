@@ -35,12 +35,13 @@ const seedOrder = async (sku: string, qty: number): Promise<void> => {
     tax: 0,
     taxRateBps: 1600,
     termsAcceptedAt: new Date(),
-    customer: { email: "cliente@example.com", name: "Ana Pérez" },
+    customer: { email: "cliente@example.com", name: "Ana Pérez", phone: "5512345678" },
     shipping: {
       recipient: "Ana Pérez",
       line1: "Calle Falsa 123",
-      city: "CDMX",
-      state: "CDMX",
+      district: "Juárez",
+      city: "Ciudad de México",
+      state: "CX",
       postalCode: "01000",
       country: "MX",
     },
@@ -62,6 +63,16 @@ const seedOrder = async (sku: string, qty: number): Promise<void> => {
     rounding: PriceRounding.NONE,
     subtotal: 10000 * qty,
     shippingCost: 0,
+    shippingSelection: {
+      provider: "stub",
+      carrier: "estafeta",
+      service: "ground",
+      serviceName: "Terrestre",
+      estimatedDays: 5,
+      amountMxn: 0,
+      costMxn: 12_000,
+    },
+    parcel: { weightGrams: 550, lengthCm: 30, widthCm: 25, heightCm: 5 },
     total: 10000 * qty,
     status: OrderStatus.PAID,
     statusHistory: [{ status: OrderStatus.PAID, at: new Date() }],
@@ -97,7 +108,7 @@ const seedVariant = async (adminCookie: string, suffix: string, onHand: number):
     .post(PRODUCTS_BASE)
     .set("Origin", ORIGIN)
     .set("Cookie", adminCookie)
-    .send({ name: `Producto ${suffix}`, category: categoryId, basePrice: 10000 });
+    .send({ name: `Producto ${suffix}`, category: categoryId, basePrice: 10000, weightGrams: 400 });
   const productId = productRes.body.data.product.id as string;
 
   const variantRes = await request(app)

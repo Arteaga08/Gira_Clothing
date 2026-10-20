@@ -181,6 +181,14 @@ const webhookLimiter = createLimiter({
   message: "Demasiadas solicitudes.",
 });
 
+// Each quote fans out to one call per carrier at the provider: cheaper than
+// checkout, tighter than the catalog.
+const shippingQuoteLimiter = createLimiter({
+  windowMs: FIFTEEN_MIN,
+  limit: 30,
+  message: "Demasiadas cotizaciones de envío. Espera unos minutos.",
+});
+
 export type { LimiterOptions };
 export {
   createLimiter,
@@ -199,4 +207,5 @@ export {
   checkoutLimiter,
   orderLookupLimiter,
   trackingLimiter,
+  shippingQuoteLimiter,
 };

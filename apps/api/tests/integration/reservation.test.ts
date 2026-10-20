@@ -55,7 +55,7 @@ const seedVariant = async (cookie: string, suffix: string, onHand = 10): Promise
     .post(PRODUCTS_BASE)
     .set("Origin", ORIGIN)
     .set("Cookie", cookie)
-    .send({ name: `Producto ${suffix}`, category: categoryId, basePrice: 20000 });
+    .send({ name: `Producto ${suffix}`, category: categoryId, basePrice: 20000, weightGrams: 400 });
   const productId = productRes.body.data.product.id as string;
 
   const variantRes = await request(app)

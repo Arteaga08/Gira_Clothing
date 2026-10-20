@@ -71,6 +71,23 @@ const renderTeamShipmentIncident = (
   lines: [`Folio: ${orderNumber}`, `Estado: ${status}`, `Paquetería: ${carrier}`],
 });
 
+const renderTeamShippingLabelFailed = (orderNumber: string, reason: string): TeamMessage => ({
+  title: "🏷️ No se pudo generar la guía",
+  lines: [
+    `Folio: ${orderNumber}`,
+    `Motivo: ${reason}`,
+    "Revisa el pedido en el panel y reintenta la guía.",
+  ],
+});
+
+const renderTeamShippingLabelCancelFailed = (orderNumber: string): TeamMessage => ({
+  title: "🏷️ No se pudo cancelar la guía",
+  lines: [
+    `Folio: ${orderNumber}`,
+    "El pedido se reembolsó, pero Envía no dejó cancelar la guía. Cancélala desde el portal de Envía para recuperar el saldo.",
+  ],
+});
+
 export type { TeamOrderSnapshot };
 export {
   renderTeamOrderPaid,
@@ -78,4 +95,6 @@ export {
   renderTeamPaymentNeedsReview,
   renderTeamDisputeLost,
   renderTeamShipmentIncident,
+  renderTeamShippingLabelFailed,
+  renderTeamShippingLabelCancelFailed,
 };

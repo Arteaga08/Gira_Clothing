@@ -16,6 +16,8 @@ import {
   renderTeamPaymentNeedsReview,
   renderTeamDisputeLost,
   renderTeamShipmentIncident,
+  renderTeamShippingLabelFailed,
+  renderTeamShippingLabelCancelFailed,
   type TeamOrderSnapshot,
 } from "../templates/teamMessages.js";
 import type { TeamMessage } from "../adapters/notification/types.js";
@@ -67,6 +69,10 @@ const renderTeam = (doc: NotificationDocument): TeamMessage => {
         String(payload.status),
         String(payload.carrier),
       );
+    case NotificationType.TEAM_SHIPPING_LABEL_FAILED:
+      return renderTeamShippingLabelFailed(String(payload.orderNumber), String(payload.reason));
+    case NotificationType.TEAM_SHIPPING_LABEL_CANCEL_FAILED:
+      return renderTeamShippingLabelCancelFailed(String(payload.orderNumber));
     default:
       throw new Error(`Tipo de aviso no soportado: ${doc.type}`);
   }

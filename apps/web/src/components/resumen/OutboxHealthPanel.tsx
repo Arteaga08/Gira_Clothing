@@ -22,6 +22,8 @@ const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   [NotificationType.TEAM_SHIPMENT_INCIDENT]: "aviso de incidencia de envío",
   [NotificationType.TEAM_PAYMENT_NEEDS_REVIEW]: "aviso de pago por revisar",
   [NotificationType.TEAM_DISPUTE_LOST]: "aviso de disputa perdida",
+  [NotificationType.TEAM_SHIPPING_LABEL_FAILED]: "aviso de guía fallida",
+  [NotificationType.TEAM_SHIPPING_LABEL_CANCEL_FAILED]: "aviso de cancelación de guía fallida",
 };
 
 const NOTIFICATION_CHANNEL_LABELS: Record<NotificationChannelKind, string> = {

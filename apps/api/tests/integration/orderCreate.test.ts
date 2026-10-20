@@ -15,6 +15,7 @@ import { Order } from "../../src/models/Order.js";
 import { StockReservation } from "../../src/models/StockReservation.js";
 import { AuditLog } from "../../src/models/AuditLog.js";
 import { loginAsAdmin, loginAsCustomer, ORIGIN } from "../helpers/auth.js";
+import { withQuote } from "../helpers/orders.js";
 import { idempotencyOwner, scopeIdempotencyKey } from "../../src/utils/idempotency.js";
 
 const { getFailFlag, setShouldFail } = vi.hoisted(() => {
@@ -67,7 +68,7 @@ vi.mock("../../src/adapters/payment/index.js", async (importOriginal) => {
   };
 });
 
-const { createOrder } = await import("../../src/services/orderService.js");
+const { createOrderWithQuote: createOrder } = await import("../helpers/orders.js");
 const { setCartLine } = await import("../../src/services/cartService.js");
 
 const app = (await import("../../src/app.js")).buildApp();
@@ -120,7 +121,7 @@ const seedVariant = async (
     .post(PRODUCTS_BASE)
     .set("Origin", ORIGIN)
     .set("Cookie", adminCookie)
-    .send({ name: `Producto ${suffix}`, category: categoryId, basePrice: opts.basePrice ?? 15000 });
+    .send({ name: `Producto ${suffix}`, category: categoryId, basePrice: opts.basePrice ?? 15000, weightGrams: 400 });
   const productId = productRes.body.data.product.id as string;
 
   const variantRes = await request(app)
@@ -138,13 +139,14 @@ const seedVariant = async (
 const validShipping = {
   recipient: "Ana Pérez",
   line1: "Calle Falsa 123",
-  city: "CDMX",
-  state: "CDMX",
+  district: "Juárez",
+  city: "Ciudad de México",
+  state: "CX",
   postalCode: "01000",
   country: "MX",
 };
 
-const validCustomer = { email: "cliente@example.com", name: "Ana Pérez" };
+const validCustomer = { email: "cliente@example.com", name: "Ana Pérez", phone: "5512345678" };
 
 const uniqueKey = (): string => `key-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
@@ -328,7 +330,7 @@ describe("orderService.createOrder · idempotencia", () => {
       {
         lines: [{ variantId, qty: 1 }],
         currency: Currency.MXN,
-        customer: { email: "victima@example.com", name: "Vic Tima" },
+        customer: { email: "victima@example.com", name: "Vic Tima", phone: "5511111111" },
         shipping: validShipping,
         idempotencyKey: sharedKey,
       },
@@ -339,7 +341,7 @@ describe("orderService.createOrder · idempotencia", () => {
       {
         lines: [{ variantId, qty: 1 }],
         currency: Currency.MXN,
-        customer: { email: "atacante@example.com", name: "Ata Cante" },
+        customer: { email: "atacante@example.com", name: "Ata Cante", phone: "5522222222" },
         shipping: validShipping,
         idempotencyKey: sharedKey,
       },
@@ -488,12 +490,12 @@ describe("M9a · checkout por HTTP", () => {
     ...extra,
   });
 
-  const postOrder = (body: Record<string, unknown>) =>
+  const postOrder = async (body: Record<string, unknown>) =>
     request(app)
       .post("/api/v1/orders")
       .set("Origin", ORIGIN)
       .set("Idempotency-Key", randomUUID())
-      .send(body);
+      .send(await withQuote(body));
 
   it("devuelve folio y desglose de IVA, y sella termsAcceptedAt sin exponerlo", async () => {
     const adminCookie = await loginAsAdmin(app);

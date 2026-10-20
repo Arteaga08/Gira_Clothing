@@ -1,6 +1,7 @@
 import { config as loadDotenv } from "dotenv";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { ShippingCarrier } from "@gira/shared";
 
 /**
  * Fail-fast environment loader (BACKEND_SECURITY_GUIDELINES §9).
@@ -38,6 +39,17 @@ interface MailConfig {
 interface TelegramConfig {
   botToken: string;
   chatId: string;
+}
+
+interface EnviaConfig {
+  apiToken: string;
+  /** Sandbox and production use different hosts AND different tokens. */
+  environment: "sandbox" | "production";
+  /** One rate call is made per carrier in this list. */
+  carriers: ShippingCarrier[];
+  /** null = the webhook endpoint answers 503 and tracking relies on polling. */
+  webhookSecret: string | null;
+  webhookToleranceMs: number;
 }
 
 interface Env {
@@ -78,6 +90,8 @@ interface Env {
   mail: MailConfig | null;
   /** null only outside production when credentials are absent -> stub channel. */
   telegram: TelegramConfig | null;
+  /** null outside production when no token is configured -> stub shipping adapter. */
+  envia: EnviaConfig | null;
 }
 
 const requireVar = (source: NodeJS.ProcessEnv, key: string, errors: string[]): string => {
@@ -271,6 +285,44 @@ const loadEnv = (source: NodeJS.ProcessEnv = process.env): Readonly<Env> => {
     }
   }
 
+  // Shipping is a central business flow (no rates = no checkout): required in production.
+  const DEFAULT_CARRIERS = "estafeta,fedex,dhl,paquetexpress,redpack";
+  let envia: EnviaConfig | null = null;
+  const enviaToken =
+    nodeEnv === "production"
+      ? requireVar(source, "ENVIA_API_TOKEN", errors)
+      : source.ENVIA_API_TOKEN?.trim();
+  if (enviaToken) {
+    const environmentRaw =
+      source.ENVIA_ENVIRONMENT?.trim() || (nodeEnv === "production" ? "production" : "sandbox");
+    if (environmentRaw !== "sandbox" && environmentRaw !== "production") {
+      errors.push("ENVIA_ENVIRONMENT debe ser sandbox o production.");
+    }
+    const carriers = (source.ENVIA_CARRIERS?.trim() || DEFAULT_CARRIERS)
+      .split(",")
+      .map((c) => c.trim().toLowerCase())
+      .filter(Boolean);
+    const allowed = Object.values(ShippingCarrier) as string[];
+    const unknown = carriers.filter((c) => !allowed.includes(c));
+    if (unknown.length > 0 || carriers.length === 0) {
+      errors.push(
+        `ENVIA_CARRIERS inválido (${unknown.join(", ") || "vacío"}). Permitidas: ${allowed.join(", ")}.`,
+      );
+    }
+    const toleranceRaw = source.ENVIA_WEBHOOK_TOLERANCE_MS?.trim();
+    const webhookToleranceMs = toleranceRaw ? Number(toleranceRaw) : 300_000;
+    if (!Number.isInteger(webhookToleranceMs) || webhookToleranceMs <= 0) {
+      errors.push("ENVIA_WEBHOOK_TOLERANCE_MS debe ser un entero positivo de milisegundos.");
+    }
+    envia = {
+      apiToken: enviaToken,
+      environment: environmentRaw === "production" ? "production" : "sandbox",
+      carriers: carriers as ShippingCarrier[],
+      webhookSecret: source.ENVIA_WEBHOOK_SECRET?.trim() || null,
+      webhookToleranceMs,
+    };
+  }
+
   if (errors.length > 0) {
     throw new Error(
       `Configuración de entorno inválida:\n  - ${errors.join("\n  - ")}`,
@@ -294,6 +346,7 @@ const loadEnv = (source: NodeJS.ProcessEnv = process.env): Readonly<Env> => {
     stripe,
     mail,
     telegram,
+    envia,
   });
 };
 
@@ -307,5 +360,13 @@ if (existsSync(envFile)) {
 
 const env = loadEnv();
 
-export type { Env, NodeEnv, CloudinaryConfig, StripeConfig, MailConfig, TelegramConfig };
+export type {
+  Env,
+  NodeEnv,
+  CloudinaryConfig,
+  StripeConfig,
+  MailConfig,
+  TelegramConfig,
+  EnviaConfig,
+};
 export { loadEnv, parseBooleanFlag, env };

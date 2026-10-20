@@ -7,6 +7,7 @@ import { adminRouter } from "./admin/index.js";
 import { catalogRouter } from "./catalogRoutes.js";
 import { cartRouter } from "./cartRoutes.js";
 import { orderRouter } from "./orderRoutes.js";
+import { shippingRouter } from "./shippingRoutes.js";
 
 /**
  * API v1 router. Mounts feature routers and the health check.
@@ -30,5 +31,6 @@ v1Router.use("/auth", authRouter);
 v1Router.use("/catalog", catalogRouter);
 v1Router.use("/cart", cartRouter);
 v1Router.use("/orders", orderRouter);
+v1Router.use("/shipping", shippingRouter);
 
 export { v1Router };

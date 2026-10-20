@@ -26,6 +26,7 @@ interface CreateProductInput {
   category: string;
   description?: string;
   basePrice: number;
+  weightGrams: number;
   measurements?: Measurements;
   materials?: string[];
 }
@@ -35,6 +36,7 @@ interface UpdateProductInput {
   category?: string;
   description?: string;
   basePrice?: number;
+  weightGrams?: number;
   measurements?: Measurements;
   materials?: string[];
   isActive?: boolean;
@@ -62,6 +64,7 @@ interface PublicProduct {
   category: PublicCategoryRef;
   description?: string;
   basePrice: number;
+  weightGrams: number;
   measurements: Measurements;
   materials: string[];
   isActive: boolean;
@@ -74,6 +77,7 @@ interface ProductLean {
   category: unknown;
   description?: string;
   basePrice: number;
+  weightGrams: number;
   measurements: Measurements;
   materials: string[];
   isActive: boolean;
@@ -88,6 +92,7 @@ const toPublicProduct = (doc: ProductLean): PublicProduct => {
     category: { id: String(category._id), name: category.name, slug: category.slug },
     ...(doc.description ? { description: doc.description } : {}),
     basePrice: doc.basePrice,
+    weightGrams: doc.weightGrams,
     measurements: doc.measurements,
     materials: doc.materials,
     isActive: doc.isActive,
@@ -118,6 +123,7 @@ const createProduct = async (
     category: category._id,
     description: input.description,
     basePrice: input.basePrice,
+    weightGrams: input.weightGrams,
     measurements: input.measurements ?? {},
     materials: input.materials ?? [],
   });
@@ -202,6 +208,7 @@ const updateProduct = async (
   }
   if (input.description !== undefined) product.description = input.description;
   if (input.basePrice !== undefined) product.basePrice = input.basePrice;
+  if (input.weightGrams !== undefined) product.weightGrams = input.weightGrams;
   if (input.measurements !== undefined) product.measurements = input.measurements;
   if (input.materials !== undefined) product.materials = input.materials;
   if (input.isActive !== undefined) product.isActive = input.isActive;
