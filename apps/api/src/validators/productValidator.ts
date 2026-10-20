@@ -1,6 +1,6 @@
 import Joi from "joi";
 import { listQueryBase } from "./listQueryValidator.js";
-import { objectId } from "./commonValidator.js";
+import { objectId, imageObjectSchema } from "./commonValidator.js";
 
 const name = Joi.string().trim().min(2).max(120).messages({
   "string.min": "El nombre debe tener al menos 2 caracteres.",
@@ -44,6 +44,7 @@ const createProductSchema = Joi.object({
   weightGrams: weightGrams.required(),
   measurements,
   materials,
+  sizeImage: imageObjectSchema,
 });
 
 const updateProductSchema = Joi.object({
@@ -54,6 +55,7 @@ const updateProductSchema = Joi.object({
   weightGrams,
   measurements,
   materials,
+  sizeImage: imageObjectSchema.allow(null),
   isActive: Joi.boolean(),
 })
   .min(1)

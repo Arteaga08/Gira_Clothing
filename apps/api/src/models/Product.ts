@@ -1,4 +1,5 @@
 import { Schema, model, type HydratedDocument, type Model, type Types } from "mongoose";
+import { imageSchema, type ImageAttrs } from "./schemas/image.js";
 
 /**
  * Product — a model/silhouette (Tote, Curvy, Bárbara, Ruffles, Mini) belonging
@@ -25,6 +26,8 @@ interface ProductAttrs {
   weightGrams: number;
   measurements: Measurements;
   materials: string[];
+  /** One photo or diagram of the real size of the model. */
+  sizeImage?: ImageAttrs;
   isActive: boolean;
 }
 
@@ -61,6 +64,7 @@ const productSchema = new Schema<ProductAttrs, ProductModel>(
     },
     measurements: { type: measurementsSchema, default: () => ({}) },
     materials: { type: [String], default: [] },
+    sizeImage: { type: imageSchema },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true },

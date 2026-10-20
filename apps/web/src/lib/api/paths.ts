@@ -12,6 +12,11 @@ const STATS_TOP_PRODUCTS_PATH = "/admin/stats/top-products";
 const OUTBOX_HEALTH_PATH = "/admin/notifications/health";
 const ADMIN_ORDERS_PATH = "/admin/orders";
 const ADMIN_VARIANTS_PATH = "/admin/variants";
+const ADMIN_PRODUCTS_PATH = "/admin/products";
+const ADMIN_CATEGORIES_PATH = "/admin/product-categories";
+const ADMIN_FAMILIES_PATH = "/admin/print-families";
+const ADMIN_PRINTS_PATH = "/admin/prints";
+const ADMIN_UPLOADS_PATH = "/admin/uploads";
 
 export {
   STATS_OVERVIEW_PATH,
@@ -20,4 +25,9 @@ export {
   OUTBOX_HEALTH_PATH,
   ADMIN_ORDERS_PATH,
   ADMIN_VARIANTS_PATH,
+  ADMIN_PRODUCTS_PATH,
+  ADMIN_CATEGORIES_PATH,
+  ADMIN_FAMILIES_PATH,
+  ADMIN_PRINTS_PATH,
+  ADMIN_UPLOADS_PATH,
 };

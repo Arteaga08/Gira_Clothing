@@ -4,44 +4,46 @@ import { sendResponse } from "../utils/sendResponse.js";
 import { buildContext } from "../utils/requestContext.js";
 import {
   createProduct,
-  listProducts,
-  getProduct,
   updateProduct,
   deactivateProduct,
   type CreateProductInput,
   type UpdateProductInput,
 } from "../services/productService.js";
+import { listAdminProducts, getAdminProductOrThrow } from "../services/adminProductService.js";
 
 /**
  * Product admin controllers — orchestrate req/res only, never touch models.
+ * Writes go through productService; every response is re-read as an
+ * AdminProduct so the panel always gets the same shape.
  */
 
 const create = asyncHandler(async (req: Request, res: Response) => {
-  const product = await createProduct(req.body as CreateProductInput, buildContext(req));
+  const created = await createProduct(req.body as CreateProductInput, buildContext(req));
+  const product = await getAdminProductOrThrow(created.id);
   sendResponse(res, 201, "Producto creado correctamente.", { product });
 });
 
 const list = asyncHandler(async (req: Request, res: Response) => {
-  const { items, meta } = await listProducts(req.query);
+  const { items, meta } = await listAdminProducts(req.query);
   sendResponse(res, 200, "Productos obtenidos correctamente.", { products: items }, meta);
 });
 
 const detail = asyncHandler(async (req: Request, res: Response) => {
-  const product = await getProduct(req.params.id as string);
+  const product = await getAdminProductOrThrow(req.params.id as string);
   sendResponse(res, 200, "Producto obtenido correctamente.", { product });
 });
 
 const update = asyncHandler(async (req: Request, res: Response) => {
-  const product = await updateProduct(
-    req.params.id as string,
-    req.body as UpdateProductInput,
-    buildContext(req),
-  );
+  const id = req.params.id as string;
+  await updateProduct(id, req.body as UpdateProductInput, buildContext(req));
+  const product = await getAdminProductOrThrow(id);
   sendResponse(res, 200, "Producto actualizado correctamente.", { product });
 });
 
 const deactivate = asyncHandler(async (req: Request, res: Response) => {
-  const product = await deactivateProduct(req.params.id as string, buildContext(req));
+  const id = req.params.id as string;
+  await deactivateProduct(id, buildContext(req));
+  const product = await getAdminProductOrThrow(id);
   sendResponse(res, 200, "Producto retirado correctamente.", { product });
 });
 

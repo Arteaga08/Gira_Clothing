@@ -45,12 +45,14 @@ interface AdminVariantListQuery {
   category?: string;
   isActive?: boolean;
   stock?: StockStatus;
+  withImages?: boolean;
 }
 
 interface AdminVariantRow {
   _id: Types.ObjectId;
   sku: string;
   priceOverride?: number;
+  images?: ImageAttrs[];
   onHand: number;
   reserved: number;
   available: number;
@@ -65,7 +67,7 @@ interface AdminVariantRow {
   printDoc: { _id: Types.ObjectId; name: string; sku: string; image: ImageAttrs };
 }
 
-const toAdminVariant = (row: AdminVariantRow): AdminVariant => ({
+const toAdminVariant = (row: AdminVariantRow, withImages = false): AdminVariant => ({
   id: String(row._id),
   sku: row.sku,
   product: {
@@ -89,6 +91,7 @@ const toAdminVariant = (row: AdminVariantRow): AdminVariant => ({
   reserved: row.reserved,
   available: row.available,
   isActive: row.isActive,
+  ...(withImages ? { images: row.images ?? [] } : {}),
   updatedAt: row.updatedAt,
 });
 
@@ -155,22 +158,22 @@ const listAdminVariants = async (
 
   const total = result?.total[0]?.n ?? 0;
   return {
-    items: (result?.rows ?? []).map(toAdminVariant),
+    items: (result?.rows ?? []).map((row) => toAdminVariant(row, query.withImages === true)),
     meta: buildMeta(total, { page, limit }),
   };
 };
 
 /** One AdminVariant by id, or null when the variant (or one of its parents) is gone. */
-const findAdminVariant = async (id: string): Promise<AdminVariant | null> => {
+const findAdminVariant = async (id: string, withImages = false): Promise<AdminVariant | null> => {
   const [row] = await Variant.aggregate<AdminVariantRow>([
     { $match: { _id: new Types.ObjectId(id) } },
     ...JOIN_STAGES,
   ]);
-  return row ? toAdminVariant(row) : null;
+  return row ? toAdminVariant(row, withImages) : null;
 };
 
-const getAdminVariantOrThrow = async (id: string): Promise<AdminVariant> => {
-  const variant = await findAdminVariant(id);
+const getAdminVariantOrThrow = async (id: string, withImages = false): Promise<AdminVariant> => {
+  const variant = await findAdminVariant(id, withImages);
   if (!variant) throw new AppError("La variante no existe.", 404);
   return variant;
 };

@@ -12,7 +12,7 @@ interface SelectOption {
 interface SelectFieldProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, "id"> {
   label: string;
   options: SelectOption[];
-  error?: string;
+  error?: string | undefined;
   helper?: string;
   containerClassName?: string;
 }

@@ -6,6 +6,7 @@ import { Variant } from "../models/Variant.js";
 import { AppError } from "../utils/AppError.js";
 import { slugify, resolveUniqueSlug } from "../utils/slug.js";
 import { parseListQuery, buildMeta, type ListQueryConfig } from "../utils/parseListQuery.js";
+import type { ImageAttrs } from "../models/schemas/image.js";
 import { recordAudit } from "./auditService.js";
 import type { RequestContext } from "../utils/requestContext.js";
 
@@ -29,6 +30,7 @@ interface CreateProductInput {
   weightGrams: number;
   measurements?: Measurements;
   materials?: string[];
+  sizeImage?: ImageAttrs;
 }
 
 interface UpdateProductInput {
@@ -39,6 +41,7 @@ interface UpdateProductInput {
   weightGrams?: number;
   measurements?: Measurements;
   materials?: string[];
+  sizeImage?: ImageAttrs | null;
   isActive?: boolean;
 }
 
@@ -126,6 +129,7 @@ const createProduct = async (
     weightGrams: input.weightGrams,
     measurements: input.measurements ?? {},
     materials: input.materials ?? [],
+    sizeImage: input.sizeImage,
   });
 
   await recordAudit({
@@ -211,6 +215,8 @@ const updateProduct = async (
   if (input.weightGrams !== undefined) product.weightGrams = input.weightGrams;
   if (input.measurements !== undefined) product.measurements = input.measurements;
   if (input.materials !== undefined) product.materials = input.materials;
+  if (input.sizeImage === null) product.set("sizeImage", undefined);
+  else if (input.sizeImage !== undefined) product.sizeImage = input.sizeImage;
   if (input.isActive !== undefined) product.isActive = input.isActive;
 
   await product.save();

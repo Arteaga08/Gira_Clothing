@@ -1,4 +1,7 @@
-import type { AdminVariant, AdminVariantActivity, ApiMeta, InventoryStats, Wire } from "@gira/shared";
+import type { AdminVariant, AdminVariantActivity, ApiMeta, ImageAttrs, InventoryStats, Wire } from "@gira/shared";
+import { toExistingVariant, type ExistingVariant } from "@/lib/catalog/editorProduct";
+import { assertProductId } from "@/lib/catalog/productId";
+import type { VariantPatch } from "@/lib/catalog/productForm";
 import { toInventoryCounts, type InventoryCounts } from "@/lib/inventory/stats";
 import type { StockAdjustmentBody } from "@/lib/inventory/adjust";
 import { toPanelVariant, type PanelVariant } from "@/lib/inventory/panelVariant";
@@ -41,4 +44,36 @@ const updateStock = async (id: string, body: StockAdjustmentBody): Promise<Panel
 const getVariantActivity = async (id: string): Promise<Wire<AdminVariantActivity>[]> =>
   expectData(await browserRequest<{ activity: AdminVariantActivity[] }>(variantPath(id, "/activity"))).activity;
 
-export { listVariants, fetchInventoryCounts, updateStock, getVariantActivity };
+/** Every variant of one model (active or not), with its photos, for the editor. One page: a model never has 100 prints. */
+const listProductVariants = async (productId: string): Promise<ExistingVariant[]> => {
+  const query = new URLSearchParams({
+    product: assertProductId(productId),
+    withImages: "true",
+    sort: "sku",
+    page: "1",
+    limit: "100",
+  });
+  const { variants } = expectData(await browserRequest<{ variants: AdminVariant[] }>(`${ADMIN_VARIANTS_PATH}?${query.toString()}`));
+  return variants.map(toExistingVariant);
+};
+
+interface CreateVariantBody {
+  product: string;
+  print: string;
+  images: ImageAttrs[];
+  priceOverride?: number;
+}
+
+const createVariant = async (body: CreateVariantBody): Promise<ExistingVariant> =>
+  toExistingVariant(
+    expectData(await browserRequest<{ variant: AdminVariant }>(ADMIN_VARIANTS_PATH, { method: "POST", body })).variant,
+  );
+
+/** Photos, price override (`null` removes it) and the active flag: the only things the catalog edits on a variant. */
+const updateVariant = async (id: string, patch: VariantPatch): Promise<ExistingVariant> =>
+  toExistingVariant(
+    expectData(await browserRequest<{ variant: AdminVariant }>(variantPath(id), { method: "PATCH", body: patch })).variant,
+  );
+
+export { listVariants, fetchInventoryCounts, updateStock, getVariantActivity, listProductVariants, createVariant, updateVariant };
+export type { CreateVariantBody };

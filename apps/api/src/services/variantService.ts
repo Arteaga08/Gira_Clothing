@@ -25,7 +25,7 @@ interface CreateVariantInput {
 
 interface UpdateVariantInput {
   images?: ImageAttrs[];
-  priceOverride?: number;
+  priceOverride?: number | null;
   isActive?: boolean;
 }
 
@@ -149,7 +149,8 @@ const updateVariant = async (
   }
 
   if (input.images !== undefined) variant.images = input.images;
-  if (input.priceOverride !== undefined) variant.priceOverride = input.priceOverride;
+  if (input.priceOverride === null) variant.set("priceOverride", undefined);
+  else if (input.priceOverride !== undefined) variant.priceOverride = input.priceOverride;
   if (input.isActive !== undefined) variant.isActive = input.isActive;
 
   await variant.save();

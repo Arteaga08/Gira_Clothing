@@ -37,8 +37,13 @@ const buildInit = (options: RequestOptions, signal: AbortSignal): RequestInit =>
   };
 
   if (options.body !== undefined) {
-    headers["content-type"] = "application/json";
-    init.body = JSON.stringify(options.body);
+    if (options.body instanceof FormData) {
+      // The browser writes the multipart boundary itself: a hand-set content-type would break the upload.
+      init.body = options.body;
+    } else {
+      headers["content-type"] = "application/json";
+      init.body = JSON.stringify(options.body);
+    }
   }
   if (options.credentials) init.credentials = options.credentials;
   if (options.cache) init.cache = options.cache;

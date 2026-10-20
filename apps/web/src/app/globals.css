@@ -54,6 +54,17 @@
     -webkit-font-smoothing: antialiased;
   }
 
+  /* Tailwind v4 preflight resets buttons to `cursor: default`; restore the pointer on every enabled button. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [role="button"][aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
   /* The outline sits OUTSIDE the hard shadow; the shadow is never removed on focus. */
   :focus-visible {
     outline: 2px solid var(--color-focus);

@@ -51,6 +51,8 @@ interface Product {
   weightGrams: number;
   measurements?: Measurements;
   materials?: string[];
+  /** One photo (or diagram) that shows the real size of the model. Optional, one per model. */
+  sizeImage?: ImageAttrs;
   isActive: boolean;
 }
 
@@ -90,6 +92,28 @@ interface AdminVariant {
   /** onHand - reserved. */
   available: number;
   isActive: boolean;
+  /** Present only on single-variant catalog reads and on `?withImages=true` lists. */
+  images?: ImageAttrs[];
+  updatedAt: Date;
+}
+
+/** A print shown as a thumbnail on a product card. */
+interface AdminProductPrint {
+  id: string;
+  name: string;
+  image: ImageAttrs;
+}
+
+/** Admin catalog row/detail: a model with its category and a summary of its variants. */
+interface AdminProduct extends Product {
+  measurements: Measurements;
+  materials: string[];
+  variantCount: number;
+  activeVariantCount: number;
+  /** First photo of an active variant, else the first active print's image, else the size photo. */
+  cover?: ImageAttrs;
+  /** Up to 5 active prints, in creation order. */
+  prints: AdminProductPrint[];
   updatedAt: Date;
 }
 
@@ -108,6 +132,8 @@ interface AdminVariantActivity {
 
 export type {
   CatalogRef,
+  AdminProduct,
+  AdminProductPrint,
   AdminVariant,
   AdminVariantActivity,
   PrintFamily,
