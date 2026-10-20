@@ -88,7 +88,32 @@ const renderTeamShippingLabelCancelFailed = (orderNumber: string): TeamMessage =
   ],
 });
 
-export type { TeamOrderSnapshot };
+interface TeamStockSnapshot {
+  sku: string;
+  productName: string;
+  printName: string;
+  available: number;
+  threshold: number;
+}
+
+const stockLines = (s: TeamStockSnapshot): string[] => [
+  `Modelo: ${s.productName}`,
+  `Print: ${s.printName}`,
+  `SKU: ${s.sku}`,
+  `Disponible: ${s.available}`,
+];
+
+const renderTeamStockOut = (snapshot: TeamStockSnapshot): TeamMessage => ({
+  title: "🚫 Producto agotado",
+  lines: [...stockLines(snapshot), "Repón existencias en el panel de Inventario."],
+});
+
+const renderTeamStockLow = (snapshot: TeamStockSnapshot): TeamMessage => ({
+  title: "⚠️ Stock bajo",
+  lines: [...stockLines(snapshot), `Umbral de aviso: ${snapshot.threshold}`],
+});
+
+export type { TeamOrderSnapshot, TeamStockSnapshot };
 export {
   renderTeamOrderPaid,
   renderTeamPaymentFailed,
@@ -97,4 +122,6 @@ export {
   renderTeamShipmentIncident,
   renderTeamShippingLabelFailed,
   renderTeamShippingLabelCancelFailed,
+  renderTeamStockOut,
+  renderTeamStockLow,
 };

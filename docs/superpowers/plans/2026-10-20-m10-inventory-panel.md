@@ -49,4 +49,25 @@ Rutas bajo `apps/web/src`:
 
 ## Pendientes conocidos
 
-(Se llena al cerrar el milestone.)
+M10 implementada y verificada el 2026-10-20 (rama `feat/m10-inventory-panel`, sin commitear).
+
+**Desviaciones del plan (deliberadas):**
+- Los filtros Categoría/Modelo/Print necesitan sus listas: se añadió `lib/api/adminCatalogOptions.ts` + `useInventoryFilterOptions` (lee `/admin/product-categories|products|prints`, activos, límite 100). El plan no lo contemplaba.
+- `inventoryService` sigue devolviendo `StockView`; el controlador responde `AdminVariant` con `getAdminVariantOrThrow` (lectura posterior al ajuste).
+- `setOnHand` toma el «antes» del mismo `findOneAndUpdate` atómico (`new: false`).
+- Alerta: además de ajuste/recuento/reserva/liberación, se evalúa tras el restock de un reembolso (`orderPaymentService`). Una vez avisado «agotado» el marcador se queda en `out` hasta superar el umbral (sin repetir avisos por ciclos reservar/expirar); `out → low` es silencioso.
+- Límites de ajuste (`STOCK_ON_HAND_MAX`, `STOCK_DELTA_MAX`, `STOCK_REASON_MAX`) en `packages/shared/src/constants/inventory.ts`, usados por el API y por el formulario.
+- La lista del panel pide 100 filas por página y ordena por disponible ascendente.
+
+**Pendientes conocidos:**
+- **Miniaturas (resuelto):** `img-src` de la CSP ahora permite solo `https://res.cloudinary.com` (`lib/security/headers.ts`, con test). Sin comodines; Stripe sigue fuera hasta el Bloque 3. No se comprobó con una imagen real de Cloudinary (el seed usa una URL de ejemplo): al subir fotos reales, confirmar que cargan.
+- **Botón primario sin amarillo en reposo** (preexistente): `Button` primary compone `bg-surface` (de `NB_CONTROL`) y `bg-cta`; en el navegador gana `bg-surface` y el amarillo solo aparece en hover (también en «Entrar»). Sin tocar en M10.
+- Encabezados de categoría (conteos y disponible total) describen solo la página cargada; pasan de 100 variantes y dejan de coincidir con los conteos globales de las pestañas.
+- `PATCH /:id/stock`: si el producto/estampado de la variante faltara, el ajuste se aplica pero la respuesta es 404 (`$unwind` del read model). Improbable: el catálogo no deja retirar padres con variantes activas.
+- `/inventario/page.tsx` relee `/variants/stats` en cada cambio de filtro (el RSC se re-renderiza con `router.replace`); el cliente ignora el valor nuevo.
+- `/variants/stats` cuenta variantes huérfanas que el listado omite; una pestaña puede exceder en esas filas.
+- El `available` del aviso de Telegram sale de la lectura previa al reclamo (puede variar unas unidades bajo concurrencia).
+- `aria-controls` de `CategoryGroup` apunta a un nodo que no existe mientras está cerrada.
+- Sigue pendiente la campana del TopBar con alertas de stock, el umbral editable (M12c) y el umbral por variante.
+- Verificación: shared build, tsc api/web, eslint web, web 680 tests, `next build`, API 1351 tests (solo falla el flake conocido `shippingLabel` «éxito tardío», pasa aislado; las 5 faltas de lint de `enviaShippingProvider.ts` son preexistentes). Recorrido en Chromium (1440 y 390) contra mongod local 27018: categorías cerradas, filtros en URL, ajuste con motivo, historial, y un solo `TEAM_STOCK_OUT` al llegar a 0.
+- **Siguiente milestone: mejora del System Design** (decisión de Manuel, 2026-10-20), antes de seguir con M11 para dejar el diseño claro. Entrada natural: el bug del `Button` primary (`bg-surface` gana a `bg-cta`), la revisión de `DESIGN.md` y los tokens.

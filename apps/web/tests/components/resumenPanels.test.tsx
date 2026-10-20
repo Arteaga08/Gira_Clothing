@@ -67,6 +67,17 @@ describe("LowStockPanel", () => {
     expect(sub.className).toContain("font-mono");
   });
 
+  it("enlaza al panel de inventario ya filtrado, con datos y también sin ellos", () => {
+    const { unmount } = render(
+      <LowStockPanel items={[{ id: "1", sku: "X", productName: "Y", available: 0 }]} lowStockThreshold={3} outOfStock={1} lowStock={0} />,
+    );
+    expect(screen.getByRole("link", { name: "Ver agotadas" })).toHaveAttribute("href", "/inventario?estado=agotado");
+    expect(screen.getByRole("link", { name: "Ver stock bajo" })).toHaveAttribute("href", "/inventario?estado=bajo");
+    unmount();
+    render(<LowStockPanel items={[]} lowStockThreshold={3} outOfStock={0} lowStock={0} />);
+    expect(screen.getByRole("link", { name: "Ver stock bajo" })).toHaveAttribute("href", "/inventario?estado=bajo");
+  });
+
   it("stock bajo (no agotado) muestra el subtítulo correspondiente", () => {
     render(
       <LowStockPanel

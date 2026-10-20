@@ -36,6 +36,10 @@ enum NotificationType {
   TEAM_SHIPPING_LABEL_FAILED = "team_shipping_label_failed",
   /** The provider refused to cancel a label of a refunded order. One per order. */
   TEAM_SHIPPING_LABEL_CANCEL_FAILED = "team_shipping_label_cancel_failed",
+  /** A variant fell to or under the low-stock threshold. One per drop, re-armed on restock. */
+  TEAM_STOCK_LOW = "team_stock_low",
+  /** A variant ran out (available <= 0). One per drop, re-armed on restock. */
+  TEAM_STOCK_OUT = "team_stock_out",
 }
 
 enum NotificationStatus {

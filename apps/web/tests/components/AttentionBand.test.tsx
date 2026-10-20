@@ -5,7 +5,7 @@ import type { AttentionTile } from "@/lib/stats/attention";
 
 const tiles: AttentionTile[] = [
   { key: "awaitingPreparation", label: "Pagadas sin preparar (+24 h)", count: 3, level: "warn" },
-  { key: "stuckInProcessing", label: "Atoradas en preparación (+72 h)", count: 2, level: "danger" },
+  { key: "stuckInProcessing", label: "Atoradas en proceso (+72 h)", count: 2, level: "danger" },
   { key: "inTransitTooLong", label: "En tránsito demasiado tiempo (+14 d)", count: 1, level: "warn" },
   { key: "disputed", label: "En disputa", count: 0, level: "clear" },
   { key: "pendingPayment", label: "Pendientes de pago (flujo normal)", count: 5, level: "clear" },

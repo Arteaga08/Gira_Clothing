@@ -398,6 +398,16 @@ describe("Stripe webhook · charge.refunded", () => {
     expect(await onHandOf(variantId)).toBe(10);
   });
 
+  it("reembolso TOTAL re-arma la alerta de stock de la variante repuesta", async () => {
+    const { order, variantId } = await seedPaidOrder("R1A", 2, 10);
+    await Variant.updateOne({ _id: variantId }, { $set: { stockAlertLevel: "out" } });
+
+    await send(refundPayload(order, order.total));
+
+    expect(await onHandOf(variantId)).toBe(10);
+    expect((await Variant.findById(variantId).lean())?.stockAlertLevel).toBeNull();
+  });
+
   it("reembolso PARCIAL: guarda el monto, no cambia el estado ni repone stock", async () => {
     const { order, variantId } = await seedPaidOrder("R2", 2, 10);
 

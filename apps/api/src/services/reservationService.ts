@@ -5,6 +5,7 @@ import { Order } from "../models/Order.js";
 import { StockReservation, PURGE_AFTER_DAYS, type ReservationLine } from "../models/StockReservation.js";
 import { AppError } from "../utils/AppError.js";
 import { recordAudit } from "./auditService.js";
+import { evaluateStockAlerts } from "./stockAlertService.js";
 import type { RequestContext } from "../utils/requestContext.js";
 
 /**
@@ -89,6 +90,9 @@ const reserveStock = async (
     after: { lines: lines.length, ttlMinutes },
     ip: ctx.ip,
   });
+
+  // Holding units lowers what is available; checked after the commit, never inside it.
+  await evaluateStockAlerts(lines.map((line) => String(line.variant)));
 };
 
 /** Payment confirmed: the held units leave the warehouse for good. Idempotent. */
@@ -144,9 +148,11 @@ const releaseReservation = async (
   reason: string,
 ): Promise<boolean> => {
   let applied = false;
+  const releasedVariants: string[] = [];
   const session = await mongoose.startSession();
   try {
     await session.withTransaction(async () => {
+      releasedVariants.length = 0;
       const reservation = await StockReservation.findOneAndUpdate(
         { order: orderId, status: ReservationStatus.ACTIVE },
         {
@@ -166,6 +172,7 @@ const releaseReservation = async (
           { $inc: { reserved: -line.qty } },
           { session },
         );
+        releasedVariants.push(String(line.variant));
       }
       applied = true;
     });
@@ -181,6 +188,8 @@ const releaseReservation = async (
       targetId: String(orderId),
       after: { reason },
     });
+    // Units are back in play: re-arm any alert that no longer applies.
+    await evaluateStockAlerts(releasedVariants);
   }
   return applied;
 };

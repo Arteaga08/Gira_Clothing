@@ -20,7 +20,16 @@ interface VariantAttrs {
   /** Units held by in-flight orders. Written by M3 only — nothing in M2 writes it. */
   reserved: number;
   isActive: boolean;
+  /**
+   * One-shot stock alert marker. Claimed atomically by stockAlertService: the
+   * Telegram ping fires only when this flips to a worse level, and it re-arms
+   * (back to null) once the variant is restocked over the threshold.
+   */
+  stockAlertLevel?: StockAlertLevel | null;
+  stockAlertedAt?: Date;
 }
+
+type StockAlertLevel = "low" | "out";
 
 type VariantModel = Model<VariantAttrs>;
 type VariantDocument = HydratedDocument<VariantAttrs>;
@@ -42,6 +51,8 @@ const variantSchema = new Schema<VariantAttrs, VariantModel>(
     onHand: { type: Number, default: 0, min: 0 },
     reserved: { type: Number, default: 0, min: 0 },
     isActive: { type: Boolean, default: true },
+    stockAlertLevel: { type: String, enum: ["low", "out", null], default: null },
+    stockAlertedAt: { type: Date },
   },
   { timestamps: true },
 );
@@ -54,5 +65,5 @@ variantSchema.index({ print: 1, isActive: 1, product: 1 });
 
 const Variant = model<VariantAttrs, VariantModel>("Variant", variantSchema);
 
-export type { VariantAttrs, VariantDocument };
+export type { VariantAttrs, VariantDocument, StockAlertLevel };
 export { Variant };

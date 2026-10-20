@@ -60,6 +60,9 @@ import type {
   BulkStatusResult,
 } from "./types/order.js";
 import type {
+  CatalogRef,
+  AdminVariant,
+  AdminVariantActivity,
   PrintFamily,
   ProductCategory,
   Print,
@@ -139,6 +142,7 @@ import {
   ORDER_STATUS_GROUPS,
   matchStatusGroup,
 } from "./constants/orderStatusGroups.js";
+import { STOCK_ON_HAND_MAX, STOCK_DELTA_MAX, STOCK_REASON_MAX } from "./constants/inventory.js";
 import { PASSWORD_MIN_LENGTH, PASSWORD_MAX_BYTES } from "./constants/password.js";
 import type { AuditLogEntry } from "./types/audit.js";
 import type {
@@ -160,6 +164,8 @@ import {
   ORDER_STATUS_GROUP_LABELS,
 } from "./labels/orderStatus.js";
 import { TWO_FACTOR_INVALID_MESSAGE, INVALID_CREDENTIALS_MESSAGE } from "./labels/authMessages.js";
+import type { StockStatus } from "./labels/stock.js";
+import { STOCK_STATUS_LABELS, STOCK_ACTION_LABELS, stockStatusOf } from "./labels/stock.js";
 
 export type {
   Wire,
@@ -176,6 +182,9 @@ export type {
   OrderActivityEntry,
   BulkStatusOutcome,
   BulkStatusResult,
+  CatalogRef,
+  AdminVariant,
+  AdminVariantActivity,
   PrintFamily,
   ProductCategory,
   Print,
@@ -239,6 +248,7 @@ export {
   matchStatusGroup,
 };
 export { PASSWORD_MIN_LENGTH, PASSWORD_MAX_BYTES };
+export { STOCK_ON_HAND_MAX, STOCK_DELTA_MAX, STOCK_REASON_MAX };
 export type {
   RegisterRequest,
   VerifyEmailRequest,
@@ -258,6 +268,8 @@ export {
   ORDER_STATUS_GROUP_LABELS,
 };
 export { TWO_FACTOR_INVALID_MESSAGE, INVALID_CREDENTIALS_MESSAGE };
+export type { StockStatus };
+export { STOCK_STATUS_LABELS, STOCK_ACTION_LABELS, stockStatusOf };
 export {
   MEXICAN_STATES,
   MEXICAN_STATE_CODES,

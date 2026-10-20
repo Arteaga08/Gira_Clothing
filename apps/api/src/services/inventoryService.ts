@@ -3,6 +3,7 @@ import { AuditAction, AuditModule } from "@gira/shared";
 import { Variant } from "../models/Variant.js";
 import { AppError } from "../utils/AppError.js";
 import { recordAudit } from "./auditService.js";
+import { evaluateStockAlerts } from "./stockAlertService.js";
 import type { RequestContext } from "../utils/requestContext.js";
 
 /**
@@ -46,24 +47,35 @@ const toStockView = (doc: VariantStockLean): StockView => ({
   available: doc.onHand - doc.reserved,
 });
 
+/** The optional free-text reason rides in `after`; blank means none. */
+const withReason = (after: { onHand: number }, reason?: string): Record<string, unknown> => {
+  const trimmed = reason?.trim();
+  return trimmed ? { ...after, reason: trimmed } : after;
+};
+
 /** Absolute set. Guard is a plain filter: reserved must fit inside the new onHand. */
 const setOnHand = async (
   variantId: string,
   onHand: number,
   ctx: RequestContext,
+  reason?: string,
 ): Promise<StockView> => {
-  const before = await Variant.findById(variantId).select("onHand reserved").lean();
-  if (!before) throw new AppError("La variante no existe.", 404);
-
-  const updated = await Variant.findOneAndUpdate(
+  // `new: false` hands back the document as it was IN the atomic write, so the
+  // audit's `before` can never be a value another request already replaced.
+  const before = await Variant.findOneAndUpdate(
     { _id: variantId, reserved: { $lte: onHand } },
     { $set: { onHand } },
-    { new: true },
+    { new: false },
   )
     .select("sku onHand reserved")
     .lean();
 
-  if (!updated) throw new AppError(INSUFFICIENT, 409);
+  if (!before) {
+    // Only reached on failure, so this extra read cannot race the atomic guard above.
+    const exists = await Variant.exists({ _id: variantId });
+    throw exists ? new AppError(INSUFFICIENT, 409) : new AppError("La variante no existe.", 404);
+  }
+  const updated = { ...before, onHand };
 
   await recordAudit({
     actorId: ctx.actorId,
@@ -72,10 +84,11 @@ const setOnHand = async (
     module: AuditModule.INVENTORY,
     targetId: variantId,
     before: { onHand: before.onHand },
-    after: { onHand: updated.onHand },
+    after: withReason({ onHand: updated.onHand }, reason),
     ip: ctx.ip,
   });
 
+  await evaluateStockAlerts([variantId]);
   return toStockView(updated);
 };
 
@@ -84,6 +97,7 @@ const adjustOnHand = async (
   variantId: string,
   delta: number,
   ctx: RequestContext,
+  reason?: string,
 ): Promise<StockView> => {
   const updated = await Variant.findOneAndUpdate(
     {
@@ -109,10 +123,11 @@ const adjustOnHand = async (
     module: AuditModule.INVENTORY,
     targetId: variantId,
     before: { onHand: updated.onHand - delta },
-    after: { onHand: updated.onHand },
+    after: withReason({ onHand: updated.onHand }, reason),
     ip: ctx.ip,
   });
 
+  await evaluateStockAlerts([variantId]);
   return toStockView(updated);
 };
 

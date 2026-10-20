@@ -24,7 +24,10 @@ import {
   renderTeamShipmentIncident,
   renderTeamShippingLabelFailed,
   renderTeamShippingLabelCancelFailed,
+  renderTeamStockOut,
+  renderTeamStockLow,
   type TeamOrderSnapshot,
+  type TeamStockSnapshot,
 } from "../templates/teamMessages.js";
 import type { TeamMessage } from "../adapters/notification/types.js";
 import type { NotificationDocument } from "../models/Notification.js";
@@ -81,6 +84,10 @@ const renderTeam = (doc: NotificationDocument): TeamMessage => {
       return renderTeamShippingLabelFailed(String(payload.orderNumber), String(payload.reason));
     case NotificationType.TEAM_SHIPPING_LABEL_CANCEL_FAILED:
       return renderTeamShippingLabelCancelFailed(String(payload.orderNumber));
+    case NotificationType.TEAM_STOCK_OUT:
+      return renderTeamStockOut(payload as unknown as TeamStockSnapshot);
+    case NotificationType.TEAM_STOCK_LOW:
+      return renderTeamStockLow(payload as unknown as TeamStockSnapshot);
     default:
       throw new Error(`Tipo de aviso no soportado: ${doc.type}`);
   }

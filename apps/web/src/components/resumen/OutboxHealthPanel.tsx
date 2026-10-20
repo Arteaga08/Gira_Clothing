@@ -20,7 +20,7 @@ interface OutboxHealthPanelProps {
  */
 const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   [NotificationType.ORDER_CONFIRMATION]: "confirmación de pedido",
-  [NotificationType.ORDER_PREPARING]: "pedido en preparación",
+  [NotificationType.ORDER_PREPARING]: "pedido en proceso",
   [NotificationType.ORDER_SHIPPED]: "pedido enviado",
   [NotificationType.ORDER_DELIVERED]: "pedido entregado",
   [NotificationType.TEAM_ORDER_PAID]: "aviso de pedido pagado",
@@ -30,6 +30,8 @@ const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   [NotificationType.TEAM_DISPUTE_LOST]: "aviso de disputa perdida",
   [NotificationType.TEAM_SHIPPING_LABEL_FAILED]: "aviso de guía fallida",
   [NotificationType.TEAM_SHIPPING_LABEL_CANCEL_FAILED]: "aviso de cancelación de guía fallida",
+  [NotificationType.TEAM_STOCK_LOW]: "aviso de stock bajo",
+  [NotificationType.TEAM_STOCK_OUT]: "aviso de producto agotado",
 };
 
 const NOTIFICATION_CHANNEL_LABELS: Record<NotificationChannelKind, string> = {

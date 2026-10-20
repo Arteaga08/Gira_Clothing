@@ -3,14 +3,18 @@
  * site CSP lives here, not in the API). Pure so it can be unit-tested;
  * next.config.ts only wires it in.
  *
- * Stripe (Elements/Checkout) and Cloudinary (images) are NOT allowed yet: the
- * storefront that needs them is Block 3, which extends `script-src`,
- * `frame-src`, `connect-src` and `img-src` at that point.
+ * Cloudinary is allowed for images ONLY (`img-src`, its delivery host): the
+ * panel shows catalog pictures. Stripe (Elements/Checkout) is NOT allowed yet:
+ * the storefront that needs it is Block 3, which extends `script-src`,
+ * `frame-src` and `connect-src` at that point.
  *
  * `'unsafe-inline'` in script-src is the cost of a static CSP: Next injects
  * inline bootstrap scripts, and a nonce would force every page to render
  * dynamically (and needs middleware). Everything else is locked down.
  */
+
+/** Cloudinary's image delivery host: the only third-party origin the panel may load pictures from. */
+const CLOUDINARY_IMAGE_HOST = "https://res.cloudinary.com";
 
 interface SecurityHeadersOptions {
   /** NEXT_PUBLIC_API_URL, e.g. https://api.gira.mx/api/v1 — only its origin is allowed. */
@@ -31,7 +35,7 @@ const buildCsp = ({ apiUrl, isProd }: SecurityHeadersOptions): string => {
     "default-src 'self'",
     `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"}`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:",
+    `img-src 'self' data: blob: ${CLOUDINARY_IMAGE_HOST}`,
     "font-src 'self'",
     `connect-src 'self' ${apiOrigin}`,
     "frame-ancestors 'none'",

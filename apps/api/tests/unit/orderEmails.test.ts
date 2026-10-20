@@ -60,9 +60,13 @@ describe("renderOrderConfirmation", () => {
 });
 
 describe("renderOrderPreparing", () => {
-  it("anuncia la preparación sin prometer fecha de entrega", () => {
+  it("anuncia que el pedido está en proceso sin prometer fecha de entrega", () => {
     const mail = renderOrderPreparing(snapshot);
-    expect(mail.subject).toContain("preparando");
+    expect(mail.subject).toContain("en proceso");
+    expect(mail.subject).not.toContain("preparando");
+    expect(mail.html).toContain("en proceso");
+    expect(mail.html).not.toContain("preparación");
+    expect(mail.text).not.toContain("preparando");
     expect(mail.subject).toContain("GC-7KQ2M9XA");
     expect(mail.html).toContain("GC-7KQ2M9XA");
     expect(mail.html).toContain("/orden/abc123");

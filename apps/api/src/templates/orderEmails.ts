@@ -100,15 +100,15 @@ const renderOrderConfirmation = (snapshot: OrderEmailSnapshot): RenderedMail => 
 });
 
 const renderOrderPreparing = (snapshot: OrderEmailSnapshot): RenderedMail => ({
-  subject: `Estamos preparando tu pedido ${snapshot.orderNumber}`,
+  subject: `Tu pedido ${snapshot.orderNumber} está en proceso`,
   html: layout(
     `${snapshot.customerName}, ya estamos en eso`,
-    `<p>Tu pedido está en preparación. Te mandamos el número de guía en cuanto salga del taller.</p>` +
+    `<p>Tu pedido está en proceso. Te mandamos el número de guía en cuanto salga del taller.</p>` +
       folioHtml(snapshot) +
       `<p><a href="${orderUrl(snapshot.publicId)}">Ver mi pedido</a></p>`,
   ),
   text:
-    `${snapshot.customerName}, ya estamos preparando tu pedido.\nFolio: ${snapshot.orderNumber}\n\n` +
+    `${snapshot.customerName}, tu pedido está en proceso.\nFolio: ${snapshot.orderNumber}\n\n` +
     `Te mandamos el número de guía en cuanto salga del taller.\n\n` +
     `Ver mi pedido: ${orderUrl(snapshot.publicId)}`,
 });

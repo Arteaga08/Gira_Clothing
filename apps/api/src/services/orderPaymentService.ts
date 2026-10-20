@@ -18,6 +18,7 @@ import { recordAudit } from "./auditService.js";
 import { enqueueNotification } from "./notificationService.js";
 import { flagForReview } from "./paymentAlertService.js";
 import { clearCart } from "./cartService.js";
+import { evaluateStockAlerts } from "./stockAlertService.js";
 import { enqueueLabel, requestLabelCancellation } from "./shippingLabelService.js";
 import { AppError } from "../utils/AppError.js";
 import { toOrderEmailSnapshot } from "../utils/orderEmailSnapshot.js";
@@ -437,6 +438,7 @@ const refundPaidOrder = async (orderId: Types.ObjectId): Promise<void> => {
   // inventory permanently half-corrected.
   let orderNumber = "";
   let restocked = false;
+  let restockedVariants: string[] = [];
   let reservationWasActive = false;
   let unaccountedStock = false;
   let beforePickup = false;
@@ -476,7 +478,9 @@ const refundPaidOrder = async (orderId: Types.ObjectId): Promise<void> => {
       if (committed && !started) {
         // The reservation is the record of what was ACTUALLY taken out; the
         // order lines are the fallback once it has been purged.
-        await restockUnits(reservation?.lines ?? order.lines, session);
+        const restockLines = reservation?.lines ?? order.lines;
+        await restockUnits(restockLines, session);
+        restockedVariants = restockLines.map((line) => String(line.variant));
         restocked = true;
       }
       reservationWasActive = reservation?.status === ReservationStatus.ACTIVE;
@@ -497,6 +501,8 @@ const refundPaidOrder = async (orderId: Types.ObjectId): Promise<void> => {
   // Audited only after the transaction committed: an entry for a write that was
   // rolled back is worse than no entry at all.
   if (restocked) {
+    // Refunded units raise availability: re-arm any stock alert that no longer applies.
+    await evaluateStockAlerts(restockedVariants);
     await recordAudit({
       actorType: "system",
       action: AuditAction.STOCK_RESTOCKED_ON_REFUND,

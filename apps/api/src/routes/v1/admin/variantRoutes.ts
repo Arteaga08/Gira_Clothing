@@ -15,6 +15,7 @@ import {
   deactivate,
   updateStock,
   stats,
+  activity,
 } from "../../../controllers/variantController.js";
 
 const variantRouter = Router();
@@ -24,6 +25,7 @@ variantRouter.post("/", validate(createVariantSchema), create);
 // Mounted BEFORE /:id so "stats" is never swallowed by the param route.
 variantRouter.get("/stats", stats);
 variantRouter.get("/:id", validate(objectIdParamSchema, "params"), detail);
+variantRouter.get("/:id/activity", validate(objectIdParamSchema, "params"), activity);
 variantRouter.patch(
   "/:id",
   validate(objectIdParamSchema, "params"),
