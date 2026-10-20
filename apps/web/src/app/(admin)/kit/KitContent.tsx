@@ -159,7 +159,7 @@ const KitContent = () => {
         </div>
       </Panel>
 
-      <Panel title="Chips de estado" hint="Los 9 de pedido, con su label real">
+      <Panel title="Chips de estado" hint="Los 8 de pedido, con su label real">
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap gap-2">
             {Object.values(OrderStatus).map((status) => (
@@ -179,7 +179,7 @@ const KitContent = () => {
             icon={PackageIcon}
             accent
           />
-          <StatCard label="Envíos activos" value={14} icon={TruckIcon} />
+          <StatCard label="Pedidos en camino" value={14} icon={TruckIcon} />
           <StatCard label="Clientes" value={392} unit="activos" icon={UsersIcon} />
         </div>
       </Panel>

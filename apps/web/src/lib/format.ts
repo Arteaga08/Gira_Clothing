@@ -124,8 +124,26 @@ const formatShortTime = (instant: Date): string =>
     hour12: false,
   }).format(instant);
 
+/** "29 oct, 16:05" (or "29 oct 2025, 16:05" for another year): order dates, Mexico City, 24h. Takes the ISO string the API sends. */
+const formatShortDateTime = (iso: string, now: Date = new Date()): string => {
+  const instant = new Date(iso);
+  const yearOf = (date: Date) => new Intl.DateTimeFormat("en-US", { timeZone: TIMEZONE, year: "numeric" }).format(date);
+  return new Intl.DateTimeFormat(LOCALE, {
+    timeZone: TIMEZONE,
+    day: "numeric",
+    month: "short",
+    ...(yearOf(instant) === yearOf(now) ? {} : { year: "numeric" as const }),
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  })
+    .format(instant)
+    .replace(/\./g, "");
+};
+
 export {
   formatMoneyParts,
+  formatShortDateTime,
   formatInteger,
   formatLongDate,
   formatShortDay,

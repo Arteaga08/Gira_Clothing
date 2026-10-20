@@ -53,6 +53,9 @@ const T_BODY_SM = "text-sm leading-relaxed";
 /** Pied de foto, ayuda, texto secundario pequeño. */
 const T_CAPTION = "text-2xs text-text-muted";
 
+/** An order number (GC-XXXXXXXX) as the heading of its own detail: an identifier, so mono, never Anton. */
+const T_ORDER_NUMBER = "font-mono text-2xl font-bold leading-tight";
+
 /** KPI number on a StatCard. */
 const T_METRIC = "font-mono text-xl font-bold tracking-tight lg:text-2xl";
 
@@ -82,6 +85,7 @@ export {
   T_BODY,
   T_BODY_SM,
   T_CAPTION,
+  T_ORDER_NUMBER,
   T_METRIC,
   T_METRIC_SM,
   T_DATA,

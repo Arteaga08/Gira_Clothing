@@ -53,8 +53,8 @@ describe("Sidebar", () => {
     pathnameState.current = "/resumen";
     renderSidebar();
 
-    expect(screen.queryByRole("link", { name: "Pedidos" })).not.toBeInTheDocument();
-    expect(screen.getByText("Pedidos").closest("[aria-disabled]")).toHaveAttribute(
+    expect(screen.queryByRole("link", { name: "Productos" })).not.toBeInTheDocument();
+    expect(screen.getByText("Productos").closest("[aria-disabled]")).toHaveAttribute(
       "aria-disabled",
       "true",
     );

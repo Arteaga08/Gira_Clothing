@@ -16,12 +16,24 @@ describe("breadcrumbsFor", () => {
     ]);
   });
 
-  it("en /pedidos/68f2ab: Panel, Pedidos enlazado, y el segmento crudo como actual", () => {
+  it("en /pedidos/68f2ab: nunca muestra el id crudo, dice Detalle", () => {
     expect(breadcrumbsFor("/pedidos/68f2ab")).toEqual([
       { label: "Panel", href: "/resumen" },
       { label: "Pedidos", href: "/pedidos" },
-      { label: "68f2ab" },
+      { label: "Detalle" },
     ]);
+  });
+
+  it("con etiqueta propia (el folio) reemplaza el último segmento", () => {
+    expect(breadcrumbsFor("/pedidos/68f2ab", "GC-7KQ3M2XV")).toEqual([
+      { label: "Panel", href: "/resumen" },
+      { label: "Pedidos", href: "/pedidos" },
+      { label: "GC-7KQ3M2XV" },
+    ]);
+  });
+
+  it("la etiqueta propia no pisa una sección del registro", () => {
+    expect(breadcrumbsFor("/pedidos", "GC-7KQ3M2XV").at(-1)).toEqual({ label: "Pedidos" });
   });
 
   it("una ruta que no existe en el registro no lanza: usa el segmento crudo", () => {

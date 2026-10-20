@@ -1,5 +1,7 @@
 import type { PublicUser, Wire } from "@gira/shared";
 import type { ReactNode } from "react";
+import { ToastProvider } from "@/components/ui/Toast";
+import { BreadcrumbLabelProvider } from "./BreadcrumbLabel";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { CommandPaletteMount } from "./CommandPaletteMount";
 import { CommandPaletteProvider } from "./CommandPaletteProvider";
@@ -21,8 +23,10 @@ interface AdminShellProps {
  */
 const AdminShell = ({ user, children }: AdminShellProps) => {
   return (
+    <ToastProvider>
     <MobileNavProvider>
       <CommandPaletteProvider>
+        <BreadcrumbLabelProvider>
         <div className="lg:grid lg:grid-cols-[var(--sidebar-width)_1fr]">
           <Sidebar user={user} />
           <div className="flex min-w-0 flex-col">
@@ -34,8 +38,10 @@ const AdminShell = ({ user, children }: AdminShellProps) => {
           </div>
         </div>
         <CommandPaletteMount />
+        </BreadcrumbLabelProvider>
       </CommandPaletteProvider>
     </MobileNavProvider>
+    </ToastProvider>
   );
 };
 

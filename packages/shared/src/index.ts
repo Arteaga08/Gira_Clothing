@@ -91,7 +91,11 @@ import {
   POSTAL_CODE_PATTERN,
   PHONE_PATTERN,
 } from "./constants/shipping.js";
-import { SHIPPING_CARRIER_LABELS, SHIPMENT_TRACKING_STATUS_LABELS } from "./labels/shipping.js";
+import {
+  SHIPPING_CARRIER_LABELS,
+  SHIPMENT_TRACKING_STATUS_LABELS,
+  SHIPPING_LABEL_STATUS_LABELS,
+} from "./labels/shipping.js";
 import type {
   ShippingSettings,
   CurrencySettings,
@@ -259,4 +263,5 @@ export {
   PHONE_PATTERN,
   SHIPPING_CARRIER_LABELS,
   SHIPMENT_TRACKING_STATUS_LABELS,
+  SHIPPING_LABEL_STATUS_LABELS,
 };

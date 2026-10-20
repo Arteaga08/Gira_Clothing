@@ -8,14 +8,14 @@ import type { OrderStatusGroup } from "../constants/orderStatusGroups.js";
  * the admin dashboard, so the two can never drift apart.
  */
 const ORDER_STATUS_LABELS: Readonly<Record<OrderStatus, string>> = Object.freeze({
-  [OrderStatus.PENDING_PAYMENT]: "pendiente de pago",
-  [OrderStatus.PAID]: "pagada",
-  [OrderStatus.PROCESSING]: "en preparación",
-  [OrderStatus.SHIPPED]: "enviada",
-  [OrderStatus.DELIVERED]: "entregada",
-  [OrderStatus.CANCELLED]: "cancelada",
-  [OrderStatus.EXPIRED]: "expirada",
-  [OrderStatus.REFUNDED]: "reembolsada",
+  [OrderStatus.PENDING_PAYMENT]: "pago pendiente",
+  [OrderStatus.PAID]: "pagado",
+  [OrderStatus.PROCESSING]: "en proceso",
+  [OrderStatus.SHIPPED]: "enviado",
+  [OrderStatus.DELIVERED]: "recibido",
+  [OrderStatus.CANCELLED]: "cancelado",
+  [OrderStatus.EXPIRED]: "expirado",
+  [OrderStatus.REFUNDED]: "reembolsado",
 });
 
 /** Spanish labels for DisputeStatus. Exhaustive Record: a new status breaks the typecheck. */
