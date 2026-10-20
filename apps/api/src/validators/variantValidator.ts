@@ -30,7 +30,7 @@ const createVariantSchema = Joi.object({
 
 const updateVariantSchema = Joi.object({
   images,
-  priceOverride,
+  priceOverride: priceOverride.allow(null),
   isActive: Joi.boolean(),
 })
   .min(1)
@@ -41,6 +41,7 @@ const variantListQuerySchema = listQueryBase.keys({
   print: objectId,
   category: objectId,
   isActive: Joi.boolean(),
+  withImages: Joi.boolean(),
   stock: Joi.string().valid("out", "low", "ok").messages({
     "any.only": "El estado de stock debe ser out, low u ok.",
   }),

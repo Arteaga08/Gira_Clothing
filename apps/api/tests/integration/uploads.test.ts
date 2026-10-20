@@ -128,3 +128,17 @@ describe("Admin · Uploads · éxito", () => {
     expect(entries).toHaveLength(1);
   });
 });
+
+describe("Admin · Uploads · carpeta products", () => {
+  it("acepta folder=products y devuelve la imagen", async () => {
+    const cookie = await loginAsAdmin(app);
+    const res = await request(app)
+      .post(BASE)
+      .set("Origin", ORIGIN)
+      .set("Cookie", cookie)
+      .field("folder", "products")
+      .attach("file", PNG_BYTES, { filename: "tamano.png", contentType: "image/png" });
+    expect(res.status).toBe(201);
+    expect(res.body.data.image.url).toContain("products");
+  });
+});

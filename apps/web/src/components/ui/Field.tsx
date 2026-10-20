@@ -6,7 +6,7 @@ import { Icon } from "./Icon";
 
 interface FieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "id"> {
   label: string;
-  error?: string;
+  error?: string | undefined;
   helper?: string;
   icon?: PhosphorIcon;
   containerClassName?: string;

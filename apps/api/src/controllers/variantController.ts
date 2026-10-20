@@ -4,7 +4,6 @@ import { sendResponse } from "../utils/sendResponse.js";
 import { buildContext } from "../utils/requestContext.js";
 import {
   createVariant,
-  getVariant,
   updateVariant,
   deactivateVariant,
   type CreateVariantInput,
@@ -23,7 +22,8 @@ import { getInventoryStats } from "../services/inventoryStatsService.js";
  */
 
 const create = asyncHandler(async (req: Request, res: Response) => {
-  const variant = await createVariant(req.body as CreateVariantInput, buildContext(req));
+  const created = await createVariant(req.body as CreateVariantInput, buildContext(req));
+  const variant = await getAdminVariantOrThrow(created.id, true);
   sendResponse(res, 201, "Variante creada correctamente.", { variant });
 });
 
@@ -33,21 +33,21 @@ const list = asyncHandler(async (req: Request, res: Response) => {
 });
 
 const detail = asyncHandler(async (req: Request, res: Response) => {
-  const variant = await getVariant(req.params.id as string);
+  const variant = await getAdminVariantOrThrow(req.params.id as string, true);
   sendResponse(res, 200, "Variante obtenida correctamente.", { variant });
 });
 
 const update = asyncHandler(async (req: Request, res: Response) => {
-  const variant = await updateVariant(
-    req.params.id as string,
-    req.body as UpdateVariantInput,
-    buildContext(req),
-  );
+  const id = req.params.id as string;
+  await updateVariant(id, req.body as UpdateVariantInput, buildContext(req));
+  const variant = await getAdminVariantOrThrow(id, true);
   sendResponse(res, 200, "Variante actualizada correctamente.", { variant });
 });
 
 const deactivate = asyncHandler(async (req: Request, res: Response) => {
-  const variant = await deactivateVariant(req.params.id as string, buildContext(req));
+  const id = req.params.id as string;
+  await deactivateVariant(id, buildContext(req));
+  const variant = await getAdminVariantOrThrow(id, true);
   sendResponse(res, 200, "Variante retirada correctamente.", { variant });
 });
 

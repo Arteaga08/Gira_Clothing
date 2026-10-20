@@ -168,4 +168,17 @@ describe("request", () => {
     const data = expectData({ message: "ok", data: { user: { id: "1" } }, meta: undefined });
     expect(data).toEqual({ user: { id: "1" } });
   });
+
+  it("un FormData se envía tal cual y sin content-type (el navegador pone el boundary)", async () => {
+    const fetchMock = stubFetch();
+    fetchMock.mockResolvedValueOnce(jsonResponse(201, { status: "success", message: "ok" }));
+    const form = new FormData();
+    form.append("folder", "products");
+
+    await request("/admin/uploads", { method: "POST", body: form });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(init.body).toBe(form);
+    expect((init.headers as Record<string, string>)["content-type"]).toBeUndefined();
+  });
 });

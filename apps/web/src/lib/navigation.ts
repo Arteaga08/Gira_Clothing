@@ -69,8 +69,8 @@ const NAV_GROUPS: readonly NavGroupConfig[] = [
         label: "Productos",
         href: "/productos",
         icon: TShirtIcon,
-        keywords: ["productos", "catalogo"],
-        available: false,
+        keywords: ["productos", "catalogo", "modelos", "modelo"],
+        available: true,
       },
       {
         key: "prints",

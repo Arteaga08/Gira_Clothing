@@ -61,6 +61,8 @@ import type {
 } from "./types/order.js";
 import type {
   CatalogRef,
+  AdminProduct,
+  AdminProductPrint,
   AdminVariant,
   AdminVariantActivity,
   PrintFamily,
@@ -143,6 +145,21 @@ import {
   matchStatusGroup,
 } from "./constants/orderStatusGroups.js";
 import { STOCK_ON_HAND_MAX, STOCK_DELTA_MAX, STOCK_REASON_MAX } from "./constants/inventory.js";
+import {
+  PRODUCT_NAME_MIN,
+  PRODUCT_NAME_MAX,
+  PRODUCT_DESCRIPTION_MAX,
+  PRODUCT_BASE_PRICE_MAX,
+  PRODUCT_WEIGHT_MIN,
+  PRODUCT_WEIGHT_MAX,
+  PRODUCT_MEASURE_MAX,
+  PRODUCT_MATERIALS_MAX,
+  PRODUCT_MATERIAL_MAX,
+  VARIANT_IMAGES_MAX,
+  VARIANT_PRICE_OVERRIDE_MAX,
+  UPLOAD_MAX_BYTES,
+  UPLOAD_MIME_TYPES,
+} from "./constants/catalog.js";
 import { PASSWORD_MIN_LENGTH, PASSWORD_MAX_BYTES } from "./constants/password.js";
 import type { AuditLogEntry } from "./types/audit.js";
 import type {
@@ -183,6 +200,8 @@ export type {
   BulkStatusOutcome,
   BulkStatusResult,
   CatalogRef,
+  AdminProduct,
+  AdminProductPrint,
   AdminVariant,
   AdminVariantActivity,
   PrintFamily,
@@ -249,6 +268,21 @@ export {
 };
 export { PASSWORD_MIN_LENGTH, PASSWORD_MAX_BYTES };
 export { STOCK_ON_HAND_MAX, STOCK_DELTA_MAX, STOCK_REASON_MAX };
+export {
+  PRODUCT_NAME_MIN,
+  PRODUCT_NAME_MAX,
+  PRODUCT_DESCRIPTION_MAX,
+  PRODUCT_BASE_PRICE_MAX,
+  PRODUCT_WEIGHT_MIN,
+  PRODUCT_WEIGHT_MAX,
+  PRODUCT_MEASURE_MAX,
+  PRODUCT_MATERIALS_MAX,
+  PRODUCT_MATERIAL_MAX,
+  VARIANT_IMAGES_MAX,
+  VARIANT_PRICE_OVERRIDE_MAX,
+  UPLOAD_MAX_BYTES,
+  UPLOAD_MIME_TYPES,
+};
 export type {
   RegisterRequest,
   VerifyEmailRequest,
