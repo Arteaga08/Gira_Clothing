@@ -31,6 +31,6 @@ describe("distributionFrom", () => {
 
   it("usa las etiquetas en español de @gira/shared", () => {
     const { segments } = distributionFrom({ [OrderStatus.SHIPPED]: 1 });
-    expect(segments[0]!.label).toBe("enviada");
+    expect(segments[0]!.label).toBe("enviado");
   });
 });

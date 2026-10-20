@@ -1,9 +1,9 @@
-import type { ReactNode } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
 type BadgeVariant = "neutral" | "count" | "ok" | "warn" | "danger";
 
-interface BadgeProps {
+interface BadgeProps extends Omit<HTMLAttributes<HTMLSpanElement>, "className" | "children"> {
   variant?: BadgeVariant;
   children: ReactNode;
   className?: string;
@@ -12,7 +12,7 @@ interface BadgeProps {
 /**
  * Shared with StatusChip (see ./StatusChip.tsx), which composes BADGE_BASE
  * directly instead of this component — a status chip's fill comes from a
- * per-enum-member map (nine order statuses), not
+ * per-enum-member map (eight order statuses), not
  * from this five-variant set.
  *
  * Mono + uppercase because a badge IS the "Labels/Metadata" role in the type
@@ -32,8 +32,10 @@ const VARIANT_CLASSES: Record<BadgeVariant, string> = {
   danger: "bg-danger-soft",
 };
 
-const Badge = ({ variant = "neutral", children, className }: BadgeProps) => (
-  <span className={cn(BADGE_BASE, VARIANT_CLASSES[variant], className)}>{children}</span>
+const Badge = ({ variant = "neutral", children, className, ...rest }: BadgeProps) => (
+  <span className={cn(BADGE_BASE, VARIANT_CLASSES[variant], className)} {...rest}>
+    {children}
+  </span>
 );
 
 export type { BadgeProps, BadgeVariant };

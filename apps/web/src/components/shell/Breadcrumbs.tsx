@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { breadcrumbsFor } from "@/lib/breadcrumbs";
+import { useBreadcrumbLabel } from "./BreadcrumbLabel";
 
 const Breadcrumbs = () => {
   const pathname = usePathname();
-  const crumbs = breadcrumbsFor(pathname);
+  const lastLabel = useBreadcrumbLabel();
+  const crumbs = breadcrumbsFor(pathname, lastLabel ?? undefined);
 
   return (
     <nav

@@ -1,4 +1,4 @@
-import { ShippingCarrier, ShipmentTrackingStatus } from "../enums/shipping.js";
+import { ShippingCarrier, ShippingLabelStatus, ShipmentTrackingStatus } from "../enums/shipping.js";
 
 const SHIPPING_CARRIER_LABELS: Record<ShippingCarrier, string> = {
   [ShippingCarrier.ESTAFETA]: "Estafeta",
@@ -20,4 +20,14 @@ const SHIPMENT_TRACKING_STATUS_LABELS: Record<ShipmentTrackingStatus, string> = 
   [ShipmentTrackingStatus.LOST]: "Extraviado",
 };
 
-export { SHIPPING_CARRIER_LABELS, SHIPMENT_TRACKING_STATUS_LABELS };
+const SHIPPING_LABEL_STATUS_LABELS: Record<ShippingLabelStatus, string> = {
+  [ShippingLabelStatus.PENDING]: "Guía en cola",
+  [ShippingLabelStatus.REQUESTED]: "Generando guía",
+  [ShippingLabelStatus.READY]: "Guía lista",
+  [ShippingLabelStatus.FAILED]: "Guía con error",
+  [ShippingLabelStatus.NEEDS_REVIEW]: "Guía por revisar",
+  [ShippingLabelStatus.CANCEL_PENDING]: "Cancelando guía",
+  [ShippingLabelStatus.CANCELLED]: "Guía cancelada",
+};
+
+export { SHIPPING_CARRIER_LABELS, SHIPMENT_TRACKING_STATUS_LABELS, SHIPPING_LABEL_STATUS_LABELS };

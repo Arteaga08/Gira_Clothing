@@ -12,8 +12,8 @@ describe("DistributionPanel", () => {
       <DistributionPanel byStatus={{ [OrderStatus.SHIPPED]: 14, [OrderStatus.PAID]: 8 }} />,
     );
     expect(screen.getByRole("img")).toBeInTheDocument();
-    expect(screen.getByText("enviada")).toBeInTheDocument();
-    expect(screen.getByText("pagada")).toBeInTheDocument();
+    expect(screen.getByText("enviado")).toBeInTheDocument();
+    expect(screen.getByText("pagado")).toBeInTheDocument();
   });
 
   it("con {} muestra el EmptyState", () => {

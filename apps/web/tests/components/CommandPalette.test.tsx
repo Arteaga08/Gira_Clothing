@@ -46,13 +46,20 @@ describe("CommandPalette", () => {
     expect(trigger).toHaveFocus();
   });
 
+  it("buscar envíos encuentra Pedidos: ahí vive la logística", async () => {
+    renderPalette();
+    await userEvent.click(screen.getByRole("button", { name: "Abrir paleta" }));
+    await userEvent.type(screen.getByRole("combobox"), "envios");
+    expect(screen.getByRole("option", { name: "Pedidos" })).toBeInTheDocument();
+  });
+
   it("filtra por texto sin distinguir acentos", async () => {
     renderPalette();
     await userEvent.click(screen.getByRole("button", { name: "Abrir paleta" }));
 
-    await userEvent.type(screen.getByRole("combobox"), "envios");
+    await userEvent.type(screen.getByRole("combobox"), "categorias");
 
-    expect(screen.getByRole("option", { name: /envíos/i })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /categorías/i })).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: "Resumen" })).not.toBeInTheDocument();
   });
 
@@ -63,8 +70,10 @@ describe("CommandPalette", () => {
     await userEvent.keyboard("{ArrowDown}");
     expect(screen.getByRole("option", { name: "Resumen" })).toHaveAttribute("aria-selected", "true");
 
-    // Solo "Resumen" está disponible en M7 — repetir ArrowDown da la vuelta y
-    // vuelve a él, lo que prueba que los deshabilitados de en medio se saltaron.
+    // Resumen y Pedidos son los disponibles: la segunda flecha va a Pedidos y la
+    // tercera da la vuelta a Resumen saltando todos los deshabilitados de en medio.
+    await userEvent.keyboard("{ArrowDown}");
+    expect(screen.getByRole("option", { name: "Pedidos" })).toHaveAttribute("aria-selected", "true");
     await userEvent.keyboard("{ArrowDown}");
     expect(screen.getByRole("option", { name: "Resumen" })).toHaveAttribute("aria-selected", "true");
   });
@@ -83,7 +92,7 @@ describe("CommandPalette", () => {
     renderPalette();
     await userEvent.click(screen.getByRole("button", { name: "Abrir paleta" }));
 
-    await userEvent.click(screen.getByRole("option", { name: /pedidos/i }));
+    await userEvent.click(screen.getByRole("option", { name: /productos/i }));
 
     expect(router.push).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog")).toBeInTheDocument();

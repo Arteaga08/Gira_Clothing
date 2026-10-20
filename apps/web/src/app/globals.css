@@ -19,6 +19,7 @@
   --radius-nb-sm: var(--nb-radius-sm);
   --radius-nb-pill: var(--nb-radius-pill);
   --animate-shimmer: shimmer var(--duration-shimmer) linear infinite;
+  --animate-slide-in: slide-in var(--duration-enter) var(--ease-drawer);
 }
 
 /*
@@ -81,5 +82,15 @@
   }
   to {
     background-position: -200% 0;
+  }
+}
+
+/* SlideOver entrance: transform only, never a layout property. */
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
   }
 }

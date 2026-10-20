@@ -7,10 +7,13 @@ describe("NAV_GROUPS / NAV_ITEMS", () => {
     expect(NAV_ITEMS).toHaveLength(total);
   });
 
-  it("solo Resumen está disponible en M7 — el resto llega en M8-M12", () => {
-    const available = NAV_ITEMS.filter((item) => item.available);
-    expect(available).toHaveLength(1);
-    expect(available[0]?.key).toBe("summary");
+  it("Resumen y Pedidos están disponibles; el resto llega en M10-M12", () => {
+    const available = NAV_ITEMS.filter((item) => item.available).map((item) => item.key);
+    expect(available).toEqual(["summary", "orders"]);
+  });
+
+  it("no hay entrada de Envíos: la logística se opera dentro de Pedidos", () => {
+    expect(NAV_ITEMS.some((item) => item.key === "shipments")).toBe(false);
   });
 
   it("cada key es única", () => {
@@ -33,6 +36,6 @@ describe("isNavItemActive", () => {
   });
 
   it("no coincide con otra sección", () => {
-    expect(isNavItemActive("/envios", "/pedidos")).toBe(false);
+    expect(isNavItemActive("/resumen", "/pedidos")).toBe(false);
   });
 });
