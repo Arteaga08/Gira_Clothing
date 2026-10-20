@@ -131,6 +131,7 @@ import {
   CANCEL_REASON_MAX,
   MAX_BULK_ORDERS,
   MAX_ORDER_ACTIVITY,
+  REFUND_REQUEST_STALE_MS,
 } from "./constants/order.js";
 import type { OrderStatusGroup } from "./constants/orderStatusGroups.js";
 import {
@@ -232,6 +233,7 @@ export {
   CANCEL_REASON_MAX,
   MAX_BULK_ORDERS,
   MAX_ORDER_ACTIVITY,
+  REFUND_REQUEST_STALE_MS,
   ORDER_STATUS_TO_GROUP,
   ORDER_STATUS_GROUPS,
   matchStatusGroup,

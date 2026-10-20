@@ -79,7 +79,9 @@ describe("PATCH /admin/orders/bulk-status", () => {
     expect((await bulk(cookie, { ids: Array.from({ length: 51 }, (_, i) => fake(i + 1)), status: "processing" })).status).toBe(400);
     expect((await bulk(cookie, { ids: [paid, paid], status: "processing" })).status).toBe(400);
     expect((await bulk(cookie, { ids: [], status: "processing" })).status).toBe(400);
-    expect((await bulk(cookie, { ids: [paid], status: "cancelled" })).status).toBe(400);
+    const wrongStatus = await bulk(cookie, { ids: [paid], status: "cancelled" });
+    expect(wrongStatus.status).toBe(400);
+    expect(wrongStatus.body.message).toContain("«en proceso»");
     expect((await bulk(cookie, { ids: [paid], status: "paid" })).status).toBe(400);
     expect((await Order.findById(paid).lean())?.status).toBe(OrderStatus.PAID);
   });

@@ -57,6 +57,8 @@ describe("LogisticsCard: marcar enviado", () => {
     const ship = screen.getByRole("button", { name: "Marcar enviado" });
     expect(ship).toBeEnabled();
     await userEvent.click(ship);
+    expect(fns.onShip).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: "Sí, marcar enviado" }));
     expect(fns.onShip).toHaveBeenCalledTimes(1);
   });
 

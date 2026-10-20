@@ -24,6 +24,8 @@ const CANCEL_REASON_MAX = 300;
 const MAX_BULK_ORDERS = 50;
 /** Activity feed cap (the audit log can grow without limit; the panel needs the latest). */
 const MAX_ORDER_ACTIVITY = 100;
+/** A refund the provider's webhook has not confirmed after this long may be requested again. */
+const REFUND_REQUEST_STALE_MS = 24 * 60 * 60 * 1000;
 
 export {
   MAX_STATUS_HISTORY,
@@ -36,4 +38,5 @@ export {
   CANCEL_REASON_MAX,
   MAX_BULK_ORDERS,
   MAX_ORDER_ACTIVITY,
+  REFUND_REQUEST_STALE_MS,
 };

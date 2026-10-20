@@ -88,7 +88,7 @@ const bulkStatusSchema = Joi.object({
   status: Joi.string()
     .valid(OrderStatus.PROCESSING)
     .required()
-    .messages({ "any.only": "Solo se puede marcar en preparación en lote." }),
+    .messages({ "any.only": "Solo se puede pasar a «en proceso» en lote." }),
 });
 
 export {

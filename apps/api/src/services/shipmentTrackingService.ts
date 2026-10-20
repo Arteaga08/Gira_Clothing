@@ -313,7 +313,7 @@ const markShipped = async (orderId: string, ctx: RequestContext): Promise<AdminO
   const order = await Order.findById(orderId);
   if (!order) throw new AppError("La orden no existe.", 404);
   if (order.status !== OrderStatus.PROCESSING) {
-    throw new AppError("Primero marca el pedido «en preparación».", 409);
+    throw new AppError("Primero pasa el pedido a «en proceso».", 409);
   }
   if (order.label?.status !== ShippingLabelStatus.READY || !order.label.trackingNumber) {
     throw new AppError("La guía todavía no está lista para este pedido.", 409);

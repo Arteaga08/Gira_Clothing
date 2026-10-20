@@ -503,6 +503,86 @@ describe("Admin · Orders · reembolso", () => {
     spy.mockRestore();
   });
 
+  it("un segundo reembolso mientras llega el webhook responde 409 y no llama al adapter", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const order = await seedOrder(adminCookie, "R3");
+    await applyPaymentSucceeded(order._id);
+    const spy = vi.spyOn(getPaymentProvider(), "refundPayment").mockResolvedValue(undefined);
+    const refund = () =>
+      request(app)
+        .post(`${ADMIN_ORDERS_BASE}/${order._id}/refund`)
+        .set("Origin", ORIGIN)
+        .set("Cookie", adminCookie);
+
+    const first = await refund();
+    const second = await refund();
+
+    expect(first.status).toBe(200);
+    expect(first.body.data.order.payment.refundRequestedAt).toBeDefined();
+    expect(second.status).toBe(409);
+    expect(second.body.message).toMatch(/reembolso/i);
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
+  });
+
+  it("dos reembolsos en paralelo llaman al adapter una sola vez", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const order = await seedOrder(adminCookie, "R4");
+    await applyPaymentSucceeded(order._id);
+    const spy = vi.spyOn(getPaymentProvider(), "refundPayment").mockResolvedValue(undefined);
+    const refund = () =>
+      request(app)
+        .post(`${ADMIN_ORDERS_BASE}/${order._id}/refund`)
+        .set("Origin", ORIGIN)
+        .set("Cookie", adminCookie);
+
+    const results = await Promise.all([refund(), refund()]);
+
+    expect(results.map((r) => r.status).sort()).toEqual([200, 409]);
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
+  });
+
+  it("si el proveedor falla, libera la marca y permite reintentar", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const order = await seedOrder(adminCookie, "R5");
+    await applyPaymentSucceeded(order._id);
+    const spy = vi
+      .spyOn(getPaymentProvider(), "refundPayment")
+      .mockRejectedValueOnce(new AppError("Stripe caído", 502))
+      .mockResolvedValue(undefined);
+    const refund = () =>
+      request(app)
+        .post(`${ADMIN_ORDERS_BASE}/${order._id}/refund`)
+        .set("Origin", ORIGIN)
+        .set("Cookie", adminCookie);
+
+    expect((await refund()).status).toBe(502);
+    expect((await Order.findById(order._id).lean())?.payment.refundRequestedAt).toBeUndefined();
+    expect((await refund()).status).toBe(200);
+    spy.mockRestore();
+  });
+
+  it("tras 24 h sin webhook permite pedir el reembolso otra vez", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const order = await seedOrder(adminCookie, "R6");
+    await applyPaymentSucceeded(order._id);
+    await Order.updateOne(
+      { _id: order._id },
+      { $set: { "payment.refundRequestedAt": new Date(Date.now() - 25 * 60 * 60 * 1000) } },
+    );
+    const spy = vi.spyOn(getPaymentProvider(), "refundPayment").mockResolvedValue(undefined);
+
+    const res = await request(app)
+      .post(`${ADMIN_ORDERS_BASE}/${order._id}/refund`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", adminCookie);
+
+    expect(res.status).toBe(200);
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
+  });
+
   it("sobre orden pending_payment responde 409", async () => {
     const adminCookie = await loginAsAdmin(app);
     const order = await seedOrder(adminCookie, "R2");

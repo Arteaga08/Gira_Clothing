@@ -80,6 +80,8 @@ describe("OrderDetail: acciones", () => {
     api.markShipped.mockResolvedValue(orderOf(OrderStatus.SHIPPED, { shippedAt: "2026-10-19T17:00:00.000Z" }));
     renderDetail(orderOf(OrderStatus.PROCESSING));
     await userEvent.click(screen.getByRole("button", { name: "Marcar enviado" }));
+    expect(api.markShipped).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: "Sí, marcar enviado" }));
     expect(api.markShipped).toHaveBeenCalledWith(DEFAULT_ID);
     expect(await screen.findByText("GC-7KQ3M2XV marcado como enviado")).toBeInTheDocument();
   });
@@ -89,6 +91,7 @@ describe("OrderDetail: acciones", () => {
     api.markShipped.mockRejectedValue(new ApiError("Hay una disputa de pago abierta.", "http", 409));
     renderDetail(orderOf(OrderStatus.PROCESSING));
     await userEvent.click(screen.getByRole("button", { name: "Marcar enviado" }));
+    await userEvent.click(screen.getByRole("button", { name: "Sí, marcar enviado" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Hay una disputa de pago abierta.");
     expect(screen.getByRole("button", { name: "Marcar enviado" })).toBeEnabled();
   });
@@ -202,6 +205,13 @@ describe("OrderDetail: errores de la API en los diálogos", () => {
     expect(await screen.findByText("Reembolso solicitado. Esperando la confirmación de Stripe.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Solicitar reembolso total" })).not.toBeInTheDocument();
     expect(api.requestRefund).toHaveBeenCalledTimes(1);
+  });
+
+  it("con un reembolso ya solicitado (al recargar) no ofrece pedirlo otra vez", () => {
+    const requested = makeOrder();
+    renderDetail({ ...requested, payment: { ...requested.payment, refundRequestedAt: new Date().toISOString() } });
+    expect(screen.getByText("Reembolso solicitado. Esperando la confirmación de Stripe.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Solicitar reembolso total" })).not.toBeInTheDocument();
   });
 
   it("si reintentar la guía falla, el diálogo de advertencia sigue abierto", async () => {

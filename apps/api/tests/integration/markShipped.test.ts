@@ -71,9 +71,11 @@ describe("POST /admin/orders/:id/ship", () => {
     ).toBe(1);
   });
 
-  it("409 si la orden está en paid (falta 'en preparación')", async () => {
+  it("409 si la orden está en paid (falta 'en proceso')", async () => {
     const order = await paidOrderWithLabel(OrderStatus.PAID);
-    expect((await ship(order._id)).status).toBe(409);
+    const res = await ship(order._id);
+    expect(res.status).toBe(409);
+    expect(res.body.message).toBe("Primero pasa el pedido a «en proceso».");
   });
 
   it("409 si no hay guía lista", async () => {

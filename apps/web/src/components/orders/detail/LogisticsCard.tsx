@@ -1,8 +1,9 @@
 "use client";
 
 import { OrderStatus, ShipmentTrackingStatus, ShippingLabelStatus } from "@gira/shared";
-import { ArrowSquareOutIcon, CheckIcon, TruckIcon, ArrowClockwiseIcon } from "@phosphor-icons/react/dist/ssr";
+import { ArrowSquareOutIcon, CheckIcon, ArrowClockwiseIcon } from "@phosphor-icons/react/dist/ssr";
 import { useState } from "react";
+import { ShipButton } from "@/components/orders/ShipButton";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Icon } from "@/components/ui/Icon";
@@ -177,10 +178,13 @@ const LogisticsCard = ({ order, busy, version, onPrepare, onShip, onRetryLabel }
           </Button>
         ) : null}
         {showShip ? (
-          <Button variant={logistics.canPrepare ? "secondary" : "primary"} disabled={!logistics.canShip} loading={busy} onClick={onShip}>
-            <Icon icon={TruckIcon} />
-            Marcar enviado
-          </Button>
+          <ShipButton
+            orderNumber={order.orderNumber}
+            variant={logistics.canPrepare ? "secondary" : "primary"}
+            disabled={!logistics.canShip}
+            loading={busy}
+            onShip={onShip}
+          />
         ) : null}
         {logistics.canRetryLabel ? (
           <Button disabled={busy} onClick={() => void retry()}>
