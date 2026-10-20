@@ -9,7 +9,9 @@ let override: ShippingProvider | undefined;
 /** Provider chosen by configuration, never by conditionals in business code. */
 const getShippingProvider = (): ShippingProvider => {
   if (override) return override;
-  cached ??= env.envia ? createEnviaShippingProvider(env.envia) : createStubShippingProvider();
+  cached ??= env.envia
+    ? createEnviaShippingProvider(env.envia)
+    : createStubShippingProvider({ webhookSecret: env.stubShippingWebhookSecret });
   return cached;
 };
 
@@ -26,6 +28,9 @@ export type {
   LabelResult,
   CancelLabelInput,
   CallOptions,
+  TrackingEvent,
+  WebhookHeaders,
+  ParsedWebhook,
   ShippingProvider,
 } from "./types.js";
 export { ShippingProviderError } from "./types.js";

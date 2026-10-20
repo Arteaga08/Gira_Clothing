@@ -1,11 +1,17 @@
 import { NotificationChannelKind, NotificationType } from "@gira/shared";
 import { getMailer } from "../adapters/mailer/index.js";
 import { getNotificationChannel } from "../adapters/notification/index.js";
-import { claimNextBatch, markSent, markSkipped, markFailed } from "../services/notificationService.js";
+import {
+  claimNextBatch,
+  markSent,
+  markSkipped,
+  markFailed,
+} from "../services/notificationService.js";
 import {
   renderOrderConfirmation,
   renderOrderPreparing,
   renderOrderShipped,
+  renderOrderDelivered,
   type OrderEmailSnapshot,
   type ShippedEmailSnapshot,
   type RenderedMail,
@@ -44,6 +50,8 @@ const renderEmail = (doc: NotificationDocument): RenderedMail => {
       return renderOrderPreparing(payload as OrderEmailSnapshot);
     case NotificationType.ORDER_SHIPPED:
       return renderOrderShipped(payload as ShippedEmailSnapshot);
+    case NotificationType.ORDER_DELIVERED:
+      return renderOrderDelivered(payload as ShippedEmailSnapshot);
     default:
       throw new Error(`Tipo de correo no soportado: ${doc.type}`);
   }
@@ -96,7 +104,11 @@ const deliver = async (doc: NotificationDocument): Promise<"sent" | "skipped"> =
   return "sent";
 };
 
-const dispatchNotifications = async (): Promise<{ sent: number; failed: number; skipped: number }> => {
+const dispatchNotifications = async (): Promise<{
+  sent: number;
+  failed: number;
+  skipped: number;
+}> => {
   const claimed = await claimNextBatch(BATCH);
   let sent = 0;
   let failed = 0;

@@ -210,8 +210,9 @@ destinatarios que nunca se cruzan.**
 | Se confirma el pago | Correo: confirmación de compra | Telegram: nueva orden pagada |
 | Pago rechazado | — (Stripe se lo dice en pantalla) | Telegram: pago rechazado |
 | Marcas "en preparación" | Correo: ya lo estamos preparando | — |
-| Capturas la guía de envío | Correo: va en camino + número de guía | — |
-| Envío devuelto o extraviado | — | Telegram: incidencia |
+| Marcas "enviado" (o la paquetería recoge el paquete) | Correo: va en camino + paquetería, guía y enlace de rastreo | — |
+| La paquetería entrega | Correo: tu pedido llegó | — |
+| Envío con incidencia, devuelto o extraviado | — | Telegram: incidencia |
 | Dinero e inventario no cuadran | — | Telegram: revisar |
 
 Las casillas vacías de la derecha son deliberadas: esas dos acciones las acabas de
@@ -423,6 +424,64 @@ En **Stripe Dashboard → Radar → Rules**:
 > API. Si decides rechazarlo, el reembolso desde Stripe llega como
 > `charge.refunded` y el sistema repone el stock solo (siempre que no lo hayas
 > marcado ya como "en preparación").
+
+## B.7 — Envía (envíos y rastreo)
+
+Envía gestiona la cotización, la guía y el rastreo. El rastreo llega por webhook
+(tipo 3 `tracking.simple`) y, como respaldo, por polling.
+
+- [ ] **Cuenta.** Crear la cuenta en Envía y completar el trámite fiscal. Cargar
+      **saldo**: cada guía se cobra al comprarse, y sin saldo la guía queda en
+      revisión.
+- [ ] **Token.** Generar el token del ambiente (sandbox y producción son
+      distintos) y llenar en el `.env`:
+      → `ENVIA_API_TOKEN`, `ENVIA_ENVIRONMENT` (`sandbox` o `production`),
+      `ENVIA_CARRIERS`
+- [ ] **Origen.** Capturar la dirección de la bodega en Ajustes
+      (`PATCH /admin/settings/shipping`).
+- [ ] **Registrar el webhook de rastreo.** `POST` a
+      `https://queries.test.envia.com/webhooks` (sandbox; en producción, el host
+      de producción de Envía) con el cuerpo:
+
+```json
+{ "type_id": 3, "url": "https://<api>/api/webhooks/envia", "active": 1 }
+```
+
+      Guarda el `data.id` que devuelve. Responder 2xx en menos de 5 s ya está
+      cubierto por el endpoint.
+
+- [ ] **Preguntar a soporte de Envía** (hoy no hay forma de deducirlo de la
+      documentación):
+      - (a) de dónde sale el secreto de firma → `ENVIA_WEBHOOK_SECRET`
+      - (b) si la firma `v1=` va en hex o en base64 (hoy se aceptan ambas)
+      - (c) la tolerancia de timestamp recomendada → `ENVIA_WEBHOOK_TOLERANCE_MS`
+        (por defecto `300000`)
+      - (d) la lista de valores de `status` de `tracking.simple`
+      - (e) la forma de la respuesta de `POST /ship/generaltrack/` y su límite de
+        guías por llamada
+      - (f) si `X-Webhook-Id` se conserva igual en los reintentos
+
+> **Sin `ENVIA_WEBHOOK_SECRET`** el endpoint responde 503 y el rastreo queda a
+> cargo del polling, que corre cada 30 minutos. Funciona, pero con retraso.
+
+### Antes de desplegar Eb (lo corre el dueño contra la base real)
+
+- [ ] Borrar la colección vieja de envíos manuales:
+
+```javascript
+db.shipments.drop()
+```
+
+- [ ] Crear los índices nuevos:
+      - `shipmenttrackingevents`: único sobre `{ provider, providerEventId }` y
+        otro sobre `{ order, occurredAt }`
+      - `orders`: índice parcial sobre `{ status, tracking.lastSyncedAt }` con
+        filtro `label.status = "ready"`
+
+### Solo en desarrollo
+
+`STUB_SHIPPING_WEBHOOK_SECRET` permite firmar webhooks de prueba contra el adapter
+de reemplazo. **Está prohibida en producción.**
 
 ---
 

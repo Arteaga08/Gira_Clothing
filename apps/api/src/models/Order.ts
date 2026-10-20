@@ -10,6 +10,7 @@ import {
   ShippingCarrier,
   ShippingLabelStatus,
   ShippingProviderName,
+  ShipmentTrackingStatus,
 } from "@gira/shared";
 import { imageSchema, type ImageAttrs } from "./schemas/image.js";
 
@@ -116,6 +117,13 @@ interface OrderLabel {
   requeueAfterCancel?: boolean;
 }
 
+interface OrderTracking {
+  status: ShipmentTrackingStatus;
+  lastEventAt?: Date;
+  /** Last time the polling job asked the provider about this parcel. */
+  lastSyncedAt?: Date;
+}
+
 interface StatusHistoryEntry {
   status: OrderStatus;
   at: Date;
@@ -185,6 +193,11 @@ interface OrderAttrs {
   paidEffectsAt?: Date;
   /** The purchased shipping label. Absent until the order is paid. */
   label?: OrderLabel;
+  /** Parcel progress mirrored from the carrier (webhook + polling). */
+  tracking?: OrderTracking;
+  /** When the parcel left: set once by "Marcar enviado" or by the carrier's first scan. */
+  shippedAt?: Date;
+  deliveredAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -217,7 +230,14 @@ const shippingAddressSchema = new Schema<ShippingAddress>(
     city: { type: String, required: true, trim: true },
     state: { type: String, required: true, trim: true },
     postalCode: { type: String, required: true, trim: true },
-    country: { type: String, required: true, uppercase: true, trim: true, minlength: 2, maxlength: 2 },
+    country: {
+      type: String,
+      required: true,
+      uppercase: true,
+      trim: true,
+      minlength: 2,
+      maxlength: 2,
+    },
   },
   { _id: false },
 );
@@ -297,6 +317,15 @@ const orderLabelSchema = new Schema<OrderLabel>(
   { _id: false },
 );
 
+const orderTrackingSchema = new Schema<OrderTracking>(
+  {
+    status: { type: String, enum: Object.values(ShipmentTrackingStatus), required: true },
+    lastEventAt: { type: Date },
+    lastSyncedAt: { type: Date },
+  },
+  { _id: false },
+);
+
 const statusHistorySchema = new Schema<StatusHistoryEntry>(
   {
     status: { type: String, enum: Object.values(OrderStatus), required: true },
@@ -348,6 +377,9 @@ const orderSchema = new Schema<OrderAttrs, OrderModel>(
     fromCart: { type: Boolean },
     paidEffectsAt: { type: Date },
     label: { type: orderLabelSchema },
+    tracking: { type: orderTrackingSchema },
+    shippedAt: { type: Date },
+    deliveredAt: { type: Date },
   },
   { timestamps: true },
 );
@@ -389,6 +421,11 @@ orderSchema.index(
   { "label.trackingNumber": 1 },
   { unique: true, partialFilterExpression: { "label.trackingNumber": { $type: "string" } } },
 );
+// Tracking poll: parcels with a ready label that are still in flight, oldest sync first.
+orderSchema.index(
+  { status: 1, "tracking.lastSyncedAt": 1 },
+  { partialFilterExpression: { "label.status": "ready" } },
+);
 // Timeseries aggregation scans the whole range by createdAt regardless of status.
 orderSchema.index({ createdAt: -1 });
 
@@ -405,5 +442,6 @@ export type {
   ShippingSelectionAttrs,
   ParcelAttrs,
   OrderLabel,
+  OrderTracking,
 };
 export { Order };

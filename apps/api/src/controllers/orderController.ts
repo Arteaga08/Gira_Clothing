@@ -11,7 +11,7 @@ import {
   type CreateOrderInput,
   type OrderContext,
 } from "../services/orderService.js";
-import { getPublicTracking } from "../services/shipmentService.js";
+import { getPublicTracking } from "../services/shipmentTrackingService.js";
 
 /**
  * Order controllers — orchestrate req/res only, never touch models.
@@ -27,10 +27,7 @@ const requireIdempotencyKey = (req: Request): string => {
   const header = req.headers["idempotency-key"];
   const key = typeof header === "string" ? header.trim() : "";
   if (!isValidIdempotencyKey(key)) {
-    throw new AppError(
-      "Falta o es inválido el header Idempotency-Key: debe ser un UUID.",
-      400,
-    );
+    throw new AppError("Falta o es inválido el header Idempotency-Key: debe ser un UUID.", 400);
   }
   return key;
 };

@@ -34,10 +34,18 @@ describe("avisos de equipo (Telegram)", () => {
     ["pago rechazado", () => renderTeamPaymentFailed(ORDER_NUMBER, "card_declined")],
     ["revisión", () => renderTeamPaymentNeedsReview(ORDER_NUMBER, "payment_after_expiry")],
     ["disputa perdida", () => renderTeamDisputeLost(ORDER_NUMBER)],
-    ["incidencia de envío", () => renderTeamShipmentIncident(ORDER_NUMBER, "lost", "Estafeta")],
+    [
+      "incidencia de envío",
+      () => renderTeamShipmentIncident(ORDER_NUMBER, "Extraviado", "Estafeta"),
+    ],
     ["guía fallida", () => renderTeamShippingLabelFailed(ORDER_NUMBER, "origin_not_configured")],
     ["cancelación de guía fallida", () => renderTeamShippingLabelCancelFailed(ORDER_NUMBER)],
   ])("%s lleva el folio", (_name, render) => {
     expect(textOf(render())).toContain(`Folio: ${ORDER_NUMBER}`);
+  });
+
+  it("la incidencia de envío muestra el estado ya traducido", () => {
+    const message = renderTeamShipmentIncident(ORDER_NUMBER, "Extraviado", "Estafeta");
+    expect(message.lines).toContain("Estado: Extraviado");
   });
 });

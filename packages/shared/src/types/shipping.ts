@@ -1,5 +1,10 @@
 import type { Currency } from "../enums/money.js";
-import type { ShippingCarrier, ShippingLabelStatus, ShippingProviderName } from "../enums/shipping.js";
+import type {
+  ShipmentTrackingStatus,
+  ShippingCarrier,
+  ShippingLabelStatus,
+  ShippingProviderName,
+} from "../enums/shipping.js";
 
 /** Warehouse the parcels leave from. Business data (not customer PII), edited in Ajustes. */
 interface ShippingOrigin {
@@ -83,7 +88,55 @@ interface OrderLabelAdmin {
   cancelledAt?: Date;
 }
 
+/** Parcel progress mirrored on the order. */
+interface OrderTrackingAdmin {
+  status: ShipmentTrackingStatus;
+  lastEventAt?: Date;
+  lastSyncedAt?: Date;
+}
+
+interface TrackingEventDto {
+  status: ShipmentTrackingStatus;
+  /** The provider's own status text, kept for support. */
+  rawStatus: string;
+  description?: string;
+  location?: string;
+  occurredAt: Date;
+}
+
+/** `GET /admin/orders/:id/tracking`: everything the logistics card of M9b needs. */
+interface AdminOrderTracking {
+  label?: OrderLabelAdmin;
+  tracking?: OrderTrackingAdmin;
+  shippedAt?: Date;
+  deliveredAt?: Date;
+  events: TrackingEventDto[];
+}
+
+/** What the OWNING customer sees once the order is shipped (never before). */
+interface CustomerShipment {
+  carrier: ShippingCarrier;
+  carrierName: string;
+  trackingNumber: string;
+  /** The carrier's own tracking page. */
+  trackUrl?: string;
+  status?: ShipmentTrackingStatus;
+  shippedAt?: Date;
+  deliveredAt?: Date;
+}
+
+/** `GET /orders/:publicId/tracking`. Shaped from the order; the credential is never echoed back. */
+interface PublicTrackingView extends CustomerShipment {
+  orderNumber: string;
+  events: TrackingEventDto[];
+}
+
 export type {
+  OrderTrackingAdmin,
+  TrackingEventDto,
+  AdminOrderTracking,
+  CustomerShipment,
+  PublicTrackingView,
   ShippingOrigin,
   ShippingParcel,
   ShippingParcelSettings,

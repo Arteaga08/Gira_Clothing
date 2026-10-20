@@ -1,4 +1,4 @@
-import { OrderStatus, ShipmentStatus } from "@gira/shared";
+import { OrderStatus } from "@gira/shared";
 
 /**
  * The neobrutalist recipe, in ONE place. Lives in TypeScript rather than an
@@ -33,7 +33,8 @@ const NB_SURFACE = "bg-surface border-2 border-ink rounded-nb shadow-nb text-tex
  * concatenation the same way NB_PRESSABLE's ghost variant already overrides
  * NB_CONTROL's border/shadow below.
  */
-const NB_CONTROL = "min-h-10 rounded-nb-sm border-2 border-ink bg-surface text-text-primary shadow-nb-sm";
+const NB_CONTROL =
+  "min-h-10 rounded-nb-sm border-2 border-ink bg-surface text-text-primary shadow-nb-sm";
 
 /**
  * The static (non-pressable) icon-tile chrome — IconButton composes this and
@@ -42,7 +43,8 @@ const NB_CONTROL = "min-h-10 rounded-nb-sm border-2 border-ink bg-surface text-t
  * press. Sharing this is what used to be missing: NotificationBell hand-wrote
  * its own copy of these five classes, one radius change away from drifting.
  */
-const NB_ICON_TILE = "inline-flex items-center justify-center rounded-nb-sm border-2 border-ink bg-surface text-text-primary shadow-nb-sm";
+const NB_ICON_TILE =
+  "inline-flex items-center justify-center rounded-nb-sm border-2 border-ink bg-surface text-text-primary shadow-nb-sm";
 
 /**
  * Press feedback translates INTO the shadow instead of scaling — the
@@ -73,12 +75,4 @@ const ORDER_STATUS_BG: Record<OrderStatus, string> = {
   [OrderStatus.REFUNDED]: "bg-[var(--status-refunded)]",
 };
 
-const SHIPMENT_STATUS_BG: Record<ShipmentStatus, string> = {
-  [ShipmentStatus.IN_TRANSIT]: "bg-[var(--ship-in_transit)]",
-  [ShipmentStatus.OUT_FOR_DELIVERY]: "bg-[var(--ship-out_for_delivery)]",
-  [ShipmentStatus.DELIVERED]: "bg-[var(--ship-delivered)]",
-  [ShipmentStatus.RETURNED]: "bg-[var(--ship-returned)]",
-  [ShipmentStatus.LOST]: "bg-[var(--ship-lost)]",
-};
-
-export { NB_SURFACE, NB_CONTROL, NB_ICON_TILE, NB_PRESSABLE, ORDER_STATUS_BG, SHIPMENT_STATUS_BG };
+export { NB_SURFACE, NB_CONTROL, NB_ICON_TILE, NB_PRESSABLE, ORDER_STATUS_BG };

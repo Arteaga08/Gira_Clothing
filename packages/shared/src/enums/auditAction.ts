@@ -84,8 +84,6 @@ enum AuditAction {
   PAYMENT_CANCEL_FAILED = "payment_cancel_failed",
   WEBHOOK_REJECTED = "webhook_rejected",
   SETTINGS_INVENTORY_UPDATED = "settings_inventory_updated",
-  SHIPMENT_CREATED = "shipment_created",
-  SHIPMENT_STATUS_CHANGED = "shipment_status_changed",
   LABEL_REQUESTED = "label_requested",
   LABEL_CREATED = "label_created",
   LABEL_FAILED = "label_failed",
@@ -93,6 +91,10 @@ enum AuditAction {
   LABEL_RETRY_REQUESTED = "label_retry_requested",
   LABEL_CANCEL_REQUESTED = "label_cancel_requested",
   LABEL_CANCELLED = "label_cancelled",
+  ORDER_MARKED_SHIPPED = "order_marked_shipped",
+  TRACKING_UPDATED = "tracking_updated",
+  /** A parcel event arrived but the order was not moved (open/lost dispute). */
+  TRACKING_TRANSITION_BLOCKED = "tracking_transition_blocked",
   NOTIFICATION_FAILED = "notification_failed",
 }
 

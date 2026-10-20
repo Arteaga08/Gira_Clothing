@@ -4,6 +4,7 @@ import {
   renderOrderConfirmation,
   renderOrderPreparing,
   renderOrderShipped,
+  renderOrderDelivered,
   formatMoney,
 } from "../../src/templates/orderEmails.js";
 
@@ -68,16 +69,44 @@ describe("renderOrderPreparing", () => {
   });
 });
 
-describe("renderOrderShipped", () => {
-  const mail = renderOrderShipped({
-    ...snapshot,
-    carrier: "Estafeta",
-    trackingNumber: "1234567890",
-  });
+const shipped = {
+  ...snapshot,
+  carrierName: "Estafeta",
+  trackingNumber: "794644790138",
+  trackUrl: "https://envia.test/track/794644790138",
+};
 
-  it("incluye paquetería, número de guía y el enlace de seguimiento", () => {
+describe("renderOrderShipped", () => {
+  const mail = renderOrderShipped(shipped);
+  it("usa el folio en el asunto y nunca el publicId", () => {
+    expect(mail.subject).toBe("Tu pedido GC-7KQ2M9XA va en camino");
+    expect(mail.subject).not.toContain("abc123");
+  });
+  it("muestra paquetería por nombre, guía y el enlace de rastreo de la paquetería", () => {
     expect(mail.html).toContain("Estafeta");
-    expect(mail.html).toContain("1234567890");
+    expect(mail.html).toContain("794644790138");
+    expect(mail.html).toContain("https://envia.test/track/794644790138");
+    expect(mail.text).toContain("https://envia.test/track/794644790138");
+  });
+  it("el publicId solo aparece en el enlace propio", () => {
     expect(mail.html).toContain("/orden/abc123/seguimiento");
+    expect(mail.html.replace("/orden/abc123/seguimiento", "")).not.toContain("abc123");
+  });
+  it("omite el enlace de la paquetería si no hay trackUrl y escapa el HTML", () => {
+    const m = renderOrderShipped({ ...shipped, trackUrl: undefined, carrierName: "<b>x</b>" });
+    expect(m.html).not.toContain("<b>x</b>");
+    expect(m.html).not.toContain("undefined");
+  });
+});
+
+describe("renderOrderDelivered", () => {
+  const mail = renderOrderDelivered(shipped);
+  it("avisa que llegó, con folio y guía", () => {
+    expect(mail.subject).toBe("Tu pedido GC-7KQ2M9XA llegó");
+    expect(mail.html).toContain("794644790138");
+    expect(mail.text).toContain("Folio: GC-7KQ2M9XA");
+  });
+  it("no filtra el publicId fuera del enlace", () => {
+    expect(mail.html.replace("/orden/abc123", "")).not.toContain("abc123");
   });
 });

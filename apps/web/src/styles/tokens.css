@@ -83,7 +83,7 @@
   --status-expired: oklch(88% 0.02 60);
   --status-refunded: oklch(88% 0.08 300);
 
-  /* ShipmentStatus — packages/shared/src/enums/shipment.ts */
+  /* Reservados para la tarjeta de logística de M9b (estados de rastreo del paquete) */
   --ship-in_transit: oklch(88% 0.09 205);
   --ship-out_for_delivery: oklch(88% 0.09 270);
   --ship-delivered: oklch(88% 0.13 122);

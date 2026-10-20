@@ -12,7 +12,7 @@ interface BadgeProps {
 /**
  * Shared with StatusChip (see ./StatusChip.tsx), which composes BADGE_BASE
  * directly instead of this component — a status chip's fill comes from a
- * per-enum-member map (nine order statuses, five shipment statuses), not
+ * per-enum-member map (nine order statuses), not
  * from this five-variant set.
  *
  * Mono + uppercase because a badge IS the "Labels/Metadata" role in the type

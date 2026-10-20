@@ -3,6 +3,7 @@ import { expireReservations } from "./expireReservations.js";
 import { reconcilePayments } from "./reconcilePayments.js";
 import { dispatchNotifications } from "./dispatchNotifications.js";
 import { processShippingLabels } from "./processShippingLabels.js";
+import { reconcileTracking } from "./reconcileTracking.js";
 
 /**
  * Lightweight cron: plain intervals, no BullMQ and no Redis (spec trade-off —
@@ -14,14 +15,13 @@ import { processShippingLabels } from "./processShippingLabels.js";
  */
 const EVERY_MINUTE = 60 * 1000;
 const EVERY_FIVE_MINUTES = 5 * 60 * 1000;
+const EVERY_THIRTY_MINUTES = 30 * 60 * 1000;
 
 let timers: NodeJS.Timeout[] = [];
 
-const runSafely =
-  (name: string, job: () => Promise<unknown>) =>
-  (): void => {
-    job().catch((err: unknown) => logger.error({ err, job: name }, "Job en background falló"));
-  };
+const runSafely = (name: string, job: () => Promise<unknown>) => (): void => {
+  job().catch((err: unknown) => logger.error({ err, job: name }, "Job en background falló"));
+};
 
 const startJobs = (): void => {
   timers = [
@@ -29,6 +29,7 @@ const startJobs = (): void => {
     setInterval(runSafely("reconcilePayments", reconcilePayments), EVERY_FIVE_MINUTES),
     setInterval(runSafely("dispatchNotifications", dispatchNotifications), EVERY_MINUTE),
     setInterval(runSafely("processShippingLabels", processShippingLabels), EVERY_MINUTE),
+    setInterval(runSafely("reconcileTracking", reconcileTracking), EVERY_THIRTY_MINUTES),
   ];
   for (const timer of timers) timer.unref();
   logger.info("Jobs en background iniciados");

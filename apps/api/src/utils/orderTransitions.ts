@@ -53,10 +53,7 @@ const assertTransition = (from: OrderStatus, to: OrderStatus): void => {
 const assertAdminTransition = (from: OrderStatus, to: OrderStatus): void => {
   assertTransition(from, to);
   if (SHIPMENT_ALLOWED.has(`${from}->${to}`)) {
-    throw new AppError(
-      "Este estado se marca desde el envío (captura de guía / entrega), no manualmente.",
-      403,
-    );
+    throw new AppError("Usa «Marcar enviado»; la entrega la marca la paquetería.", 403);
   }
   if (!ADMIN_ALLOWED.has(`${from}->${to}`)) {
     throw new AppError(

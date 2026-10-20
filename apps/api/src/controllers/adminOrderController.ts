@@ -16,6 +16,7 @@ import {
 } from "../services/adminOrderService.js";
 import { getOrderStats } from "../services/orderStatsService.js";
 import { retryLabel } from "../services/shippingLabelService.js";
+import { markShipped, getAdminTracking } from "../services/shipmentTrackingService.js";
 
 /**
  * Admin order controllers — orchestrate req/res only, never touch models.
@@ -59,6 +60,16 @@ const retryOrderLabel = asyncHandler(async (req: Request, res: Response) => {
   sendResponse(res, 200, "Reintentamos generar la guía. Revisa el pedido en unos segundos.");
 });
 
+const shipOrder = asyncHandler(async (req: Request, res: Response) => {
+  const order = await markShipped(req.params.id as string, buildContext(req));
+  sendResponse(res, 200, "Pedido marcado como enviado.", { order });
+});
+
+const orderTracking = asyncHandler(async (req: Request, res: Response) => {
+  const tracking = await getAdminTracking(req.params.id as string);
+  sendResponse(res, 200, "Seguimiento obtenido correctamente.", { tracking });
+});
+
 const bulkStatus = asyncHandler(async (req: Request, res: Response) => {
   const { ids, status } = req.body as { ids: string[]; status: OrderStatus };
   const result = await bulkChangeStatus(ids, status, buildContext(req));
@@ -88,6 +99,8 @@ export {
   updatePriority,
   updateAddress,
   retryOrderLabel,
+  shipOrder,
+  orderTracking,
   bulkStatus,
   refund,
   activity,

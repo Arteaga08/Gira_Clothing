@@ -1,11 +1,20 @@
 import type { ApiStatus, ApiMeta, ApiResponse } from "./types/apiResponse.js";
 import { UserRole } from "./enums/userRole.js";
 import { AuditModule, AuditAction } from "./enums/auditAction.js";
-import { OrderStatus, PaymentStatus, DisputeStatus, ReservationStatus } from "./enums/orderStatus.js";
+import {
+  OrderStatus,
+  PaymentStatus,
+  DisputeStatus,
+  ReservationStatus,
+} from "./enums/orderStatus.js";
 import { OrderPriority } from "./enums/orderPriority.js";
 import { Currency, PriceRounding } from "./enums/money.js";
-import { ShipmentStatus } from "./enums/shipment.js";
-import { ShippingProviderName, ShippingCarrier, ShippingLabelStatus } from "./enums/shipping.js";
+import {
+  ShippingProviderName,
+  ShippingCarrier,
+  ShippingLabelStatus,
+  ShipmentTrackingStatus,
+} from "./enums/shipping.js";
 import {
   NotificationChannelKind,
   NotificationType,
@@ -24,10 +33,10 @@ export {
   OrderPriority,
   Currency,
   PriceRounding,
-  ShipmentStatus,
   ShippingProviderName,
   ShippingCarrier,
   ShippingLabelStatus,
+  ShipmentTrackingStatus,
   NotificationChannelKind,
   NotificationType,
   NotificationStatus,
@@ -69,6 +78,11 @@ import type {
   OrderShippingSelection,
   PublicShippingSelection,
   OrderLabelAdmin,
+  OrderTrackingAdmin,
+  TrackingEventDto,
+  AdminOrderTracking,
+  CustomerShipment,
+  PublicTrackingView,
 } from "./types/shipping.js";
 import type { MexicanState } from "./constants/shipping.js";
 import {
@@ -77,13 +91,7 @@ import {
   POSTAL_CODE_PATTERN,
   PHONE_PATTERN,
 } from "./constants/shipping.js";
-import { SHIPPING_CARRIER_LABELS } from "./labels/shipping.js";
-import type {
-  ShipmentEvent,
-  PublicTracking,
-  AdminShipment,
-  AdminShipmentListItem,
-} from "./types/shipment.js";
+import { SHIPPING_CARRIER_LABELS, SHIPMENT_TRACKING_STATUS_LABELS } from "./labels/shipping.js";
 import type {
   ShippingSettings,
   CurrencySettings,
@@ -146,11 +154,7 @@ import {
   ORDER_PRIORITY_LABELS,
   ORDER_STATUS_GROUP_LABELS,
 } from "./labels/orderStatus.js";
-import { SHIPMENT_STATUS_LABELS } from "./labels/shipmentStatus.js";
-import {
-  TWO_FACTOR_INVALID_MESSAGE,
-  INVALID_CREDENTIALS_MESSAGE,
-} from "./labels/authMessages.js";
+import { TWO_FACTOR_INVALID_MESSAGE, INVALID_CREDENTIALS_MESSAGE } from "./labels/authMessages.js";
 
 export type {
   Wire,
@@ -184,11 +188,12 @@ export type {
   OrderShippingSelection,
   PublicShippingSelection,
   OrderLabelAdmin,
+  OrderTrackingAdmin,
+  TrackingEventDto,
+  AdminOrderTracking,
+  CustomerShipment,
+  PublicTrackingView,
   MexicanState,
-  ShipmentEvent,
-  PublicTracking,
-  AdminShipment,
-  AdminShipmentListItem,
   ShippingSettings,
   CurrencySettings,
   ReservationSettings,
@@ -245,7 +250,13 @@ export {
   DISPUTE_STATUS_LABELS,
   ORDER_PRIORITY_LABELS,
   ORDER_STATUS_GROUP_LABELS,
-  SHIPMENT_STATUS_LABELS,
 };
 export { TWO_FACTOR_INVALID_MESSAGE, INVALID_CREDENTIALS_MESSAGE };
-export { MEXICAN_STATES, MEXICAN_STATE_CODES, POSTAL_CODE_PATTERN, PHONE_PATTERN, SHIPPING_CARRIER_LABELS };
+export {
+  MEXICAN_STATES,
+  MEXICAN_STATE_CODES,
+  POSTAL_CODE_PATTERN,
+  PHONE_PATTERN,
+  SHIPPING_CARRIER_LABELS,
+  SHIPMENT_TRACKING_STATUS_LABELS,
+};

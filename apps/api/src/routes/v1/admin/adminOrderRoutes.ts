@@ -17,12 +17,13 @@ import {
   updatePriority,
   updateAddress,
   retryOrderLabel,
+  shipOrder,
+  orderTracking,
   bulkStatus,
   refund,
   activity,
   stats,
 } from "../../../controllers/adminOrderController.js";
-import { adminShipmentRouter } from "./adminShipmentRoutes.js";
 
 const adminOrderRouter = Router();
 
@@ -53,17 +54,9 @@ adminOrderRouter.patch(
   validate(shippingAddressSchema.required()),
   updateAddress,
 );
-adminOrderRouter.post(
-  "/:id/label/retry",
-  validate(objectIdParamSchema, "params"),
-  retryOrderLabel,
-);
+adminOrderRouter.post("/:id/label/retry", validate(objectIdParamSchema, "params"), retryOrderLabel);
+adminOrderRouter.post("/:id/ship", validate(objectIdParamSchema, "params"), shipOrder);
+adminOrderRouter.get("/:id/tracking", validate(objectIdParamSchema, "params"), orderTracking);
 adminOrderRouter.post("/:id/refund", validate(objectIdParamSchema, "params"), refund);
-
-adminOrderRouter.use(
-  "/:id/shipment",
-  validate(objectIdParamSchema, "params"),
-  adminShipmentRouter,
-);
 
 export { adminOrderRouter };

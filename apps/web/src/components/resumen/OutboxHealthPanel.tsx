@@ -1,4 +1,9 @@
-import { NotificationChannelKind, NotificationType, type OutboxHealth, type Wire } from "@gira/shared";
+import {
+  NotificationChannelKind,
+  NotificationType,
+  type OutboxHealth,
+  type Wire,
+} from "@gira/shared";
 import { MetricTile } from "@/components/ui/MetricTile";
 import { Notice } from "@/components/ui/Notice";
 import { Panel } from "@/components/ui/Panel";
@@ -17,6 +22,7 @@ const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   [NotificationType.ORDER_CONFIRMATION]: "confirmación de pedido",
   [NotificationType.ORDER_PREPARING]: "pedido en preparación",
   [NotificationType.ORDER_SHIPPED]: "pedido enviado",
+  [NotificationType.ORDER_DELIVERED]: "pedido entregado",
   [NotificationType.TEAM_ORDER_PAID]: "aviso de pedido pagado",
   [NotificationType.TEAM_PAYMENT_FAILED]: "aviso de pago fallido",
   [NotificationType.TEAM_SHIPMENT_INCIDENT]: "aviso de incidencia de envío",
@@ -60,10 +66,13 @@ const OutboxHealthPanel = ({ health }: OutboxHealthPanelProps) => {
         >
           <span className="font-mono">{NOTIFICATION_TYPE_LABELS[latestFailure.type]}</span> · canal{" "}
           {NOTIFICATION_CHANNEL_LABELS[latestFailure.channel]}
-          {latestFailure.lastError ? <> · último error: &ldquo;{latestFailure.lastError}&rdquo;</> : null}
+          {latestFailure.lastError ? (
+            <> · último error: &ldquo;{latestFailure.lastError}&rdquo;</>
+          ) : null}
           {health.oldestPendingAt ? (
             <p className="mt-1">
-              La más antigua en cola espera desde las {formatShortTime(new Date(health.oldestPendingAt))}.
+              La más antigua en cola espera desde las{" "}
+              {formatShortTime(new Date(health.oldestPendingAt))}.
             </p>
           ) : null}
         </Notice>

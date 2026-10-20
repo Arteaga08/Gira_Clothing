@@ -33,4 +33,17 @@ enum ShippingLabelStatus {
   CANCELLED = "cancelled",
 }
 
-export { ShippingProviderName, ShippingCarrier, ShippingLabelStatus };
+/** Normalised parcel progress, owned by us (the provider's own vocabulary stays in its adapter). */
+enum ShipmentTrackingStatus {
+  LABEL_CREATED = "label_created",
+  PICKED_UP = "picked_up",
+  IN_TRANSIT = "in_transit",
+  OUT_FOR_DELIVERY = "out_for_delivery",
+  DELIVERED = "delivered",
+  /** Delayed, failed attempt, address problem, damaged: a human may need to act. */
+  EXCEPTION = "exception",
+  RETURNED = "returned",
+  LOST = "lost",
+}
+
+export { ShippingProviderName, ShippingCarrier, ShippingLabelStatus, ShipmentTrackingStatus };

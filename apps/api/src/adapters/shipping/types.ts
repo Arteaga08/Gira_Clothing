@@ -1,4 +1,10 @@
-import type { ShippingCarrier, ShippingOrigin, ShippingParcel, ShippingProviderName } from "@gira/shared";
+import type {
+  ShipmentTrackingStatus,
+  ShippingCarrier,
+  ShippingOrigin,
+  ShippingParcel,
+  ShippingProviderName,
+} from "@gira/shared";
 
 /**
  * Narrow, domain-owned port (BACKEND_ARCHITECTURE_GUIDELINES, "Integraciones
@@ -62,11 +68,42 @@ interface CallOptions {
   signal?: AbortSignal;
 }
 
+/** One parcel status change, in OUR vocabulary. */
+interface TrackingEvent {
+  trackingNumber: string;
+  status: ShipmentTrackingStatus;
+  /** The provider's own status text/id, kept for support. */
+  rawStatus: string;
+  description?: string;
+  location?: string;
+  occurredAt: Date;
+}
+
+/** Lower-cased header map as Express exposes it. */
+type WebhookHeaders = Record<string, string | string[] | undefined>;
+
+interface ParsedWebhook {
+  /** The provider's unique delivery id: the dedupe key. */
+  deliveryId: string;
+  eventType: string;
+  /** Empty when the event type is not one we act on. */
+  events: TrackingEvent[];
+}
+
 interface ShippingProvider {
   readonly name: ShippingProviderName;
+  /** false when no webhook secret is configured: the endpoint then answers 503 and polling covers tracking. */
+  readonly acceptsWebhooks: boolean;
   getRates(input: RatesInput, options: CallOptions): Promise<ProviderRate[]>;
   createLabel(input: CreateLabelInput, options: CallOptions): Promise<LabelResult>;
   cancelLabel(input: CancelLabelInput, options: CallOptions): Promise<void>;
+  /** Latest events for these tracking numbers (polling / reconciliation). */
+  getTracking(trackingNumbers: string[], options: CallOptions): Promise<TrackingEvent[]>;
+  /**
+   * Verifies the signature and timestamp of a raw webhook and normalises it.
+   * Throws AppError(400) on a bad signature, a stale timestamp or missing headers.
+   */
+  verifyAndParseWebhook(rawBody: Buffer, headers: WebhookHeaders): ParsedWebhook;
 }
 
 /**
@@ -98,6 +135,9 @@ export type {
   LabelResult,
   CancelLabelInput,
   CallOptions,
+  TrackingEvent,
+  WebhookHeaders,
+  ParsedWebhook,
   ShippingProvider,
   ShippingProviderErrorKind,
 };

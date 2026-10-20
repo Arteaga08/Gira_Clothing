@@ -15,6 +15,7 @@ enum NotificationType {
   ORDER_CONFIRMATION = "order_confirmation",
   ORDER_PREPARING = "order_preparing",
   ORDER_SHIPPED = "order_shipped",
+  ORDER_DELIVERED = "order_delivered",
   TEAM_ORDER_PAID = "team_order_paid",
   TEAM_PAYMENT_FAILED = "team_payment_failed",
   TEAM_SHIPMENT_INCIDENT = "team_shipment_incident",

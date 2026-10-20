@@ -17,6 +17,7 @@ import {
   type BulkStatusResult,
   type OrderActivityEntry,
   type OrderStatusGroup,
+  type ShipmentTrackingStatus,
   type OrderSummary,
 } from "@gira/shared";
 import {
@@ -29,6 +30,7 @@ import {
 } from "../models/Order.js";
 import { AuditLog } from "../models/AuditLog.js";
 import { AppError } from "../utils/AppError.js";
+import { toOrderEmailSnapshot } from "../utils/orderEmailSnapshot.js";
 import { assertAdminTransition } from "../utils/orderTransitions.js";
 import { applyOrderTransition } from "./orderTransitionService.js";
 import { getPaymentProvider } from "../adapters/payment/index.js";
@@ -60,6 +62,9 @@ interface AdminOrderLean extends OrderLean {
   cancelReason?: string;
   parcel: ParcelAttrs;
   label?: OrderLabel;
+  tracking?: { status: ShipmentTrackingStatus; lastEventAt?: Date; lastSyncedAt?: Date };
+  shippedAt?: Date;
+  deliveredAt?: Date;
   statusHistory: {
     status: OrderStatus;
     at: Date;
@@ -119,6 +124,17 @@ const toAdminOrder = (doc: AdminOrderLean): AdminOrder => ({
         },
       }
     : {}),
+  ...(doc.tracking
+    ? {
+        tracking: {
+          status: doc.tracking.status,
+          ...(doc.tracking.lastEventAt ? { lastEventAt: doc.tracking.lastEventAt } : {}),
+          ...(doc.tracking.lastSyncedAt ? { lastSyncedAt: doc.tracking.lastSyncedAt } : {}),
+        },
+      }
+    : {}),
+  ...(doc.shippedAt ? { shippedAt: doc.shippedAt } : {}),
+  ...(doc.deliveredAt ? { deliveredAt: doc.deliveredAt } : {}),
   updatedAt: doc.updatedAt,
 });
 
@@ -145,7 +161,8 @@ const buildStatusFilter = (
 ): { $in: string[] } | undefined => {
   const byStatus = csv ? csv.split(",") : undefined;
   const byGroup = group ? [...ORDER_STATUS_GROUPS[group]] : undefined;
-  if (byStatus && byGroup) return { $in: byStatus.filter((s) => byGroup.includes(s as OrderStatus)) };
+  if (byStatus && byGroup)
+    return { $in: byStatus.filter((s) => byGroup.includes(s as OrderStatus)) };
   const list = byStatus ?? byGroup;
   return list ? { $in: list } : undefined;
 };
@@ -335,7 +352,12 @@ const getOrderSummary = async (): Promise<OrderSummary> => {
   ) as Record<OrderStatus, number>;
   for (const row of grouped) countsByStatus[row._id] = row.count;
 
-  const byGroup: Record<OrderStatusGroup, number> = { action: 0, waiting: 0, shipping: 0, problems: 0 };
+  const byGroup: Record<OrderStatusGroup, number> = {
+    action: 0,
+    waiting: 0,
+    shipping: 0,
+    problems: 0,
+  };
   for (const status of Object.values(OrderStatus)) {
     byGroup[ORDER_STATUS_TO_GROUP[status]] += countsByStatus[status];
   }
@@ -400,7 +422,10 @@ const cancelPendingOrder = async (
   // The expiry sweep releases any hold left on a cancelled order, so a failure
   // here is recoverable and must not turn a cancelled order into an error page.
   await releaseReservation(order._id, "admin_cancelled").catch((err: unknown) => {
-    logger.error({ err, orderId: String(order._id) }, "No se pudo liberar la reserva de una orden cancelada");
+    logger.error(
+      { err, orderId: String(order._id) },
+      "No se pudo liberar la reserva de una orden cancelada",
+    );
   });
   return settled;
 };
@@ -431,32 +456,20 @@ const changeOrderStatus = async (
           actor: { type: "user", id: ctx.actorId },
         });
   if (!moved) {
-    throw new AppError("La orden cambió de estado mientras la editabas. Recarga e intenta de nuevo.", 409);
+    throw new AppError(
+      "La orden cambió de estado mientras la editabas. Recarga e intenta de nuevo.",
+      409,
+    );
   }
 
-  // Only PROCESSING triggers a customer email here; SHIPPED belongs to the
-  // shipment flow, which owns the tracking data the email needs.
+  // Only PROCESSING triggers a customer email here; SHIPPED/DELIVERED belong to "Marcar enviado" and the carrier's tracking.
   if (status === OrderStatus.PROCESSING) {
     await enqueueNotification({
       channel: NotificationChannelKind.EMAIL,
       type: NotificationType.ORDER_PREPARING,
       to: order.customer.email,
       order: order._id,
-      payload: {
-        publicId: order.publicId,
-        orderNumber: order.orderNumber,
-        customerName: order.customer.name,
-        currency: order.currency,
-        subtotal: order.subtotal,
-        shippingCost: order.shippingCost,
-        total: order.total,
-        lines: order.lines.map((line) => ({
-          productName: line.productName,
-          printName: line.printName,
-          qty: line.qty,
-          lineTotal: line.lineTotal,
-        })),
-      },
+      payload: toOrderEmailSnapshot(order) as unknown as Record<string, unknown>,
     });
   }
 
