@@ -6,6 +6,7 @@ import { OrderDetail } from "@/components/orders/detail/OrderDetail";
 import { ToastProvider } from "@/components/ui/Toast";
 import { ApiError } from "@/lib/api/ApiError";
 import { DEFAULT_ID, makeOrder, orderOf, without, withoutIntent } from "../helpers/orders";
+import { chooseOption } from "../helpers/select";
 
 const api = vi.hoisted(() => ({
   updateOrderStatus: vi.fn(),
@@ -99,7 +100,7 @@ describe("OrderDetail: acciones", () => {
   it("cambiar la prioridad es inline y llama a la API", async () => {
     api.updateOrderPriority.mockResolvedValue(makeOrder({ priority: "urgente" as never }));
     renderDetail();
-    await userEvent.selectOptions(screen.getByLabelText("Prioridad"), "urgente");
+    await chooseOption(screen.getByLabelText("Prioridad"), "urgente");
     expect(api.updateOrderPriority).toHaveBeenCalledWith(DEFAULT_ID, "urgente");
     expect(await screen.findByText("Prioridad de GC-7KQ3M2XV: urgente")).toBeInTheDocument();
   });

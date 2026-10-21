@@ -78,7 +78,7 @@ const NAV_GROUPS: readonly NavGroupConfig[] = [
         href: "/estampas",
         icon: PaintBrushIcon,
         keywords: ["estampas", "disenos"],
-        available: false,
+        available: true,
       },
       {
         key: "printFamilies",

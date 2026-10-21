@@ -117,6 +117,22 @@ interface AdminProduct extends Product {
   updatedAt: Date;
 }
 
+/** A model that still has an active variant of a print: the retire guard names them. */
+interface AdminPrintProduct {
+  id: string;
+  name: string;
+}
+
+/** Admin catalog row/detail: a print with how much of the catalog uses it. */
+interface AdminPrint extends Print {
+  /** Every variant of this print, retired or not. */
+  variantCount: number;
+  activeVariantCount: number;
+  /** Models with an active variant of this print, A-Z, at most 10 (one variant per model, so `activeVariantCount` is the true total). */
+  activeProducts: AdminPrintProduct[];
+  updatedAt: Date;
+}
+
 /** One stock movement from the audit trail (STOCK_SET / STOCK_ADJUSTED). */
 interface AdminVariantActivity {
   id: string;
@@ -134,6 +150,8 @@ export type {
   CatalogRef,
   AdminProduct,
   AdminProductPrint,
+  AdminPrint,
+  AdminPrintProduct,
   AdminVariant,
   AdminVariantActivity,
   PrintFamily,

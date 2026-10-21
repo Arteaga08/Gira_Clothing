@@ -36,13 +36,16 @@ const toPickerPrint = (print: Wire<Print>): PickerPrint => ({
 const toCategoryOptions = (categories: readonly Wire<ProductCategory>[]): Option[] =>
   categories.map((category) => ({ value: category.id, label: category.name })).sort(byLabel);
 
+const toFamilyOptions = (families: readonly Wire<PrintFamily>[]): Option[] =>
+  families.map((family) => ({ value: family.id, label: family.name })).sort(byLabel);
+
 const toCatalogOptions = (
   categories: readonly Wire<ProductCategory>[],
   families: readonly Wire<PrintFamily>[],
   prints: readonly Wire<Print>[],
 ): CatalogOptions => ({
   categories: toCategoryOptions(categories),
-  families: families.map((family) => ({ value: family.id, label: family.name })).sort(byLabel),
+  families: toFamilyOptions(families),
   prints: prints.map(toPickerPrint).sort(byName),
 });
 
@@ -52,5 +55,5 @@ const withCurrentCategory = (options: Option[], categoryId: string, categoryName
     ? options
     : [...options, { value: categoryId, label: `${categoryName} (retirada)` }];
 
-export { toCatalogOptions, toCategoryOptions, toPickerPrint, withCurrentCategory };
+export { toCatalogOptions, toCategoryOptions, toFamilyOptions, toPickerPrint, withCurrentCategory };
 export type { Option, PickerPrint, CatalogOptions };

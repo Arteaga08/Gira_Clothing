@@ -73,7 +73,13 @@ const AddressForm = ({ address, labelWillBeReplaced, onSubmit, onCancel }: Addre
       <Field label="Interior o referencias (opcional)" autoComplete="off" {...bind("line2")} />
       <Field label="Colonia" autoComplete="off" {...bind("district")} />
       <Field label="Ciudad" autoComplete="off" {...bind("city")} />
-      <SelectField label="Estado" options={STATE_OPTIONS} {...bind("state")} />
+      <SelectField
+        label="Estado"
+        options={STATE_OPTIONS}
+        value={values.state}
+        onChange={(next) => setValues((current) => ({ ...current, state: next }))}
+        error={errors.state}
+      />
       <Field label="Código postal" readOnly value={values.postalCode} helper={POSTAL_CODE_HELP} className="font-mono" />
       <div className="mt-2 flex justify-end gap-2">
         <Button onClick={onCancel} disabled={saving}>

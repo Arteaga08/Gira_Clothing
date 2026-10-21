@@ -1,12 +1,11 @@
-import type { ApiMeta } from "@gira/shared";
-import { AuditAction, AuditModule } from "@gira/shared";
+import { AuditAction, AuditModule, type AdminPrint } from "@gira/shared";
 import { Print } from "../models/Print.js";
 import { PrintFamily } from "../models/PrintFamily.js";
 import { Variant } from "../models/Variant.js";
 import { AppError } from "../utils/AppError.js";
 import { slugify, resolveUniqueSlug } from "../utils/slug.js";
-import { parseListQuery, buildMeta, type ListQueryConfig } from "../utils/parseListQuery.js";
 import { recordAudit } from "./auditService.js";
+import { getAdminPrintOrThrow } from "./adminPrintService.js";
 import type { RequestContext } from "../utils/requestContext.js";
 import type { ImageAttrs } from "../models/schemas/image.js";
 
@@ -15,12 +14,6 @@ import type { ImageAttrs } from "../models/schemas/image.js";
  * soft delete guarded by referential integrity: a print with active variants
  * cannot be retired.
  */
-
-const LIST_CONFIG: ListQueryConfig = {
-  sortable: ["name", "sku", "createdAt", "updatedAt"],
-  searchable: ["name", "sku"],
-  defaultSort: "name",
-};
 
 interface CreatePrintInput {
   name: string;
@@ -31,59 +24,10 @@ interface CreatePrintInput {
 
 interface UpdatePrintInput {
   name?: string;
-  sku?: string;
   family?: string;
   image?: ImageAttrs;
   isActive?: boolean;
 }
-
-interface PrintListQuery {
-  page?: unknown;
-  limit?: unknown;
-  sort?: unknown;
-  search?: unknown;
-  family?: string;
-  isActive?: boolean;
-}
-
-interface PublicFamilyRef {
-  id: string;
-  name: string;
-  slug: string;
-}
-
-interface PublicPrint {
-  id: string;
-  name: string;
-  slug: string;
-  sku: string;
-  family: PublicFamilyRef;
-  image: ImageAttrs;
-  isActive: boolean;
-}
-
-interface PrintLean {
-  _id: unknown;
-  name: string;
-  slug: string;
-  sku: string;
-  family: unknown;
-  image: ImageAttrs;
-  isActive: boolean;
-}
-
-const toPublicPrint = (doc: PrintLean): PublicPrint => {
-  const family = doc.family as { _id: unknown; name: string; slug: string };
-  return {
-    id: String(doc._id),
-    name: doc.name,
-    slug: doc.slug,
-    sku: doc.sku,
-    family: { id: String(family._id), name: family.name, slug: family.slug },
-    image: doc.image,
-    isActive: doc.isActive,
-  };
-};
 
 const findActiveFamilyOrThrow = async (familyId: string) => {
   const family = await PrintFamily.findOne({ _id: familyId, isActive: true }).lean();
@@ -94,7 +38,7 @@ const findActiveFamilyOrThrow = async (familyId: string) => {
 const createPrint = async (
   input: CreatePrintInput,
   ctx: RequestContext,
-): Promise<PublicPrint> => {
+): Promise<AdminPrint> => {
   const family = await findActiveFamilyOrThrow(input.family);
 
   const slug = await resolveUniqueSlug(
@@ -120,44 +64,14 @@ const createPrint = async (
     ip: ctx.ip,
   });
 
-  return toPublicPrint({ ...created.toObject(), family });
-};
-
-const listPrints = async (
-  query: PrintListQuery,
-): Promise<{ items: PublicPrint[]; meta: ApiMeta }> => {
-  const filters: Record<string, unknown> = {};
-  if (query.family) filters.family = query.family;
-  if (query.isActive !== undefined) filters.isActive = query.isActive;
-
-  const { filter, sort, skip, limit, page } = parseListQuery(query, LIST_CONFIG, filters);
-  const [docs, total] = await Promise.all([
-    Print.find(filter)
-      .sort(sort)
-      .skip(skip)
-      .limit(limit)
-      .populate("family", "name slug")
-      .lean(),
-    Print.countDocuments(filter),
-  ]);
-
-  return {
-    items: docs.map(toPublicPrint),
-    meta: buildMeta(total, { page, limit }),
-  };
-};
-
-const getPrint = async (id: string): Promise<PublicPrint> => {
-  const doc = await Print.findById(id).populate("family", "name slug").lean();
-  if (!doc) throw new AppError("El estampado no existe.", 404);
-  return toPublicPrint(doc);
+  return getAdminPrintOrThrow(created.id as string);
 };
 
 const updatePrint = async (
   id: string,
   input: UpdatePrintInput,
   ctx: RequestContext,
-): Promise<PublicPrint> => {
+): Promise<AdminPrint> => {
   const print = await Print.findById(id);
   if (!print) throw new AppError("El estampado no existe.", 404);
 
@@ -186,7 +100,6 @@ const updatePrint = async (
       async (candidate) => (await Print.exists({ slug: candidate, _id: { $ne: id } })) !== null,
     );
   }
-  if (input.sku !== undefined) print.sku = input.sku;
   if (input.family !== undefined) {
     const family = await findActiveFamilyOrThrow(input.family);
     print.family = family._id;
@@ -205,7 +118,7 @@ const updatePrint = async (
     ip: ctx.ip,
   });
 
-  return getPrint(id);
+  return getAdminPrintOrThrow(id);
 };
 
 /** Throws 409 if the print still has active variants. */
@@ -220,7 +133,7 @@ const assertNoActiveVariants = async (printId: string): Promise<void> => {
 };
 
 /** Soft delete guarded by referential integrity against active Variant children. */
-const deactivatePrint = async (id: string, ctx: RequestContext): Promise<PublicPrint> => {
+const deactivatePrint = async (id: string, ctx: RequestContext): Promise<AdminPrint> => {
   const print = await Print.findById(id);
   if (!print) throw new AppError("El estampado no existe.", 404);
 
@@ -238,8 +151,8 @@ const deactivatePrint = async (id: string, ctx: RequestContext): Promise<PublicP
     ip: ctx.ip,
   });
 
-  return getPrint(id);
+  return getAdminPrintOrThrow(id);
 };
 
-export type { CreatePrintInput, UpdatePrintInput, PrintListQuery, PublicPrint };
-export { createPrint, listPrints, getPrint, updatePrint, deactivatePrint };
+export type { CreatePrintInput, UpdatePrintInput };
+export { createPrint, updatePrint, deactivatePrint };

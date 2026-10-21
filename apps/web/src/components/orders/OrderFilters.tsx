@@ -95,14 +95,14 @@ const OrderFilters = ({ filters, onChange }: OrderFiltersProps) => {
           label="Estado"
           options={STATUS_OPTIONS}
           value={filters.status ?? ""}
-          onChange={(event) => onChange({ status: (event.target.value || undefined) as OrderStatus | undefined })}
+          onChange={(next) => onChange({ status: (next || undefined) as OrderStatus | undefined })}
         />
       ) : null}
       <SelectField
         label="Ordenar por"
         options={SORT_OPTIONS}
         value={sortValue}
-        onChange={(event) => onChange({ sort: event.target.value })}
+        onChange={(next) => onChange({ sort: next })}
       />
       <div className="flex min-h-10 items-center">
         <Toggle

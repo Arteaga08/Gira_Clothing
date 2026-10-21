@@ -22,9 +22,11 @@ describe("AddressForm", () => {
     expect(screen.getByText(/cambia el costo del envío/)).toBeInTheDocument();
   });
 
-  it("el estado es una lista de los estados de México con el actual elegido", () => {
+  it("el estado es una lista de los estados de México con el actual elegido", async () => {
     setup();
-    expect(screen.getByLabelText("Estado")).toHaveValue("JC");
+    const trigger = screen.getByRole("combobox", { name: "Estado" });
+    expect(trigger).toHaveTextContent("Jalisco");
+    await userEvent.click(trigger);
     expect(screen.getByRole("option", { name: "Ciudad de México" })).toBeInTheDocument();
   });
 

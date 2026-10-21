@@ -67,19 +67,19 @@ const ProductFilters = ({ filters, categories, onChange }: ProductFiltersProps) 
         label="Categoría"
         options={[{ value: "", label: "Todas" }, ...categories]}
         value={filters.category ?? ""}
-        onChange={(event) => onChange({ category: event.target.value || undefined })}
+        onChange={(next) => onChange({ category: next || undefined })}
       />
       <SelectField
         label="Estado"
         options={STATUS_OPTIONS}
         value={filters.status}
-        onChange={(event) => onChange({ status: event.target.value as CatalogStatus })}
+        onChange={(next) => onChange({ status: next as CatalogStatus })}
       />
       <SelectField
         label="Ordenar por"
         options={SORT_OPTIONS}
         value={sortValue}
-        onChange={(event) => onChange({ sort: event.target.value })}
+        onChange={(next) => onChange({ sort: next })}
       />
     </div>
   );

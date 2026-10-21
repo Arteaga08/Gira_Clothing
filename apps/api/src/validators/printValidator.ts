@@ -1,10 +1,17 @@
 import Joi from "joi";
+import {
+  PRINT_NAME_MAX,
+  PRINT_NAME_MIN,
+  PRINT_SKU_MAX,
+  PRINT_SKU_MIN,
+  PRINT_SKU_PATTERN,
+} from "@gira/shared";
 import { listQueryBase } from "./listQueryValidator.js";
 import { objectId, imageObjectSchema } from "./commonValidator.js";
 
-const name = Joi.string().trim().min(2).max(80).messages({
-  "string.min": "El nombre debe tener al menos 2 caracteres.",
-  "string.max": "El nombre no puede exceder 80 caracteres.",
+const name = Joi.string().trim().min(PRINT_NAME_MIN).max(PRINT_NAME_MAX).messages({
+  "string.min": `El nombre debe tener al menos ${PRINT_NAME_MIN} caracteres.`,
+  "string.max": `El nombre no puede exceder ${PRINT_NAME_MAX} caracteres.`,
   "any.required": "El nombre es obligatorio.",
   "string.empty": "El nombre es obligatorio.",
 });
@@ -12,9 +19,9 @@ const name = Joi.string().trim().min(2).max(80).messages({
 const sku = Joi.string()
   .trim()
   .uppercase()
-  .min(2)
-  .max(24)
-  .pattern(/^[A-Z0-9-]+$/)
+  .min(PRINT_SKU_MIN)
+  .max(PRINT_SKU_MAX)
+  .pattern(PRINT_SKU_PATTERN)
   .messages({
     "string.pattern.base": "El SKU solo puede tener letras, números y guiones.",
     "any.required": "El SKU es obligatorio.",
@@ -28,9 +35,10 @@ const createPrintSchema = Joi.object({
   image: imageObjectSchema.required(),
 });
 
+// The SKU never changes: every variant SKU was built from it.
 const updatePrintSchema = Joi.object({
   name,
-  sku,
+  sku: Joi.any().forbidden().messages({ "any.unknown": "El SKU no se puede cambiar." }),
   family: objectId,
   image: imageObjectSchema,
   isActive: Joi.boolean(),

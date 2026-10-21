@@ -7,6 +7,7 @@ import { ToastProvider } from "@/components/ui/Toast";
 import { ApiError } from "@/lib/api/ApiError";
 import { parseOrderFilters } from "@/lib/orders/filters";
 import { makeOrder, orderOf } from "../helpers/orders";
+import { chooseOption } from "../helpers/select";
 
 const api = vi.hoisted(() => ({
   listOrders: vi.fn(),
@@ -92,7 +93,7 @@ describe("OrdersPage: pestañas", () => {
     await screen.findByRole("link", { name: /GC-BBBBBBBB/ });
     expect(screen.getByLabelText("Estado")).toBeInTheDocument();
     expect(api.listOrders).toHaveBeenCalledWith(expect.not.stringContaining("status="));
-    await userEvent.selectOptions(screen.getByLabelText("Estado"), "cancelled");
+    await chooseOption(screen.getByLabelText("Estado"), /cancelad/i);
     await waitFor(() => expect(api.listOrders).toHaveBeenLastCalledWith(expect.stringContaining("status=cancelled")));
   });
 

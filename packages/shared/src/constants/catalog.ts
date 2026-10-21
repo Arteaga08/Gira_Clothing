@@ -17,6 +17,13 @@ const VARIANT_IMAGES_MAX = 10;
 /** MXN centavos. */
 const VARIANT_PRICE_OVERRIDE_MAX = 10_000_000;
 
+const PRINT_NAME_MIN = 2;
+const PRINT_NAME_MAX = 80;
+const PRINT_SKU_MIN = 2;
+const PRINT_SKU_MAX = 24;
+/** Uppercase letters, digits and hyphens: the print SKU feeds every variant SKU. */
+const PRINT_SKU_PATTERN = /^[A-Z0-9-]+$/;
+
 const UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
 const UPLOAD_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"] as const;
 
@@ -32,6 +39,11 @@ export {
   PRODUCT_MATERIAL_MAX,
   VARIANT_IMAGES_MAX,
   VARIANT_PRICE_OVERRIDE_MAX,
+  PRINT_NAME_MIN,
+  PRINT_NAME_MAX,
+  PRINT_SKU_MIN,
+  PRINT_SKU_MAX,
+  PRINT_SKU_PATTERN,
   UPLOAD_MAX_BYTES,
   UPLOAD_MIME_TYPES,
 };
