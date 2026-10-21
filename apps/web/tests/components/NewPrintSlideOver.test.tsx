@@ -6,6 +6,7 @@ import { ToastProvider } from "@/components/ui/Toast";
 import { ApiError } from "@/lib/api/ApiError";
 import type { PickerPrint } from "@/lib/catalog/catalogOptions";
 import { makeImage } from "../helpers/catalog";
+import { chooseOption } from "../helpers/select";
 
 const api = vi.hoisted(() => ({ createPrint: vi.fn() }));
 vi.mock("@/lib/api/adminCatalog", () => api);
@@ -72,7 +73,7 @@ describe("NewPrintSlideOver", () => {
     const props = setup();
     await userEvent.type(within(dialog()).getByLabelText("Nombre"), "  Cassette ");
     await userEvent.type(within(dialog()).getByLabelText("SKU"), "cas");
-    await userEvent.selectOptions(within(dialog()).getByLabelText("Familia"), "f1");
+    await chooseOption(within(dialog()).getByLabelText("Familia"), "Retro");
     await userEvent.upload(
       within(dialog()).getByLabelText(/Subir imagen/),
       new File(["x"], "cassette.png", { type: "image/png" }),
@@ -94,7 +95,7 @@ describe("NewPrintSlideOver", () => {
     const props = setup();
     await userEvent.type(within(dialog()).getByLabelText("Nombre"), "Cassette");
     await userEvent.type(within(dialog()).getByLabelText("SKU"), "cas");
-    await userEvent.selectOptions(within(dialog()).getByLabelText("Familia"), "f1");
+    await chooseOption(within(dialog()).getByLabelText("Familia"), "Retro");
     await userEvent.upload(
       within(dialog()).getByLabelText(/Subir imagen/),
       new File(["x"], "c.png", { type: "image/png" }),

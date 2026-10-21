@@ -72,7 +72,7 @@ const ModelDataSection = ({ model, errors, categories, onChange, sizePhoto }: Mo
         options={[{ value: "", label: "Elige una categoría" }, ...categories]}
         value={model.categoryId}
         error={errors.categoryId}
-        onChange={(event) => onChange({ categoryId: event.target.value })}
+        onChange={(next) => onChange({ categoryId: next })}
       />
       <Field
         label="Precio base (MXN)"

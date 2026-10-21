@@ -126,7 +126,7 @@ describe("Notice", () => {
 });
 
 describe("SelectField", () => {
-  it("asocia el label al select y lista las opciones", () => {
+  it("asocia el label al combobox y muestra la opción elegida", () => {
     render(
       <SelectField
         label="Estado"
@@ -136,8 +136,6 @@ describe("SelectField", () => {
         ]}
       />,
     );
-    const select = screen.getByLabelText("Estado");
-    expect(select).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Pagada" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Estado" })).toHaveTextContent("Pagada");
   });
 });

@@ -40,7 +40,7 @@ const OrderHeader = ({ order, busy, onPriorityChange }: OrderHeaderProps) => (
       options={PRIORITY_OPTIONS}
       value={order.priority}
       disabled={busy}
-      onChange={(event) => onPriorityChange(event.target.value as OrderPriority)}
+      onChange={(next) => onPriorityChange(next as OrderPriority)}
       containerClassName="w-40"
     />
   </div>

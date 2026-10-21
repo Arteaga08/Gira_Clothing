@@ -16,6 +16,7 @@ import {
   makeRawProduct,
   makeRawVariant,
 } from "../helpers/catalog";
+import { chooseOption } from "../helpers/select";
 
 const catalog = vi.hoisted(() => ({ fetchCatalogOptions: vi.fn(), createPrint: vi.fn() }));
 vi.mock("@/lib/api/adminCatalog", () => catalog);
@@ -83,7 +84,7 @@ describe("ProductEditor · crear", () => {
     variants.createVariant.mockResolvedValue({});
     renderEditor(null);
     await userEvent.type(await screen.findByLabelText("Nombre"), "Cosmetiquera chica");
-    await userEvent.selectOptions(screen.getByLabelText("Categoría"), CATEGORY_ID);
+    await chooseOption(screen.getByLabelText("Categoría"), "Cosmetiquera");
     await userEvent.type(screen.getByLabelText("Precio base (MXN)"), "189");
     await userEvent.type(screen.getByLabelText("Peso (g)"), "140");
     await userEvent.click(within(picker()).getByRole("button", { name: /Nopal en flor/ }));
@@ -101,7 +102,7 @@ describe("ProductEditor · crear", () => {
     variants.createVariant.mockRejectedValue(new ApiError("Ya existe una variante con ese SKU.", "http", 409));
     renderEditor(null);
     await userEvent.type(await screen.findByLabelText("Nombre"), "Cosmetiquera chica");
-    await userEvent.selectOptions(screen.getByLabelText("Categoría"), CATEGORY_ID);
+    await chooseOption(screen.getByLabelText("Categoría"), "Cosmetiquera");
     await userEvent.type(screen.getByLabelText("Precio base (MXN)"), "189");
     await userEvent.type(screen.getByLabelText("Peso (g)"), "140");
     await userEvent.click(within(picker()).getByRole("button", { name: /Nopal en flor/ }));
@@ -117,7 +118,7 @@ describe("ProductEditor · crear", () => {
     products.createProduct.mockRejectedValue(new ApiError("La categoría no existe.", "http", 400));
     renderEditor(null);
     await userEvent.type(await screen.findByLabelText("Nombre"), "Cosmetiquera chica");
-    await userEvent.selectOptions(screen.getByLabelText("Categoría"), CATEGORY_ID);
+    await chooseOption(screen.getByLabelText("Categoría"), "Cosmetiquera");
     await userEvent.type(screen.getByLabelText("Precio base (MXN)"), "189");
     await userEvent.type(screen.getByLabelText("Peso (g)"), "140");
     await userEvent.click(screen.getByRole("button", { name: "Crear producto" }));

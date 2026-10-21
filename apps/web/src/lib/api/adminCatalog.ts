@@ -2,6 +2,7 @@ import type { ImageAttrs, Print, PrintFamily, ProductCategory } from "@gira/shar
 import {
   toCatalogOptions,
   toCategoryOptions,
+  toFamilyOptions,
   toPickerPrint,
   type CatalogOptions,
   type Option,
@@ -20,6 +21,9 @@ const QUERY = "isActive=true&limit=100&page=1";
 
 const fetchCategoryOptions = async (): Promise<Option[]> =>
   toCategoryOptions(expectData(await browserRequest<{ categories: ProductCategory[] }>(`${ADMIN_CATEGORIES_PATH}?${QUERY}`)).categories);
+
+const fetchFamilyOptions = async (): Promise<Option[]> =>
+  toFamilyOptions(expectData(await browserRequest<{ families: PrintFamily[] }>(`${ADMIN_FAMILIES_PATH}?${QUERY}`)).families);
 
 const fetchCatalogOptions = async (): Promise<CatalogOptions> => {
   const [categories, families, prints] = await Promise.all([
@@ -44,5 +48,5 @@ interface CreatePrintBody {
 const createPrint = async (body: CreatePrintBody): Promise<PickerPrint> =>
   toPickerPrint(expectData(await browserRequest<{ print: Print }>(ADMIN_PRINTS_PATH, { method: "POST", body })).print);
 
-export { fetchCategoryOptions, fetchCatalogOptions, createPrint };
+export { fetchCategoryOptions, fetchFamilyOptions, fetchCatalogOptions, createPrint };
 export type { CreatePrintBody };

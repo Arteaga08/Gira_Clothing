@@ -6,6 +6,7 @@ import { ApiError } from "@/lib/api/ApiError";
 import { parseCatalogFilters } from "@/lib/catalog/filters";
 import { toPanelProduct, type PanelProduct } from "@/lib/catalog/panelProduct";
 import { makeRawProduct } from "../helpers/catalog";
+import { chooseOption } from "../helpers/select";
 
 const products = vi.hoisted(() => ({ listProducts: vi.fn() }));
 vi.mock("@/lib/api/adminProducts", () => products);
@@ -78,9 +79,9 @@ describe("ProductsPage", () => {
   it("cambiar un filtro escribe la URL en español y vuelve a la página 1", async () => {
     renderPage();
     await screen.findByRole("region", { name: "Cosmetiquera" });
-    await userEvent.selectOptions(screen.getByLabelText("Estado"), "retired");
+    await chooseOption(screen.getByLabelText("Estado"), "Retirados");
     expect(replaceMock).toHaveBeenCalledWith("/productos?estado=retirados", { scroll: false });
-    await userEvent.selectOptions(screen.getByLabelText("Ordenar por"), "name");
+    await chooseOption(screen.getByLabelText("Ordenar por"), "Nombre (A–Z)");
     expect(replaceMock).toHaveBeenLastCalledWith("/productos?estado=retirados&orden=name", { scroll: false });
   });
 

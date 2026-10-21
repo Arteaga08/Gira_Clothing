@@ -2,10 +2,9 @@ import type { Request, Response } from "express";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { sendResponse } from "../utils/sendResponse.js";
 import { buildContext } from "../utils/requestContext.js";
+import { listAdminPrints, getAdminPrintOrThrow } from "../services/adminPrintService.js";
 import {
   createPrint,
-  listPrints,
-  getPrint,
   updatePrint,
   deactivatePrint,
   type CreatePrintInput,
@@ -22,12 +21,12 @@ const create = asyncHandler(async (req: Request, res: Response) => {
 });
 
 const list = asyncHandler(async (req: Request, res: Response) => {
-  const { items, meta } = await listPrints(req.query);
+  const { items, meta } = await listAdminPrints(req.query);
   sendResponse(res, 200, "Estampados obtenidos correctamente.", { prints: items }, meta);
 });
 
 const detail = asyncHandler(async (req: Request, res: Response) => {
-  const print = await getPrint(req.params.id as string);
+  const print = await getAdminPrintOrThrow(req.params.id as string);
   sendResponse(res, 200, "Estampado obtenido correctamente.", { print });
 });
 

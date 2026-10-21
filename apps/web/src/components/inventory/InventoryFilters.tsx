@@ -72,25 +72,25 @@ const InventoryFilters = ({ filters, options, onChange }: InventoryFiltersProps)
         label="Categoría"
         options={withAll("Todas", options.categories)}
         value={filters.category ?? ""}
-        onChange={(event) => changeCategory(event.target.value)}
+        onChange={changeCategory}
       />
       <SelectField
         label="Modelo"
         options={withAll("Todos", models)}
         value={filters.product ?? ""}
-        onChange={(event) => onChange({ product: event.target.value || undefined })}
+        onChange={(next) => onChange({ product: next || undefined })}
       />
       <SelectField
         label="Print"
         options={withAll("Todos", options.prints)}
         value={filters.print ?? ""}
-        onChange={(event) => onChange({ print: event.target.value || undefined })}
+        onChange={(next) => onChange({ print: next || undefined })}
       />
       <SelectField
         label="Ordenar por"
         options={SORT_OPTIONS}
         value={sortValue}
-        onChange={(event) => onChange({ sort: event.target.value })}
+        onChange={(next) => onChange({ sort: next })}
       />
     </div>
   );

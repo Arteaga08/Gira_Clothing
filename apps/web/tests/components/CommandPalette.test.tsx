@@ -70,12 +70,14 @@ describe("CommandPalette", () => {
     await userEvent.keyboard("{ArrowDown}");
     expect(screen.getByRole("option", { name: "Resumen" })).toHaveAttribute("aria-selected", "true");
 
-    // Resumen, Pedidos, Productos e Inventario son los disponibles: las siguientes flechas los recorren y la
-    // quinta da la vuelta a Resumen saltando todos los deshabilitados de en medio.
+    // Resumen, Pedidos, Productos, Estampas e Inventario son los disponibles: las siguientes flechas los recorren y la
+    // sexta da la vuelta a Resumen saltando todos los deshabilitados de en medio.
     await userEvent.keyboard("{ArrowDown}");
     expect(screen.getByRole("option", { name: "Pedidos" })).toHaveAttribute("aria-selected", "true");
     await userEvent.keyboard("{ArrowDown}");
     expect(screen.getByRole("option", { name: "Productos" })).toHaveAttribute("aria-selected", "true");
+    await userEvent.keyboard("{ArrowDown}");
+    expect(screen.getByRole("option", { name: "Estampas" })).toHaveAttribute("aria-selected", "true");
     await userEvent.keyboard("{ArrowDown}");
     expect(screen.getByRole("option", { name: "Variantes" })).toHaveAttribute("aria-selected", "true");
     await userEvent.keyboard("{ArrowDown}");
@@ -96,7 +98,7 @@ describe("CommandPalette", () => {
     renderPalette();
     await userEvent.click(screen.getByRole("button", { name: "Abrir paleta" }));
 
-    await userEvent.click(screen.getByRole("option", { name: /estampas/i }));
+    await userEvent.click(screen.getByRole("option", { name: /familias/i }));
 
     expect(router.push).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog")).toBeInTheDocument();
