@@ -1,9 +1,18 @@
-import type { CouponDiscountType, CouponStatus } from "../enums/coupon.js";
+import type { CouponDiscountType, CouponKind, CouponStatus } from "../enums/coupon.js";
+
+interface AssignedCustomer {
+  id: string;
+  firstName: string;
+  lastName: string;
+}
 
 interface AdminCoupon {
   id: string;
   code: string;
   name: string;
+  kind: CouponKind;
+  /** Present only on personal coupons. */
+  assignedCustomer?: AssignedCustomer;
   discountType: CouponDiscountType;
   /** Whole percent, 1-100. Present when discountType is percent. */
   percentOff?: number;
@@ -30,4 +39,4 @@ interface OrderCoupon {
   value: number;
 }
 
-export type { AdminCoupon, OrderCoupon };
+export type { AdminCoupon, AssignedCustomer, OrderCoupon };

@@ -1,6 +1,7 @@
-import { Schema, model, type HydratedDocument, type Model } from "mongoose";
+import { Schema, model, type HydratedDocument, type Model, type Types } from "mongoose";
 import {
   CouponDiscountType,
+  CouponKind,
   COUPON_AMOUNT_MAX,
   COUPON_CODE_MAX,
   COUPON_MIN_SUBTOTAL_MAX,
@@ -17,6 +18,9 @@ import {
 interface CouponAttrs {
   code: string;
   name: string;
+  kind: CouponKind;
+  /** Only on personal coupons: the one customer who can redeem it. */
+  assignedUser?: Types.ObjectId;
   discountType: CouponDiscountType;
   /** Whole percent, 1-100. Required when discountType is percent. */
   percentOff?: number;
@@ -48,6 +52,23 @@ const couponSchema = new Schema<CouponAttrs, CouponModel>(
       maxlength: COUPON_CODE_MAX,
     },
     name: { type: String, required: true, trim: true, maxlength: COUPON_NAME_MAX },
+    kind: { type: String, enum: Object.values(CouponKind), default: CouponKind.CAMPAIGN },
+    assignedUser: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      validate: {
+        validator: function (this: CouponAttrs, value: unknown) {
+          return this.kind === CouponKind.PERSONAL ? Boolean(value) : !value;
+        },
+        message: "assignedUser is required for a personal coupon and forbidden otherwise",
+      },
+      required: [
+        function (this: CouponAttrs) {
+          return this.kind === CouponKind.PERSONAL;
+        },
+        "assignedUser is required for a personal coupon",
+      ],
+    },
     discountType: { type: String, enum: Object.values(CouponDiscountType), required: true },
     percentOff: {
       type: Number,
@@ -85,6 +106,7 @@ const couponSchema = new Schema<CouponAttrs, CouponModel>(
 
 couponSchema.index({ isActive: 1, endsAt: 1 });
 couponSchema.index({ createdAt: -1 });
+couponSchema.index({ assignedUser: 1 }, { partialFilterExpression: { assignedUser: { $exists: true } } });
 
 const Coupon = model<CouponAttrs, CouponModel>("Coupon", couponSchema);
 

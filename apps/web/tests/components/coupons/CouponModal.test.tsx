@@ -1,4 +1,4 @@
-import { COUPON_CODE_TAKEN_MESSAGE, CouponStatus } from "@gira/shared";
+import { COUPON_CODE_TAKEN_MESSAGE, CouponKind, CouponStatus } from "@gira/shared";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -181,5 +181,29 @@ describe("CouponModal", () => {
     expect(within(alert).queryByRole("button", { name: "Reintentar" })).not.toBeInTheDocument();
     await userEvent.click(within(alert).getByRole("button", { name: "Cerrar" }));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("un cupón personal muestra a quién pertenece, con enlace a su cuenta", async () => {
+    renderModal(
+      COUPON_ID,
+      [
+        makePanelCoupon({
+          kind: CouponKind.PERSONAL,
+          assignedCustomer: { id: "68f2ab12c3d4e5f6a7b8cbb1", firstName: "Ana", lastName: "Pérez" },
+        }),
+      ],
+    );
+    const dialog = await screen.findByRole("dialog", { name: "Editar cupón" });
+    expect(within(dialog).getByText("Cupón personal")).toBeInTheDocument();
+    expect(within(dialog).getByRole("link", { name: "Ana Pérez" })).toHaveAttribute(
+      "href",
+      "/clientes/68f2ab12c3d4e5f6a7b8cbb1",
+    );
+  });
+
+  it("una campaña no muestra el aviso de cupón personal", async () => {
+    renderModal(COUPON_ID);
+    const dialog = await screen.findByRole("dialog", { name: "Editar cupón" });
+    expect(within(dialog).queryByText("Cupón personal")).not.toBeInTheDocument();
   });
 });

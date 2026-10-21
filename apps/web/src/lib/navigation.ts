@@ -131,7 +131,7 @@ const NAV_GROUPS: readonly NavGroupConfig[] = [
         href: "/clientes",
         icon: UsersIcon,
         keywords: ["clientes", "usuarios"],
-        available: false,
+        available: true,
       },
       {
         key: "settings",

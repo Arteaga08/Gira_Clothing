@@ -3,6 +3,7 @@ import { UserRole } from "@gira/shared";
 import { protect, restrictTo } from "../../../middlewares/protect.js";
 import { printFamilyRouter } from "./printFamilyRoutes.js";
 import { couponRouter } from "./couponRoutes.js";
+import { customerRouter } from "./customerRoutes.js";
 import { productCategoryRouter } from "./productCategoryRoutes.js";
 import { uploadRouter } from "./uploadRoutes.js";
 import { printRouter } from "./printRoutes.js";
@@ -28,6 +29,7 @@ adminRouter.use(protect, restrictTo(UserRole.ADMIN));
 
 adminRouter.use("/print-families", printFamilyRouter);
 adminRouter.use("/coupons", couponRouter);
+adminRouter.use("/customers", customerRouter);
 adminRouter.use("/product-categories", productCategoryRouter);
 adminRouter.use("/uploads", uploadRouter);
 adminRouter.use("/prints", printRouter);

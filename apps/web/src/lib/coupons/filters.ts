@@ -10,6 +10,19 @@ const COUPON_PARAM = "cupon";
 type CouponStatusFilter = "all" | "active" | "scheduled" | "expired" | "exhausted" | "retired";
 const DEFAULT_STATUS: CouponStatusFilter = "all";
 
+type CouponKindFilter = "all" | "campaign" | "personal";
+const DEFAULT_KIND: CouponKindFilter = "all";
+
+/** Spanish word used both in the page URL and in the API's `clase` query. */
+const KIND_TO_URL: Readonly<Record<CouponKindFilter, string>> = {
+  all: "todos",
+  campaign: "campanas",
+  personal: "personales",
+};
+const URL_TO_KIND: Readonly<Record<string, CouponKindFilter>> = Object.fromEntries(
+  Object.entries(KIND_TO_URL).map(([kind, word]) => [word, kind as CouponKindFilter]),
+);
+
 /** Spanish word used both in the page URL and in the API's `estado` query. */
 const STATUS_TO_URL: Readonly<Record<CouponStatusFilter, string>> = {
   all: "todos",
@@ -25,6 +38,7 @@ const URL_TO_STATUS: Readonly<Record<string, CouponStatusFilter>> = Object.fromE
 
 interface CouponFilters {
   status: CouponStatusFilter;
+  kind: CouponKindFilter;
   search?: string;
   sort: string;
   page: number;
@@ -33,6 +47,7 @@ interface CouponFilters {
 /** A change to the filters: `search: undefined` means "clear the search". */
 interface CouponFilterPatch {
   status?: CouponStatusFilter;
+  kind?: CouponKindFilter;
   search?: string | undefined;
   sort?: string;
   page?: number;
@@ -53,6 +68,7 @@ const parseCouponFilters = (params: RawParams): CouponFilters => {
 
   const filters: CouponFilters = {
     status: URL_TO_STATUS[firstOf(params.estado) ?? ""] ?? DEFAULT_STATUS,
+    kind: URL_TO_KIND[firstOf(params.clase) ?? ""] ?? DEFAULT_KIND,
     sort: rawSort && isAllowedSort(rawSort) ? rawSort : DEFAULT_SORT,
     page: Number.isInteger(page) && page >= 1 ? page : 1,
   };
@@ -71,6 +87,7 @@ const parseSelectedCoupon = (params: RawParams): string | undefined => {
 const buildCouponListQuery = (filters: CouponFilters, limit: number = DEFAULT_LIMIT): string => {
   const query = new URLSearchParams();
   if (filters.status !== DEFAULT_STATUS) query.set("estado", STATUS_TO_URL[filters.status]);
+  if (filters.kind !== DEFAULT_KIND) query.set("clase", KIND_TO_URL[filters.kind]);
   if (filters.search) query.set("search", filters.search);
   query.set("sort", filters.sort);
   query.set("page", String(filters.page));
@@ -82,6 +99,7 @@ const buildCouponListQuery = (filters: CouponFilters, limit: number = DEFAULT_LI
 const toSearchParams = (filters: CouponFilters, selected?: string): string => {
   const params = new URLSearchParams();
   if (filters.status !== DEFAULT_STATUS) params.set("estado", STATUS_TO_URL[filters.status]);
+  if (filters.kind !== DEFAULT_KIND) params.set("clase", KIND_TO_URL[filters.kind]);
   if (filters.search) params.set("q", filters.search);
   if (filters.sort !== DEFAULT_SORT) params.set("orden", filters.sort);
   if (filters.page !== 1) params.set("page", String(filters.page));
@@ -93,6 +111,7 @@ const toSearchParams = (filters: CouponFilters, selected?: string): string => {
 const applyFilterPatch = (current: CouponFilters, patch: CouponFilterPatch): CouponFilters => {
   const merged: CouponFilters = {
     status: patch.status ?? current.status,
+    kind: patch.kind ?? current.kind,
     sort: patch.sort ?? current.sort,
     page: patch.page ?? 1,
   };
@@ -103,7 +122,7 @@ const applyFilterPatch = (current: CouponFilters, patch: CouponFilterPatch): Cou
 
 /** True when something other than sort/page narrows the list: the empty state's wording depends on it. */
 const hasActiveFilters = (filters: CouponFilters): boolean =>
-  Boolean(filters.search) || filters.status !== DEFAULT_STATUS;
+  Boolean(filters.search) || filters.status !== DEFAULT_STATUS || filters.kind !== DEFAULT_KIND;
 
 export {
   COUPON_SORT_FIELDS,
@@ -111,6 +130,7 @@ export {
   DEFAULT_SORT,
   DEFAULT_LIMIT,
   DEFAULT_STATUS,
+  DEFAULT_KIND,
   parseCouponFilters,
   parseSelectedCoupon,
   buildCouponListQuery,
@@ -118,4 +138,4 @@ export {
   applyFilterPatch,
   hasActiveFilters,
 };
-export type { CouponFilters, CouponFilterPatch, CouponStatusFilter };
+export type { CouponFilters, CouponFilterPatch, CouponStatusFilter, CouponKindFilter };

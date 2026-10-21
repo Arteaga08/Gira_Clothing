@@ -18,6 +18,7 @@ const ADMIN_FAMILIES_PATH = "/admin/print-families";
 const ADMIN_PRINTS_PATH = "/admin/prints";
 const ADMIN_UPLOADS_PATH = "/admin/uploads";
 const ADMIN_COUPONS_PATH = "/admin/coupons";
+const ADMIN_CUSTOMERS_PATH = "/admin/customers";
 
 export {
   STATS_OVERVIEW_PATH,
@@ -32,4 +33,5 @@ export {
   ADMIN_PRINTS_PATH,
   ADMIN_UPLOADS_PATH,
   ADMIN_COUPONS_PATH,
+  ADMIN_CUSTOMERS_PATH,
 };

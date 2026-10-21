@@ -115,4 +115,14 @@ describe("CouponsPage", () => {
     expect(await screen.findByRole("button", { name: /VERANO10/ })).toBeInTheDocument();
     expect(mock().list).toHaveBeenCalledTimes(2);
   });
+
+  it("filtra por clase, escribe ?clase= y explica dónde se da un cupón personal", async () => {
+    renderPage();
+    await screen.findByRole("button", { name: /VERANO10/ });
+    expect(screen.getByText("Para dar uno personal, entra a la cuenta del cliente.")).toBeInTheDocument();
+    await chooseOption(screen.getByRole("combobox", { name: "Clase" }), "Personales");
+    expect(replaceMock).toHaveBeenLastCalledWith("/cupones?clase=personales", { scroll: false });
+    const query = new URLSearchParams(mock().list.mock.calls.at(-1)?.[0] as string);
+    expect(query.get("clase")).toBe("personales");
+  });
 });

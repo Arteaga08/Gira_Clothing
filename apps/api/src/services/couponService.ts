@@ -1,8 +1,9 @@
-import type { HydratedDocument } from "mongoose";
+import type { HydratedDocument, Types } from "mongoose";
 import {
   AuditAction,
   AuditModule,
   CouponDiscountType,
+  CouponKind,
   COUPON_CODE_TAKEN_MESSAGE,
 } from "@gira/shared";
 import { Coupon, type CouponAttrs } from "../models/Coupon.js";
@@ -28,6 +29,9 @@ interface CreateCouponInput {
   startsAt?: Date | null;
   endsAt?: Date | null;
   maxRedemptions?: number | null;
+  /** Set by couponGrantService only; the HTTP validator never lets a client send them. */
+  kind?: CouponKind;
+  assignedUser?: Types.ObjectId;
 }
 
 interface UpdateCouponInput {
@@ -50,6 +54,7 @@ const audit = (
   action: AuditAction,
   id: string,
   ctx: RequestContext,
+  after?: Record<string, unknown>,
 ): Promise<void> =>
   recordAudit({
     actorId: ctx.actorId,
@@ -57,6 +62,7 @@ const audit = (
     action,
     module: AuditModule.COUPONS,
     targetId: id,
+    ...(after ? { after } : {}),
     ip: ctx.ip,
   });
 
@@ -74,13 +80,19 @@ const createCoupon = async (input: CreateCouponInput, ctx: RequestContext): Prom
       startsAt: input.startsAt ?? null,
       endsAt: input.endsAt ?? null,
       maxRedemptions: input.maxRedemptions ?? null,
+      ...(input.kind ? { kind: input.kind } : {}),
+      ...(input.assignedUser ? { assignedUser: input.assignedUser } : {}),
     });
   } catch (err) {
     if (isDuplicateKeyError(err)) throw new AppError(COUPON_CODE_TAKEN_MESSAGE, 409);
     throw err;
   }
   const id = String(created._id);
-  await audit(AuditAction.COUPON_CREATED, id, ctx);
+  if (input.kind === CouponKind.PERSONAL) {
+    await audit(AuditAction.COUPON_GRANTED, id, ctx, { customerId: String(input.assignedUser) });
+  } else {
+    await audit(AuditAction.COUPON_CREATED, id, ctx);
+  }
   return { id };
 };
 

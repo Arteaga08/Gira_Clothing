@@ -1,4 +1,5 @@
-import { CouponDiscountType, CouponStatus } from "@gira/shared";
+import { CouponDiscountType, CouponKind, CouponStatus } from "@gira/shared";
+import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/Table";
 import { cn } from "@/lib/cn";
@@ -61,15 +62,27 @@ const CouponTable = ({ items, onOpen }: CouponTableProps) => (
         return (
           <Tr key={coupon.id} className={cn("relative cursor-pointer", dim && "text-text-muted")}>
             <Td className="max-w-0 sm:max-w-none">
-              <button
-                type="button"
-                aria-label={`${coupon.code}, ${coupon.name}`}
-                onClick={() => onOpen(coupon.id)}
-                className="block max-w-full cursor-pointer text-left font-mono text-base font-bold tracking-wide after:absolute after:inset-0 after:content-['']"
-              >
-                {coupon.code}
-              </button>
-              <p className="max-w-[40ch] truncate text-sm text-text-muted">{coupon.name}</p>
+              <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <button
+                  type="button"
+                  aria-label={`${coupon.code}, ${coupon.name}`}
+                  onClick={() => onOpen(coupon.id)}
+                  className="block max-w-full cursor-pointer text-left font-mono text-base font-bold tracking-wide after:absolute after:inset-0 after:content-['']"
+                >
+                  {coupon.code}
+                </button>
+                {coupon.kind === CouponKind.PERSONAL ? <Badge variant="neutral">Personal</Badge> : null}
+              </span>
+              {coupon.assignedCustomer ? (
+                <Link
+                  href={`/clientes/${coupon.assignedCustomer.id}`}
+                  className="relative z-10 text-sm underline underline-offset-2"
+                >
+                  {`${coupon.assignedCustomer.firstName} ${coupon.assignedCustomer.lastName}`}
+                </Link>
+              ) : (
+                <p className="max-w-[40ch] truncate text-sm text-text-muted">{coupon.name}</p>
+              )}
             </Td>
             <Td className="whitespace-nowrap font-mono font-bold">{discountLabel(coupon)}</Td>
             <Td className="hidden whitespace-nowrap font-mono md:table-cell">
