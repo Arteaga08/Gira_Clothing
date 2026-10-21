@@ -14,6 +14,7 @@ enum AuditModule {
   PAYMENTS = "payments",
   SHIPPING = "shipping",
   NOTIFICATIONS = "notifications",
+  COUPONS = "coupons",
 }
 
 enum AuditAction {
@@ -53,6 +54,10 @@ enum AuditAction {
   SETTINGS_SHIPPING_UPDATED = "settings_shipping_updated",
   SETTINGS_CURRENCY_UPDATED = "settings_currency_updated",
   SETTINGS_RESERVATION_UPDATED = "settings_reservation_updated",
+  COUPON_CREATED = "coupon_created",
+  COUPON_UPDATED = "coupon_updated",
+  COUPON_DEACTIVATED = "coupon_deactivated",
+  COUPON_REACTIVATED = "coupon_reactivated",
   ORDER_CREATED = "order_created",
   ORDER_STATUS_CHANGED = "order_status_changed",
   ORDER_EXPIRED = "order_expired",

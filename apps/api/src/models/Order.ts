@@ -1,11 +1,13 @@
 import { Schema, model, type HydratedDocument, type Model, type Types } from "mongoose";
 import {
   CANCEL_REASON_MAX,
+  CouponDiscountType,
   Currency,
   DisputeStatus,
   OrderPriority,
   PriceRounding,
   OrderStatus,
+  type OrderCoupon,
   PaymentStatus,
   ShippingCarrier,
   ShippingLabelStatus,
@@ -147,6 +149,9 @@ interface OrderAttrs {
   rounding: PriceRounding;
   subtotal: number;
   discount: number;
+  /** The coupon behind `discount`, frozen as the customer got it. Absent = no coupon. */
+  coupon?: OrderCoupon;
+  couponId?: Types.ObjectId;
   shippingCost: number;
   /** The carrier option the customer picked, frozen at checkout. */
   shippingSelection: ShippingSelectionAttrs;
@@ -341,6 +346,15 @@ const statusHistorySchema = new Schema<StatusHistoryEntry>(
   { _id: false },
 );
 
+const orderCouponSchema = new Schema<OrderCoupon>(
+  {
+    code: { type: String, required: true },
+    discountType: { type: String, enum: Object.values(CouponDiscountType), required: true },
+    value: { type: Number, required: true, min: 1 },
+  },
+  { _id: false },
+);
+
 const orderSchema = new Schema<OrderAttrs, OrderModel>(
   {
     publicId: { type: String, required: true },
@@ -354,6 +368,8 @@ const orderSchema = new Schema<OrderAttrs, OrderModel>(
     rounding: { type: String, enum: Object.values(PriceRounding), required: true },
     subtotal: { type: Number, required: true, min: 0 },
     discount: { type: Number, required: true, min: 0, default: 0 },
+    coupon: { type: orderCouponSchema },
+    couponId: { type: Schema.Types.ObjectId, ref: "Coupon" },
     shippingCost: { type: Number, required: true, min: 0 },
     shippingSelection: { type: shippingSelectionSchema, required: true },
     parcel: { type: parcelSchema, required: true },

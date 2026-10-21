@@ -2,6 +2,7 @@ import { Router } from "express";
 import { UserRole } from "@gira/shared";
 import { protect, restrictTo } from "../../../middlewares/protect.js";
 import { printFamilyRouter } from "./printFamilyRoutes.js";
+import { couponRouter } from "./couponRoutes.js";
 import { productCategoryRouter } from "./productCategoryRoutes.js";
 import { uploadRouter } from "./uploadRoutes.js";
 import { printRouter } from "./printRoutes.js";
@@ -26,6 +27,7 @@ const adminRouter = Router();
 adminRouter.use(protect, restrictTo(UserRole.ADMIN));
 
 adminRouter.use("/print-families", printFamilyRouter);
+adminRouter.use("/coupons", couponRouter);
 adminRouter.use("/product-categories", productCategoryRouter);
 adminRouter.use("/uploads", uploadRouter);
 adminRouter.use("/prints", printRouter);

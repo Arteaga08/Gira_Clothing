@@ -8,6 +8,22 @@ import {
   ReservationStatus,
 } from "./enums/orderStatus.js";
 import { OrderPriority } from "./enums/orderPriority.js";
+import { CouponDiscountType, CouponStatus } from "./enums/coupon.js";
+import type { AdminCoupon, OrderCoupon } from "./types/coupon.js";
+import {
+  COUPON_CODE_MIN,
+  COUPON_CODE_MAX,
+  COUPON_CODE_PATTERN,
+  COUPON_NAME_MIN,
+  COUPON_NAME_MAX,
+  COUPON_PERCENT_MIN,
+  COUPON_PERCENT_MAX,
+  COUPON_AMOUNT_MIN,
+  COUPON_AMOUNT_MAX,
+  COUPON_MIN_SUBTOTAL_MAX,
+  COUPON_MAX_REDEMPTIONS_MAX,
+  COUPON_CODE_TAKEN_MESSAGE,
+} from "./constants/coupon.js";
 import { Currency, PriceRounding } from "./enums/money.js";
 import {
   ShippingProviderName,
@@ -21,8 +37,22 @@ import {
   NotificationStatus,
 } from "./enums/notification.js";
 
-export type { ApiStatus, ApiMeta, ApiResponse };
+export type { ApiStatus, ApiMeta, ApiResponse, AdminCoupon, OrderCoupon };
 export {
+  CouponDiscountType,
+  CouponStatus,
+  COUPON_CODE_MIN,
+  COUPON_CODE_MAX,
+  COUPON_CODE_PATTERN,
+  COUPON_NAME_MIN,
+  COUPON_NAME_MAX,
+  COUPON_PERCENT_MIN,
+  COUPON_PERCENT_MAX,
+  COUPON_AMOUNT_MIN,
+  COUPON_AMOUNT_MAX,
+  COUPON_MIN_SUBTOTAL_MAX,
+  COUPON_MAX_REDEMPTIONS_MAX,
+  COUPON_CODE_TAKEN_MESSAGE,
   UserRole,
   AuditModule,
   AuditAction,

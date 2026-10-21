@@ -25,6 +25,7 @@ import {
 } from "../models/Order.js";
 import { Cart } from "../models/Cart.js";
 import { AppError } from "../utils/AppError.js";
+import { isDuplicateKeyError } from "../utils/mongoErrors.js";
 import { applyOrderTransition } from "./orderTransitionService.js";
 import { generatePublicId } from "../utils/publicId.js";
 import { generateOrderNumber } from "../utils/orderNumber.js";
@@ -36,6 +37,8 @@ import {
   type QuotedLine,
 } from "./pricingService.js";
 import { reserveStock, releaseReservation } from "./reservationService.js";
+import { resolveCouponForCheckout } from "./couponRulesService.js";
+import { claimCoupon } from "./couponRedemptionService.js";
 import { getSettings } from "./settingsService.js";
 import { resolveQuotedRate } from "./shippingQuoteService.js";
 import { getPaymentProvider, type PaymentView } from "../adapters/payment/index.js";
@@ -77,6 +80,8 @@ interface CreateOrderInput {
   /** The stored quote + rate the customer picked; the amount is never taken from the client. */
   shippingQuote: { quoteId: string; rateId: string };
   idempotencyKey: string;
+  /** Optional campaign coupon code; accounts only. The discount is computed server-side. */
+  couponCode?: string;
   /** Checkout consent. Validated by Joi; the service only stamps `termsAcceptedAt`. */
   termsAccepted: true;
 }
@@ -216,12 +221,6 @@ const isOrderNumberCollision = (err: unknown): boolean => {
   return e.code === 11000 && e.keyPattern !== undefined && "orderNumber" in e.keyPattern;
 };
 
-const isDuplicateKeyError = (err: unknown): boolean =>
-  typeof err === "object" &&
-  err !== null &&
-  "code" in err &&
-  (err as { code?: number }).code === 11000;
-
 /** Best-effort refresh: a stale or unreachable intent must never break the idempotent replay. */
 const refreshClientSecret = async (intentId?: string): Promise<string | undefined> => {
   if (!intentId) return undefined;
@@ -291,9 +290,14 @@ const createOrder = async (input: CreateOrderInput, ctx: OrderContext): Promise<
     currency: input.currency,
     userId: ctx.userId,
   });
+  // Eligibility is checked BEFORE reserving anything: a bad coupon must cost no stock.
+  const coupon = input.couponCode
+    ? await resolveCouponForCheckout(input.couponCode, ctx.userId)
+    : undefined;
   const quote = await quoteTotals(resolved, {
     currency: input.currency,
     shippingMxn: rate.amountMxn,
+    ...(coupon ? { coupon } : {}),
   });
 
   const settings = await getSettings();
@@ -305,6 +309,22 @@ const createOrder = async (input: CreateOrderInput, ctx: OrderContext): Promise<
     settings.reservation.ttlMinutes,
     { actorId: ctx.userId, ip: ctx.ip },
   );
+
+  // Atomic seat + one-per-customer, AFTER stock is held so a lost race hands the stock back.
+  // From here on every failure path calls releaseReservation, which also frees the coupon.
+  if (quote.coupon && ctx.userId) {
+    try {
+      await claimCoupon({
+        couponId: quote.coupon.couponId,
+        userId: ctx.userId,
+        orderId,
+        discount: quote.discount,
+      });
+    } catch (err) {
+      await releaseReservation(orderId, "coupon_unavailable");
+      throw err;
+    }
+  }
 
   let order: OrderDocument | undefined;
   for (let attempt = 1; attempt <= ORDER_NUMBER_ATTEMPTS && !order; attempt += 1) {
@@ -322,6 +342,7 @@ const createOrder = async (input: CreateOrderInput, ctx: OrderContext): Promise<
         rounding: quote.rounding,
         subtotal: quote.subtotal,
         discount: quote.discount,
+        ...(quote.coupon ? { couponId: quote.coupon.couponId, coupon: quote.coupon.snapshot } : {}),
         shippingCost: quote.shippingCost,
         shippingSelection: {
           provider: rate.provider,
