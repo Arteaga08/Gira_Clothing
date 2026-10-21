@@ -70,16 +70,17 @@ describe("CommandPalette", () => {
     await userEvent.keyboard("{ArrowDown}");
     expect(screen.getByRole("option", { name: "Resumen" })).toHaveAttribute("aria-selected", "true");
 
-    // Resumen, Pedidos, Productos, Estampas e Inventario son los disponibles: las siguientes flechas los recorren y la
-    // sexta da la vuelta a Resumen saltando todos los deshabilitados de en medio.
-    await userEvent.keyboard("{ArrowDown}");
-    expect(screen.getByRole("option", { name: "Pedidos" })).toHaveAttribute("aria-selected", "true");
-    await userEvent.keyboard("{ArrowDown}");
-    expect(screen.getByRole("option", { name: "Productos" })).toHaveAttribute("aria-selected", "true");
-    await userEvent.keyboard("{ArrowDown}");
-    expect(screen.getByRole("option", { name: "Estampas" })).toHaveAttribute("aria-selected", "true");
-    await userEvent.keyboard("{ArrowDown}");
-    expect(screen.getByRole("option", { name: "Variantes" })).toHaveAttribute("aria-selected", "true");
+    // Hay siete ítems disponibles (Resumen, Pedidos, Productos, Estampas, Familias, Categorías y Variantes): las
+    // flechas los recorren sin pisar nunca uno deshabilitado y la octava da la vuelta a Resumen.
+    const visited = ["Resumen"];
+    for (let step = 0; step < 6; step += 1) {
+      await userEvent.keyboard("{ArrowDown}");
+      const selected = screen.getAllByRole("option").find((option) => option.getAttribute("aria-selected") === "true");
+      expect(selected).toBeDefined();
+      expect(selected).not.toHaveAttribute("aria-disabled", "true");
+      visited.push(selected?.textContent ?? "");
+    }
+    expect(new Set(visited).size).toBe(7);
     await userEvent.keyboard("{ArrowDown}");
     expect(screen.getByRole("option", { name: "Resumen" })).toHaveAttribute("aria-selected", "true");
   });
@@ -98,7 +99,7 @@ describe("CommandPalette", () => {
     renderPalette();
     await userEvent.click(screen.getByRole("button", { name: "Abrir paleta" }));
 
-    await userEvent.click(screen.getByRole("option", { name: /familias/i }));
+    await userEvent.click(screen.getByRole("option", { name: /clientes/i }));
 
     expect(router.push).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog")).toBeInTheDocument();

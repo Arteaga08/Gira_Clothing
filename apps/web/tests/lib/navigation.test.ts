@@ -9,7 +9,7 @@ describe("NAV_GROUPS / NAV_ITEMS", () => {
 
   it("Resumen, Pedidos, Productos, Estampas e Inventario están disponibles; el resto llega en M11c-M12", () => {
     const available = NAV_ITEMS.filter((item) => item.available).map((item) => item.key);
-    expect(available).toEqual(["summary", "orders", "products", "prints", "variants"]);
+    expect(available).toEqual(["summary", "orders", "products", "prints", "printFamilies", "categories", "variants"]);
   });
 
   it("no hay entrada de Envíos: la logística se opera dentro de Pedidos", () => {

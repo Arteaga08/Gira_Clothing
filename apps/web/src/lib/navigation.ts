@@ -86,7 +86,7 @@ const NAV_GROUPS: readonly NavGroupConfig[] = [
         href: "/familias",
         icon: FoldersIcon,
         keywords: ["familias", "colecciones"],
-        available: false,
+        available: true,
       },
       {
         key: "categories",
@@ -94,7 +94,7 @@ const NAV_GROUPS: readonly NavGroupConfig[] = [
         href: "/categorias",
         icon: TagIcon,
         keywords: ["categorias"],
-        available: false,
+        available: true,
       },
     ],
   },

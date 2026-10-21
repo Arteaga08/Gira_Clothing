@@ -1,10 +1,8 @@
-import type { ApiMeta } from "@gira/shared";
 import { AuditAction, AuditModule } from "@gira/shared";
 import { PrintFamily } from "../models/PrintFamily.js";
 import { Print } from "../models/Print.js";
 import { AppError } from "../utils/AppError.js";
 import { slugify, resolveUniqueSlug } from "../utils/slug.js";
-import { parseListQuery, buildMeta, type ListQueryConfig } from "../utils/parseListQuery.js";
 import { recordAudit } from "./auditService.js";
 import type { RequestContext } from "../utils/requestContext.js";
 
@@ -15,12 +13,6 @@ import type { RequestContext } from "../utils/requestContext.js";
  * prints. The same guard runs on PATCH { isActive: false }.
  */
 
-const LIST_CONFIG: ListQueryConfig = {
-  sortable: ["name", "createdAt", "updatedAt"],
-  searchable: ["name"],
-  defaultSort: "name",
-};
-
 interface CreatePrintFamilyInput {
   name: string;
   description?: string;
@@ -29,14 +21,6 @@ interface CreatePrintFamilyInput {
 interface UpdatePrintFamilyInput {
   name?: string;
   description?: string;
-  isActive?: boolean;
-}
-
-interface PrintFamilyListQuery {
-  page?: unknown;
-  limit?: unknown;
-  sort?: unknown;
-  search?: unknown;
   isActive?: boolean;
 }
 
@@ -91,27 +75,6 @@ const createPrintFamily = async (
   });
 
   return toPublicPrintFamily(created.toObject());
-};
-
-const listPrintFamilies = async (
-  query: PrintFamilyListQuery,
-): Promise<{ items: PublicPrintFamily[]; meta: ApiMeta }> => {
-  const filters: Record<string, unknown> = {};
-  if (query.isActive !== undefined) filters.isActive = query.isActive;
-
-  const { filter, sort, skip, limit, page } = parseListQuery(query, LIST_CONFIG, filters);
-  const [docs, total] = await Promise.all([
-    PrintFamily.find(filter).sort(sort).skip(skip).limit(limit).lean(),
-    PrintFamily.countDocuments(filter),
-  ]);
-
-  return { items: docs.map(toPublicPrintFamily), meta: buildMeta(total, { page, limit }) };
-};
-
-const getPrintFamily = async (id: string): Promise<PublicPrintFamily> => {
-  const family = await PrintFamily.findById(id).lean();
-  if (!family) throw new AppError("La familia de estampados no existe.", 404);
-  return toPublicPrintFamily(family);
 };
 
 /** Throws 409 if the family still has active prints. */
@@ -190,13 +153,10 @@ const deactivatePrintFamily = async (
 export type {
   CreatePrintFamilyInput,
   UpdatePrintFamilyInput,
-  PrintFamilyListQuery,
   PublicPrintFamily,
 };
 export {
   createPrintFamily,
-  listPrintFamilies,
-  getPrintFamily,
   updatePrintFamily,
   deactivatePrintFamily,
 };

@@ -133,6 +133,32 @@ interface AdminPrint extends Print {
   updatedAt: Date;
 }
 
+/** A child record (print or model) that still uses a family or category: the retire guard names them. */
+interface AdminTaxonChild {
+  id: string;
+  name: string;
+}
+
+/** Admin catalog row/detail: a print family with how many prints it holds. */
+interface AdminPrintFamily extends PrintFamily {
+  /** Every print of the family, retired or not. */
+  printCount: number;
+  activePrintCount: number;
+  /** Active prints, A-Z, at most 10 (`activePrintCount` is the true total). */
+  activePrints: AdminTaxonChild[];
+  updatedAt: Date;
+}
+
+/** Admin catalog row/detail: a product category with how many models it holds. */
+interface AdminProductCategory extends ProductCategory {
+  /** Every model of the category, retired or not. */
+  productCount: number;
+  activeProductCount: number;
+  /** Active models, A-Z, at most 10 (`activeProductCount` is the true total). */
+  activeProducts: AdminTaxonChild[];
+  updatedAt: Date;
+}
+
 /** One stock movement from the audit trail (STOCK_SET / STOCK_ADJUSTED). */
 interface AdminVariantActivity {
   id: string;
@@ -152,6 +178,9 @@ export type {
   AdminProductPrint,
   AdminPrint,
   AdminPrintProduct,
+  AdminTaxonChild,
+  AdminPrintFamily,
+  AdminProductCategory,
   AdminVariant,
   AdminVariantActivity,
   PrintFamily,
