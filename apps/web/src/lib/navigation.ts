@@ -8,6 +8,7 @@ import {
   SlidersHorizontalIcon,
   SquaresFourIcon,
   TagIcon,
+  TicketIcon,
   TShirtIcon,
   UsersIcon,
 } from "@phosphor-icons/react/dist/ssr";
@@ -56,6 +57,14 @@ const NAV_GROUPS: readonly NavGroupConfig[] = [
         href: "/pedidos",
         icon: ShoppingBagOpenIcon,
         keywords: ["pedidos", "ordenes", "ventas", "envios", "guias", "paqueteria"],
+        available: true,
+      },
+      {
+        key: "coupons",
+        label: "Cupones",
+        href: "/cupones",
+        icon: TicketIcon,
+        keywords: ["cupones", "descuentos", "codigos", "promociones"],
         available: true,
       },
     ],

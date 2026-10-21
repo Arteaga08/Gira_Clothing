@@ -1,5 +1,13 @@
 import Joi from "joi";
-import { Currency, MEXICAN_STATE_CODES, PHONE_PATTERN, POSTAL_CODE_PATTERN } from "@gira/shared";
+import {
+  COUPON_CODE_MAX,
+  COUPON_CODE_MIN,
+  COUPON_CODE_PATTERN,
+  Currency,
+  MEXICAN_STATE_CODES,
+  PHONE_PATTERN,
+  POSTAL_CODE_PATTERN,
+} from "@gira/shared";
 import { objectId } from "./commonValidator.js";
 import { listQueryBase } from "./listQueryValidator.js";
 
@@ -48,14 +56,26 @@ const phone = Joi.string()
   });
 
 /**
- * NOTE: there is no `total`, `subtotal`, `unitPrice` or `shippingCost` key
- * here, on purpose. stripUnknown drops them if a client sends them; the
+ * NOTE: there is no `total`, `subtotal`, `unitPrice`, `shippingCost` or `discount` key
+ * here, on purpose. A coupon travels as a CODE only; its amount is computed server-side. stripUnknown drops them if a client sends them; the
  * server is the only origin of an amount (pricingService). Shipping comes from
  * the stored quote the client points at with `shippingQuote`.
  */
 const createOrderSchema = Joi.object({
   lines: Joi.array().items(orderLineSchema).min(1).max(30),
   useCart: Joi.boolean(),
+  couponCode: Joi.string()
+    .trim()
+    .uppercase()
+    .min(COUPON_CODE_MIN)
+    .max(COUPON_CODE_MAX)
+    .pattern(COUPON_CODE_PATTERN)
+    .messages({
+      "string.min": "El cupón no es válido.",
+      "string.max": "El cupón no es válido.",
+      "string.pattern.base": "El cupón no es válido.",
+      "string.empty": "El cupón no es válido.",
+    }),
   currency: Joi.string()
     .valid(...Object.values(Currency))
     .default(Currency.MXN),

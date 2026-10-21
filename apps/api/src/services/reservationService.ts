@@ -6,6 +6,7 @@ import { StockReservation, PURGE_AFTER_DAYS, type ReservationLine } from "../mod
 import { AppError } from "../utils/AppError.js";
 import { recordAudit } from "./auditService.js";
 import { evaluateStockAlerts } from "./stockAlertService.js";
+import { releaseCouponForOrder } from "./couponRedemptionService.js";
 import type { RequestContext } from "../utils/requestContext.js";
 
 /**
@@ -181,6 +182,10 @@ const releaseReservation = async (
   }
 
   if (applied) {
+    // Only a reservation that was still ACTIVE means the order never got paid, so its
+    // coupon seat goes back with the stock. A paid order's reservation is already
+    // committed (applied=false here), which keeps the redemption through a later refund.
+    await releaseCouponForOrder(orderId);
     await recordAudit({
       actorType: "system",
       action: AuditAction.STOCK_RESERVATION_RELEASED,

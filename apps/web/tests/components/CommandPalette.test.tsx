@@ -70,17 +70,17 @@ describe("CommandPalette", () => {
     await userEvent.keyboard("{ArrowDown}");
     expect(screen.getByRole("option", { name: "Resumen" })).toHaveAttribute("aria-selected", "true");
 
-    // Hay siete ítems disponibles (Resumen, Pedidos, Productos, Estampas, Familias, Categorías y Variantes): las
-    // flechas los recorren sin pisar nunca uno deshabilitado y la octava da la vuelta a Resumen.
+    // Hay ocho ítems disponibles (Resumen, Pedidos, Cupones, Productos, Estampas, Familias, Categorías y Variantes): las
+    // flechas los recorren sin pisar nunca uno deshabilitado y la novena da la vuelta a Resumen.
     const visited = ["Resumen"];
-    for (let step = 0; step < 6; step += 1) {
+    for (let step = 0; step < 7; step += 1) {
       await userEvent.keyboard("{ArrowDown}");
       const selected = screen.getAllByRole("option").find((option) => option.getAttribute("aria-selected") === "true");
       expect(selected).toBeDefined();
       expect(selected).not.toHaveAttribute("aria-disabled", "true");
       visited.push(selected?.textContent ?? "");
     }
-    expect(new Set(visited).size).toBe(7);
+    expect(new Set(visited).size).toBe(8);
     await userEvent.keyboard("{ArrowDown}");
     expect(screen.getByRole("option", { name: "Resumen" })).toHaveAttribute("aria-selected", "true");
   });

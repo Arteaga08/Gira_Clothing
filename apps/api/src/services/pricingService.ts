@@ -1,10 +1,13 @@
 import type { Types } from "mongoose";
-import { Currency } from "@gira/shared";
-import type { PriceRounding } from "@gira/shared";
+import { Currency, CouponDiscountType } from "@gira/shared";
+import type { PriceRounding, OrderCoupon } from "@gira/shared";
 import { Variant } from "../models/Variant.js";
 import { AppError } from "../utils/AppError.js";
 import { convertFromMxn } from "../utils/money.js";
 import { splitTax } from "../utils/orderTax.js";
+import { computeCouponDiscount } from "../utils/couponDiscount.js";
+import { assertMeetsMinimum } from "./couponRulesService.js";
+import type { CouponDocument } from "../models/Coupon.js";
 import { getSettings } from "./settingsService.js";
 import type { ImageAttrs } from "../models/schemas/image.js";
 
@@ -46,6 +49,11 @@ interface QuotedLine extends ResolvedLine {
   lineTotal: number;
 }
 
+interface AppliedCoupon {
+  couponId: Types.ObjectId;
+  snapshot: OrderCoupon;
+}
+
 interface Quote {
   currency: Currency;
   exchangeRate: number;
@@ -53,8 +61,10 @@ interface Quote {
   lines: QuotedLine[];
   subtotalMxn: number;
   subtotal: number;
-  /** Always 0 until coupons land (M12a); it travels now so the accounting identity is fixed. */
+  /** Coupon discount in the charge currency; 0 without a coupon. Shipping is never discounted. */
   discount: number;
+  /** The coupon that produced `discount`, ready to freeze on the order. Absent when none applied. */
+  coupon?: AppliedCoupon;
   shippingCost: number;
   /** Rate used to derive `tax`, frozen on the order. */
   taxRateBps: number;
@@ -129,7 +139,21 @@ interface QuoteInput {
    * shipping quote (already 0 when free shipping applied), never by the client.
    */
   shippingMxn: number;
+  /** An already-eligible coupon (couponRulesService); the amount is computed here, never by the client. */
+  coupon?: CouponDocument;
 }
+
+const toAppliedCoupon = (coupon: CouponDocument): AppliedCoupon => ({
+  couponId: coupon._id,
+  snapshot: {
+    code: coupon.code,
+    discountType: coupon.discountType,
+    value:
+      coupon.discountType === CouponDiscountType.PERCENT
+        ? (coupon.percentOff as number)
+        : (coupon.amountOffMxn as number),
+  },
+});
 
 const quoteTotals = async (lines: ResolvedLine[], input: QuoteInput): Promise<Quote> => {
   const settings = await getSettings();
@@ -150,7 +174,10 @@ const quoteTotals = async (lines: ResolvedLine[], input: QuoteInput): Promise<Qu
 
   const shippingCost = convertFromMxn(input.shippingMxn, input.currency, mxnPerUsdCents, rounding);
 
-  const discount = 0;
+  if (input.coupon) assertMeetsMinimum(input.coupon, subtotalMxn);
+  const discount = input.coupon
+    ? computeCouponDiscount(input.coupon, subtotal, input.currency, { mxnPerUsdCents, rounding })
+    : 0;
   const total = Math.max(0, subtotal - discount + shippingCost);
   const taxRateBps = settings.tax.rateBps;
   const { tax } = splitTax(total, taxRateBps);
@@ -163,6 +190,8 @@ const quoteTotals = async (lines: ResolvedLine[], input: QuoteInput): Promise<Qu
     subtotalMxn,
     subtotal,
     discount,
+    // A coupon that discounts nothing (e.g. an empty subtotal) is not redeemed.
+    ...(input.coupon && discount > 0 ? { coupon: toAppliedCoupon(input.coupon) } : {}),
     shippingCost,
     taxRateBps,
     tax,
@@ -170,5 +199,5 @@ const quoteTotals = async (lines: ResolvedLine[], input: QuoteInput): Promise<Qu
   };
 };
 
-export type { RequestedLine, ResolvedLine, QuotedLine, Quote, QuoteInput };
+export type { RequestedLine, ResolvedLine, QuotedLine, Quote, QuoteInput, AppliedCoupon };
 export { resolveOrderLines, quoteTotals, UNAVAILABLE };
