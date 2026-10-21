@@ -64,4 +64,14 @@ const logout = async (): Promise<void> => {
   }
 };
 
-export { login, verifyTwoFactor, startEnrollment, completeEnrollment, logout };
+/**
+ * `POST /auth/2fa/setup`: turns the factor off with the current code. Every
+ * session of the account dies, this browser's included: the next login enrols
+ * a new authenticator app.
+ */
+const resetTwoFactor = async (code: string): Promise<void> => {
+  const body: TwoFactorCodeRequest = { code };
+  await browserRequest("/auth/2fa/setup", { method: "POST", body });
+};
+
+export { login, verifyTwoFactor, startEnrollment, completeEnrollment, logout, resetTwoFactor };

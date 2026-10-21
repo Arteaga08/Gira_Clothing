@@ -5,7 +5,7 @@ import { buildApp } from "../../src/app.js";
 import { Variant } from "../../src/models/Variant.js";
 import { Product } from "../../src/models/Product.js";
 import { Print } from "../../src/models/Print.js";
-import { updateCurrencySettings } from "../../src/services/settingsService.js";
+import { updateCurrencySettings, updateTaxSettings } from "../../src/services/settingsService.js";
 import { resolveOrderLines, quoteTotals } from "../../src/services/pricingService.js";
 import type { RequestContext } from "../../src/utils/requestContext.js";
 import { loginAsAdmin, ORIGIN } from "../helpers/auth.js";
@@ -246,6 +246,18 @@ describe("pricingService · quoteTotals · snapshot", () => {
 });
 
 describe("pricingService · quoteTotals · IVA incluido", () => {
+  it("una cotización nueva usa la tasa vigente tras cambiarla en Ajustes", async () => {
+    const cookie = await loginAsAdmin(app);
+    await updateTaxSettings({ rateBps: 800 }, CTX);
+    const { variantId } = await seedVariant(cookie, "TAX8", { basePrice: 10800 });
+    const lines = await resolveOrderLines([{ variantId, qty: 1 }]);
+
+    const quote = await quoteTotals(lines, { currency: Currency.MXN, shippingMxn: 0 });
+
+    expect(quote.taxRateBps).toBe(800);
+    expect(quote.tax).toBe(quote.total - Math.round((quote.total * 10000) / 10800));
+  });
+
   it("desglosa el IVA del total, congela la tasa y deja descuento en 0", async () => {
     const cookie = await loginAsAdmin(app);
     const { variantId } = await seedVariant(cookie, "TAX1", { basePrice: 10000 });

@@ -12,6 +12,7 @@ import {
   type CurrencySettings,
   type ReservationSettings,
   type InventorySettings,
+  type TaxSettings,
 } from "../models/Settings.js";
 import { recordAudit } from "./auditService.js";
 import type { RequestContext } from "../utils/requestContext.js";
@@ -32,6 +33,7 @@ interface PublicSettings {
   currency: CurrencySettings;
   reservation: ReservationSettings;
   inventory: InventorySettings;
+  tax: TaxSettings;
 }
 
 const toShippingView = (shipping: ShippingSettings): PublicShippingSettings => ({
@@ -59,6 +61,7 @@ const toPublicSettings = (doc: SettingsDocument): PublicSettings => ({
   currency: doc.currency,
   reservation: doc.reservation,
   inventory: doc.inventory,
+  tax: { rateBps: doc.tax.rateBps },
 });
 
 const getSettings = async (): Promise<SettingsDocument> => {
@@ -215,12 +218,39 @@ const updateInventorySettings = async (
   return toPublicSettings(settings);
 };
 
+/**
+ * IVA rate for orders created from now on. Orders freeze `taxRateBps` at
+ * creation, so this never rewrites an existing order; and since catalog
+ * prices already include IVA it changes the tax breakdown, never the total.
+ */
+const updateTaxSettings = async (input: TaxSettings, ctx: RequestContext): Promise<PublicSettings> => {
+  const settings = await getSettings();
+  const before = { rateBps: settings.tax.rateBps };
+
+  settings.tax.rateBps = input.rateBps;
+
+  await settings.save();
+  await recordAudit({
+    actorId: ctx.actorId,
+    actorType: "user",
+    action: AuditAction.SETTINGS_TAX_UPDATED,
+    module: AuditModule.SETTINGS,
+    targetId: settings.id as string,
+    before,
+    after: { rateBps: settings.tax.rateBps },
+    ip: ctx.ip,
+  });
+
+  return toPublicSettings(settings);
+};
+
 export type {
   PublicSettings,
   ShippingSettings,
   CurrencySettings,
   ReservationSettings,
   InventorySettings,
+  TaxSettings,
 };
 export {
   getSettings,
@@ -229,4 +259,5 @@ export {
   updateCurrencySettings,
   updateReservationSettings,
   updateInventorySettings,
+  updateTaxSettings,
 };

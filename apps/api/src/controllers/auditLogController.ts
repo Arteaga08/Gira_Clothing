@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { sendResponse } from "../utils/sendResponse.js";
-import { listAuditLogs } from "../services/auditService.js";
+import { listAuditLogs, getAuditLog } from "../services/auditService.js";
 
 /**
  * Audit log controller — read-only, orchestrates req/res only, never touches
@@ -13,4 +13,9 @@ const list = asyncHandler(async (req: Request, res: Response) => {
   sendResponse(res, 200, "Bitácora de auditoría obtenida correctamente.", { logs: items }, meta);
 });
 
-export { list };
+const detail = asyncHandler(async (req: Request, res: Response) => {
+  const log = await getAuditLog(String(req.params.id));
+  sendResponse(res, 200, "Registro de auditoría obtenido correctamente.", { log });
+});
+
+export { list, detail };

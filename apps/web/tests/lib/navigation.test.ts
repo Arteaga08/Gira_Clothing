@@ -7,9 +7,21 @@ describe("NAV_GROUPS / NAV_ITEMS", () => {
     expect(NAV_ITEMS).toHaveLength(total);
   });
 
-  it("Resumen, Pedidos, Cupones, Productos, Estampas, Inventario y Clientes están disponibles; el resto llega en M12c", () => {
+  it("con Ajustes y Auditoría (M12c) todas las pantallas del Bloque 2 están disponibles", () => {
     const available = NAV_ITEMS.filter((item) => item.available).map((item) => item.key);
-    expect(available).toEqual(["summary", "orders", "coupons", "products", "prints", "printFamilies", "categories", "variants", "customers"]);
+    expect(available).toEqual([
+      "summary",
+      "orders",
+      "coupons",
+      "products",
+      "prints",
+      "printFamilies",
+      "categories",
+      "variants",
+      "customers",
+      "settings",
+      "auditLog",
+    ]);
   });
 
   it("no hay entrada de Envíos: la logística se opera dentro de Pedidos", () => {
