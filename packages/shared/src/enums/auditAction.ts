@@ -90,6 +90,8 @@ enum AuditAction {
   PAYMENT_CANCEL_FAILED = "payment_cancel_failed",
   WEBHOOK_REJECTED = "webhook_rejected",
   SETTINGS_INVENTORY_UPDATED = "settings_inventory_updated",
+  /** IVA rate edited in Ajustes (M12c); orders already created keep their frozen rate. */
+  SETTINGS_TAX_UPDATED = "settings_tax_updated",
   LABEL_REQUESTED = "label_requested",
   LABEL_CREATED = "label_created",
   LABEL_FAILED = "label_failed",

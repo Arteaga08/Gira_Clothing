@@ -24,12 +24,18 @@ interface InventorySettings {
   lowStockThreshold: number;
 }
 
+interface TaxSettings {
+  /** IVA already included in catalog prices, in basis points (1600 = 16%). */
+  rateBps: number;
+}
+
 interface Settings {
   id: string;
   shipping: ShippingSettings;
   currency: CurrencySettings;
   reservation: ReservationSettings;
   inventory: InventorySettings;
+  tax: TaxSettings;
 }
 
 export type {
@@ -37,5 +43,6 @@ export type {
   CurrencySettings,
   ReservationSettings,
   InventorySettings,
+  TaxSettings,
   Settings,
 };

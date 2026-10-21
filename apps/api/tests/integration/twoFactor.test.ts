@@ -492,6 +492,34 @@ describe("2FA · setup (reiniciar el factor con el código vigente)", () => {
     expect(await AuditLog.countDocuments({ action: AuditAction.TWO_FACTOR_RESET })).toBe(1);
   });
 
+  it("cierra las sesiones de todos los dispositivos y audita al admin como actor", async () => {
+    const admin = await createAdmin();
+    const otherDevice = await loginAdmin(app, admin, -1);
+    const thisDevice = await loginAdmin(app, admin, 0);
+
+    const res = await post("/2fa/setup", thisDevice, { code: totpFor(admin.secret, 1) });
+
+    expect(res.status).toBe(200);
+    expect((await me(thisDevice)).status).toBe(401);
+    expect((await me(otherDevice)).status).toBe(401);
+    const entry = await AuditLog.findOne({ action: AuditAction.TWO_FACTOR_RESET }).lean();
+    expect(String(entry?.actorId)).toBe(admin.id);
+  });
+
+  it("5 códigos incorrectos bloquean: el código vigente recibe 429 y el factor sigue activo", async () => {
+    const admin = await createAdmin();
+    const cookie = await loginAdmin(app, admin);
+    for (let i = 0; i < 5; i += 1) {
+      expect((await post("/2fa/setup", cookie, { code: wrongCode(admin.secret) })).status).toBe(400);
+    }
+
+    const blocked = await post("/2fa/setup", cookie, { code: totpFor(admin.secret, 1) });
+
+    expect(blocked.status).toBe(429);
+    const user = await User.findById(admin.id);
+    expect(user!.twoFactor.enabled).toBe(true);
+  });
+
   it("un customer recibe 403", async () => {
     const cookie = await loginAsCustomer(app);
     const res = await post("/2fa/setup", cookie, { code: "123456" });

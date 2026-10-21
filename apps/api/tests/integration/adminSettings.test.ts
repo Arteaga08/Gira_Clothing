@@ -3,7 +3,9 @@ import request from "supertest";
 import type { Express } from "express";
 import { buildApp } from "../../src/app.js";
 import { AuditLog } from "../../src/models/AuditLog.js";
-import { AuditAction } from "@gira/shared";
+import { AuditAction, OrderStatus } from "@gira/shared";
+import { Order } from "../../src/models/Order.js";
+import { seedOrder } from "../helpers/seedOrder.js";
 import { ORIGIN, loginAsAdmin, loginAsCustomer } from "../helpers/auth.js";
 
 const app: Express = buildApp();
@@ -346,6 +348,83 @@ describe("Admin · Settings", () => {
 
       const entry = await AuditLog.findOne({ action: AuditAction.SETTINGS_INVENTORY_UPDATED });
       expect(entry).not.toBeNull();
+    });
+  });
+
+  describe("IVA", () => {
+    const patchTax = (body: Record<string, unknown>) =>
+      request(app)
+        .patch("/api/v1/admin/settings/tax")
+        .set("Origin", ORIGIN)
+        .set("Cookie", adminCookie)
+        .send(body);
+
+    it("GET expone la tasa vigente (16 % por defecto)", async () => {
+      const res = await request(app).get("/api/v1/admin/settings").set("Cookie", adminCookie);
+      expect(res.body.data.settings.tax).toEqual({ rateBps: 1600 });
+    });
+
+    it("PATCH anónimo responde 401", async () => {
+      const res = await request(app)
+        .patch("/api/v1/admin/settings/tax")
+        .set("Origin", ORIGIN)
+        .send({ rateBps: 800 });
+      expect(res.status).toBe(401);
+    });
+
+    it("PATCH persiste la tasa y descarta campos desconocidos", async () => {
+      const res = await patchTax({ rateBps: 800, extra: "x" });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.settings.tax).toEqual({ rateBps: 800 });
+      const again = await request(app).get("/api/v1/admin/settings").set("Cookie", adminCookie);
+      expect(again.body.data.settings.tax).toEqual({ rateBps: 800 });
+    });
+
+    it("acepta 0 y 10000 como extremos", async () => {
+      expect((await patchTax({ rateBps: 0 })).status).toBe(200);
+      expect((await patchTax({ rateBps: 10000 })).status).toBe(200);
+    });
+
+    it("rechaza tasa ausente, negativa, mayor a 10000, decimal o texto", async () => {
+      for (const body of [{}, { rateBps: -1 }, { rateBps: 10001 }, { rateBps: 16.5 }, { rateBps: "16" }]) {
+        const res = await patchTax(body);
+        expect(res.status).toBe(400);
+      }
+      const after = await request(app).get("/api/v1/admin/settings").set("Cookie", adminCookie);
+      expect(after.body.data.settings.tax).toEqual({ rateBps: 1600 });
+    });
+
+    it("no altera las otras secciones", async () => {
+      const before = await request(app).get("/api/v1/admin/settings").set("Cookie", adminCookie);
+      await patchTax({ rateBps: 800 });
+      const after = await request(app).get("/api/v1/admin/settings").set("Cookie", adminCookie);
+
+      expect(after.body.data.settings.shipping).toEqual(before.body.data.settings.shipping);
+      expect(after.body.data.settings.currency).toEqual(before.body.data.settings.currency);
+      expect(after.body.data.settings.inventory).toEqual(before.body.data.settings.inventory);
+    });
+
+    it("audita el cambio con la tasa de antes y la de después", async () => {
+      await patchTax({ rateBps: 800 });
+
+      const entry = await AuditLog.findOne({ action: AuditAction.SETTINGS_TAX_UPDATED }).lean();
+      expect(entry?.module).toBe("settings");
+      expect(entry?.before).toEqual({ rateBps: 1600 });
+      expect(entry?.after).toEqual({ rateBps: 800 });
+      expect(entry?.actorId).toBeDefined();
+    });
+
+    it("un pedido ya creado conserva su tasa y su IVA", async () => {
+      const orderId = await seedOrder({ status: OrderStatus.PAID, total: 11600, createdAt: new Date() });
+      const before = await Order.findById(orderId).lean();
+
+      await patchTax({ rateBps: 800 });
+
+      const after = await Order.findById(orderId).lean();
+      expect(after?.taxRateBps).toBe(before?.taxRateBps);
+      expect(after?.tax).toBe(before?.tax);
+      expect(after?.total).toBe(before?.total);
     });
   });
 });

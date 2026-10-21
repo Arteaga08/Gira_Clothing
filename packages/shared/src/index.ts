@@ -166,6 +166,7 @@ import type {
   CurrencySettings,
   ReservationSettings,
   InventorySettings,
+  TaxSettings,
   Settings,
 } from "./types/settings.js";
 import type {
@@ -232,7 +233,8 @@ import {
   UPLOAD_MIME_TYPES,
 } from "./constants/catalog.js";
 import { PASSWORD_MIN_LENGTH, PASSWORD_MAX_BYTES } from "./constants/password.js";
-import type { AuditLogEntry } from "./types/audit.js";
+import type { AuditActor, AuditActorFilter, AuditChange, AuditLogEntry } from "./types/audit.js";
+import { AUDIT_ACTOR_FILTERS } from "./types/audit.js";
 import type {
   RegisterRequest,
   VerifyEmailRequest,
@@ -307,6 +309,7 @@ export type {
   CurrencySettings,
   ReservationSettings,
   InventorySettings,
+  TaxSettings,
   Settings,
   RevenueEntry,
   TopProduct,
@@ -322,7 +325,11 @@ export type {
   FailedNotificationSample,
   OutboxHealth,
   AuditLogEntry,
+  AuditActor,
+  AuditActorFilter,
+  AuditChange,
 };
+export { AUDIT_ACTOR_FILTERS };
 export type { StatsGranularity, PeriodPreset };
 export { STATS_GRANULARITIES, MAX_STATS_DAYS, PERIOD_PRESETS };
 export type { OrderStatusGroup };

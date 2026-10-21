@@ -85,9 +85,21 @@ const updateInventorySchema = Joi.object({
   .min(1)
   .messages({ "object.min": "Envía al menos un campo para actualizar." });
 
+// strict(): a "16" string must not be coerced into a rate; 1600 bps = 16 %.
+const updateTaxSchema = Joi.object({
+  rateBps: Joi.number().strict().integer().min(0).max(10_000).required().messages({
+    "any.required": "Indica la tasa de IVA.",
+    "number.base": "La tasa de IVA debe ser un número.",
+    "number.integer": "La tasa se expresa en puntos base, sin decimales.",
+    "number.min": "La tasa de IVA no puede ser negativa.",
+    "number.max": "La tasa de IVA no puede superar el 100 %.",
+  }),
+});
+
 export {
   updateShippingSchema,
   updateCurrencySchema,
   updateReservationSchema,
   updateInventorySchema,
+  updateTaxSchema,
 };

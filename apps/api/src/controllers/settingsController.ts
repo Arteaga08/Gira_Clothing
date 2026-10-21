@@ -8,10 +8,12 @@ import {
   updateCurrencySettings,
   updateReservationSettings,
   updateInventorySettings,
+  updateTaxSettings,
   type ShippingSettings,
   type CurrencySettings,
   type ReservationSettings,
   type InventorySettings,
+  type TaxSettings,
 } from "../services/settingsService.js";
 
 /**
@@ -55,4 +57,9 @@ const updateInventory = asyncHandler(async (req: Request, res: Response) => {
   sendResponse(res, 200, "Configuración de inventario actualizada correctamente.", { settings });
 });
 
-export { detail, updateShipping, updateCurrency, updateReservation, updateInventory };
+const updateTax = asyncHandler(async (req: Request, res: Response) => {
+  const settings = await updateTaxSettings(req.body as TaxSettings, buildContext(req));
+  sendResponse(res, 200, "Tasa de IVA actualizada correctamente.", { settings });
+});
+
+export { detail, updateShipping, updateCurrency, updateReservation, updateInventory, updateTax };

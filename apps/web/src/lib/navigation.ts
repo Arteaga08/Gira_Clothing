@@ -139,7 +139,7 @@ const NAV_GROUPS: readonly NavGroupConfig[] = [
         href: "/ajustes",
         icon: SlidersHorizontalIcon,
         keywords: ["ajustes", "configuracion"],
-        available: false,
+        available: true,
       },
       {
         key: "auditLog",
@@ -147,7 +147,7 @@ const NAV_GROUPS: readonly NavGroupConfig[] = [
         href: "/auditoria",
         icon: ClipboardTextIcon,
         keywords: ["auditoria", "bitacora", "logs"],
-        available: false,
+        available: true,
       },
     ],
   },

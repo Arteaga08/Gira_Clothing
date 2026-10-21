@@ -9,6 +9,15 @@ const { router } = vi.hoisted(() => ({
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
 
+// Every screen has landed (M12c), so one item is marked unavailable here to keep the «Pronto» path covered.
+vi.mock("@/lib/navigation", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/navigation")>();
+  const pending = (item: (typeof actual.NAV_ITEMS)[number]) =>
+    item.key === "auditLog" ? { ...item, available: false } : item;
+  const NAV_GROUPS = actual.NAV_GROUPS.map((group) => ({ ...group, items: group.items.map(pending) }));
+  return { ...actual, NAV_GROUPS, NAV_ITEMS: NAV_GROUPS.flatMap((group) => group.items) };
+});
+
 beforeEach(() => {
   router.push.mockClear();
   router.replace.mockClear();
@@ -70,17 +79,17 @@ describe("CommandPalette", () => {
     await userEvent.keyboard("{ArrowDown}");
     expect(screen.getByRole("option", { name: "Resumen" })).toHaveAttribute("aria-selected", "true");
 
-    // Hay nueve ítems disponibles (Resumen, Pedidos, Cupones, Productos, Estampas, Familias, Categorías, Variantes y Clientes): las
-    // flechas los recorren sin pisar nunca uno deshabilitado y la novena da la vuelta a Resumen.
+    // Hay diez ítems disponibles (todos menos Auditoría, marcada «Pronto» arriba): las flechas los
+    // recorren sin pisar nunca el deshabilitado y la décima da la vuelta a Resumen.
     const visited = ["Resumen"];
-    for (let step = 0; step < 8; step += 1) {
+    for (let step = 0; step < 9; step += 1) {
       await userEvent.keyboard("{ArrowDown}");
       const selected = screen.getAllByRole("option").find((option) => option.getAttribute("aria-selected") === "true");
       expect(selected).toBeDefined();
       expect(selected).not.toHaveAttribute("aria-disabled", "true");
       visited.push(selected?.textContent ?? "");
     }
-    expect(new Set(visited).size).toBe(9);
+    expect(new Set(visited).size).toBe(10);
     await userEvent.keyboard("{ArrowDown}");
     expect(screen.getByRole("option", { name: "Resumen" })).toHaveAttribute("aria-selected", "true");
   });
@@ -99,7 +108,7 @@ describe("CommandPalette", () => {
     renderPalette();
     await userEvent.click(screen.getByRole("button", { name: "Abrir paleta" }));
 
-    await userEvent.click(screen.getByRole("option", { name: /ajustes/i }));
+    await userEvent.click(screen.getByRole("option", { name: /auditoría/i }));
 
     expect(router.push).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog")).toBeInTheDocument();

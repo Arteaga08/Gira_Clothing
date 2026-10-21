@@ -12,6 +12,15 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
 }));
 
+// Every screen has landed (M12c), so one item is marked unavailable here to keep the «Pronto» path covered.
+vi.mock("@/lib/navigation", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/navigation")>();
+  const pending = (item: (typeof actual.NAV_ITEMS)[number]) =>
+    item.key === "auditLog" ? { ...item, available: false } : item;
+  const NAV_GROUPS = actual.NAV_GROUPS.map((group) => ({ ...group, items: group.items.map(pending) }));
+  return { ...actual, NAV_GROUPS, NAV_ITEMS: NAV_GROUPS.flatMap((group) => group.items) };
+});
+
 const user: Wire<PublicUser> = {
   id: "1",
   firstName: "Manuel",
@@ -53,8 +62,8 @@ describe("Sidebar", () => {
     pathnameState.current = "/resumen";
     renderSidebar();
 
-    expect(screen.queryByRole("link", { name: "Ajustes" })).not.toBeInTheDocument();
-    expect(screen.getByText("Ajustes").closest("[aria-disabled]")).toHaveAttribute(
+    expect(screen.queryByRole("link", { name: "Auditoría" })).not.toBeInTheDocument();
+    expect(screen.getByText("Auditoría").closest("[aria-disabled]")).toHaveAttribute(
       "aria-disabled",
       "true",
     );

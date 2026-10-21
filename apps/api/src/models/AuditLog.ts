@@ -42,6 +42,9 @@ const auditLogSchema = new Schema<AuditLogAttrs, AuditLogModel>(
 
 // Per-order activity feed: entries of one target, newest first.
 auditLogSchema.index({ targetId: 1, createdAt: -1 });
+// The Auditoría screen lists newest first over the whole trail (customer logins
+// included): without this the sort runs in memory over every entry.
+auditLogSchema.index({ createdAt: -1 });
 
 const AuditLog = model<AuditLogAttrs, AuditLogModel>("AuditLog", auditLogSchema);
 
