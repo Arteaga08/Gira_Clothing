@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   formatInteger,
   formatLongDate,
+  formatShortDate,
   formatMoneyParts,
   formatPeriodLabel,
   formatShortDay,
@@ -90,5 +91,15 @@ describe("greetingFor", () => {
     ["2026-07-30T01:00:00Z", "Buenas noches"], // 19:00 CDMX
   ] as const)("%s -> %s", (iso, expected) => {
     expect(greetingFor(new Date(iso))).toBe(expected);
+  });
+});
+
+describe("formatShortDate", () => {
+  it("da día, mes corto y año, en la zona de México", () => {
+    expect(formatShortDate(new Date("2026-07-29T18:00:00Z"))).toBe("29 jul 2026");
+  });
+
+  it("usa el día de México, no el UTC", () => {
+    expect(formatShortDate(new Date("2026-07-30T03:00:00Z"))).toBe("29 jul 2026");
   });
 });

@@ -1,10 +1,8 @@
-import type { ApiMeta } from "@gira/shared";
 import { AuditAction, AuditModule } from "@gira/shared";
 import { ProductCategory } from "../models/ProductCategory.js";
 import { Product } from "../models/Product.js";
 import { AppError } from "../utils/AppError.js";
 import { slugify, resolveUniqueSlug } from "../utils/slug.js";
-import { parseListQuery, buildMeta, type ListQueryConfig } from "../utils/parseListQuery.js";
 import { recordAudit } from "./auditService.js";
 import type { RequestContext } from "../utils/requestContext.js";
 
@@ -14,12 +12,6 @@ import type { RequestContext } from "../utils/requestContext.js";
  * with active products cannot be retired. Same guard runs on PATCH { isActive: false }.
  */
 
-const LIST_CONFIG: ListQueryConfig = {
-  sortable: ["name", "createdAt", "updatedAt"],
-  searchable: ["name"],
-  defaultSort: "name",
-};
-
 interface CreateProductCategoryInput {
   name: string;
   description?: string;
@@ -28,14 +20,6 @@ interface CreateProductCategoryInput {
 interface UpdateProductCategoryInput {
   name?: string;
   description?: string;
-  isActive?: boolean;
-}
-
-interface ProductCategoryListQuery {
-  page?: unknown;
-  limit?: unknown;
-  sort?: unknown;
-  search?: unknown;
   isActive?: boolean;
 }
 
@@ -90,27 +74,6 @@ const createProductCategory = async (
   });
 
   return toPublicProductCategory(created.toObject());
-};
-
-const listProductCategories = async (
-  query: ProductCategoryListQuery,
-): Promise<{ items: PublicProductCategory[]; meta: ApiMeta }> => {
-  const filters: Record<string, unknown> = {};
-  if (query.isActive !== undefined) filters.isActive = query.isActive;
-
-  const { filter, sort, skip, limit, page } = parseListQuery(query, LIST_CONFIG, filters);
-  const [docs, total] = await Promise.all([
-    ProductCategory.find(filter).sort(sort).skip(skip).limit(limit).lean(),
-    ProductCategory.countDocuments(filter),
-  ]);
-
-  return { items: docs.map(toPublicProductCategory), meta: buildMeta(total, { page, limit }) };
-};
-
-const getProductCategory = async (id: string): Promise<PublicProductCategory> => {
-  const category = await ProductCategory.findById(id).lean();
-  if (!category) throw new AppError("La categoría no existe.", 404);
-  return toPublicProductCategory(category);
 };
 
 /** Throws 409 if the category still has active products. */
@@ -189,13 +152,10 @@ const deactivateProductCategory = async (
 export type {
   CreateProductCategoryInput,
   UpdateProductCategoryInput,
-  ProductCategoryListQuery,
   PublicProductCategory,
 };
 export {
   createProductCategory,
-  listProductCategories,
-  getProductCategory,
   updateProductCategory,
   deactivateProductCategory,
 };

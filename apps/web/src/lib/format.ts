@@ -52,6 +52,13 @@ const formatLongDate = (instant: Date): string =>
     year: "numeric",
   }).format(instant);
 
+/** "29 jul 2026" — the compact date of a table cell. The trailing dots some runtimes add to the month are dropped. */
+const formatShortDate = (instant: Date): string =>
+  new Intl.DateTimeFormat(LOCALE, { timeZone: TIMEZONE, day: "numeric", month: "short", year: "numeric" })
+    .format(instant)
+    .replace(/\./g, "")
+    .replace(/ de /g, " ");
+
 /**
  * Day-of-month label for the chart axis, from a "YYYY-MM-DD" key as returned
  * by `TimeseriesPoint.periodStart` under `day` granularity. Parsed as three
@@ -146,6 +153,7 @@ export {
   formatShortDateTime,
   formatInteger,
   formatLongDate,
+  formatShortDate,
   formatShortDay,
   formatPeriodLabel,
   formatShortTime,

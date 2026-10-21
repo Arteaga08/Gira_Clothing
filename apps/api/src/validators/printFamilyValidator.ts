@@ -1,14 +1,15 @@
 import Joi from "joi";
+import { PRINT_FAMILY_NAME_MAX, PRINT_FAMILY_NAME_MIN, PRINT_FAMILY_DESCRIPTION_MAX } from "@gira/shared";
 import { listQueryBase } from "./listQueryValidator.js";
 
-const name = Joi.string().trim().min(2).max(80).messages({
-  "string.min": "El nombre debe tener al menos 2 caracteres.",
-  "string.max": "El nombre no puede exceder 80 caracteres.",
+const name = Joi.string().trim().min(PRINT_FAMILY_NAME_MIN).max(PRINT_FAMILY_NAME_MAX).messages({
+  "string.min": `El nombre debe tener al menos ${PRINT_FAMILY_NAME_MIN} caracteres.`,
+  "string.max": `El nombre no puede exceder ${PRINT_FAMILY_NAME_MAX} caracteres.`,
   "any.required": "El nombre es obligatorio.",
   "string.empty": "El nombre es obligatorio.",
 });
 
-const description = Joi.string().trim().max(500).allow("");
+const description = Joi.string().trim().max(PRINT_FAMILY_DESCRIPTION_MAX).allow("");
 
 const createPrintFamilySchema = Joi.object({
   name: name.required(),
