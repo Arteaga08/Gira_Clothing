@@ -15,6 +15,11 @@ const COUPON_MAX_REDEMPTIONS_MAX = 1_000_000;
 /** The panel keys the duplicate-code error to the Código field by this exact message. */
 const COUPON_CODE_TAKEN_MESSAGE = "Ya existe un cupón con este código.";
 
+/** Optional note the admin writes for a personal coupon; plain text in the email. */
+const COUPON_MESSAGE_MAX = 500;
+/** `clase` filter of GET /admin/coupons (Spanish words, same as the panel URL). */
+const COUPON_KIND_FILTERS = ["todos", "campanas", "personales"] as const;
+
 export {
   COUPON_CODE_MIN,
   COUPON_CODE_MAX,
@@ -28,4 +33,6 @@ export {
   COUPON_MIN_SUBTOTAL_MAX,
   COUPON_MAX_REDEMPTIONS_MAX,
   COUPON_CODE_TAKEN_MESSAGE,
+  COUPON_MESSAGE_MAX,
+  COUPON_KIND_FILTERS,
 };

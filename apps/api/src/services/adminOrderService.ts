@@ -1,4 +1,4 @@
-import type { Types } from "mongoose";
+import { Types } from "mongoose";
 import type { ApiMeta } from "@gira/shared";
 import {
   AuditAction,
@@ -162,6 +162,8 @@ interface AdminOrderListQuery extends RawListQuery {
   priority?: OrderPriority;
   /** Exact folio, already uppercased by the validator. */
   orderNumber?: string;
+  /** A customer's user id (already validated as a 24-hex string). */
+  customer?: string;
 }
 
 /** `status` (CSV) and `group` both narrow the same field: when both come, they intersect. */
@@ -185,6 +187,7 @@ const listAdminOrders = async (
   if (status) filters.status = status;
   if (query.priority) filters.priority = query.priority;
   if (query.orderNumber) filters.orderNumber = query.orderNumber;
+  if (query.customer) filters.user = new Types.ObjectId(query.customer);
 
   const { filter, sort, skip, limit, page } = parseListQuery(query, LIST_CONFIG, filters);
 

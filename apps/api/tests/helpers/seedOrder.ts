@@ -22,6 +22,9 @@ interface SeedOrderOptions {
   name?: string;
   phone?: string;
   disputeStatus?: DisputeStatus;
+  user?: mongoose.Types.ObjectId;
+  exchangeRate?: number;
+  refundedAmount?: number;
 }
 
 /**
@@ -69,7 +72,7 @@ const seedOrder = async (opts: SeedOrderOptions): Promise<mongoose.Types.ObjectI
       },
     ],
     currency,
-    exchangeRate: 1,
+    exchangeRate: opts.exchangeRate ?? 1,
     rounding: PriceRounding.NONE,
     subtotal: opts.total,
     shippingCost: 0,
@@ -86,7 +89,12 @@ const seedOrder = async (opts: SeedOrderOptions): Promise<mongoose.Types.ObjectI
     total: opts.total,
     status: opts.status,
     statusHistory: [{ status: opts.status, at: opts.createdAt }],
-    payment: { provider: "stripe", status: PaymentStatus.SUCCEEDED },
+    payment: {
+      provider: "stripe",
+      status: PaymentStatus.SUCCEEDED,
+      ...(opts.refundedAmount ? { refundedAmount: opts.refundedAmount } : {}),
+    },
+    ...(opts.user ? { user: opts.user } : {}),
     idempotencyKey: new mongoose.Types.ObjectId().toHexString(),
     ...(opts.priority ? { priority: opts.priority } : {}),
     ...(opts.disputeStatus ? { disputeStatus: opts.disputeStatus, disputedAt: new Date() } : {}),

@@ -3,6 +3,12 @@ enum CouponDiscountType {
   FIXED = "fixed",
 }
 
+/** Campaign = for any customer with an account; personal = bound to one customer (`assignedUser`). */
+enum CouponKind {
+  CAMPAIGN = "campaign",
+  PERSONAL = "personal",
+}
+
 /** Computed by the server from isActive, dates and counters; never stored. */
 enum CouponStatus {
   ACTIVE = "active",
@@ -12,4 +18,4 @@ enum CouponStatus {
   RETIRED = "retired",
 }
 
-export { CouponDiscountType, CouponStatus };
+export { CouponDiscountType, CouponKind, CouponStatus };

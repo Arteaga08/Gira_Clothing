@@ -1,4 +1,5 @@
 import type { Types } from "mongoose";
+import { CouponKind } from "@gira/shared";
 import { Coupon, type CouponDocument } from "../models/Coupon.js";
 import { CouponRedemption } from "../models/CouponRedemption.js";
 import { AppError } from "../utils/AppError.js";
@@ -15,7 +16,7 @@ const formatMxn = (cents: number): string =>
   `$${(cents / 100).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 /**
- * Read-only eligibility. Missing, retired and not-yet-started coupons share one
+ * Read-only eligibility. Missing, retired, not-yet-started and someone else's personal coupons share one
  * message so nobody can probe which codes exist. The atomic guard is
  * claimCoupon; this only gives the customer a precise reason before stock is held.
  */
@@ -28,6 +29,10 @@ const resolveCouponForCheckout = async (
 
   const coupon = await Coupon.findOne({ code: rawCode.trim().toUpperCase() });
   if (!coupon || !coupon.isActive || (coupon.startsAt && coupon.startsAt > now)) {
+    throw new AppError(MSG.INVALID, 400);
+  }
+  // Someone else's personal coupon looks exactly like a code that does not exist (anti-enumeration).
+  if (coupon.kind === CouponKind.PERSONAL && String(coupon.assignedUser) !== String(userId)) {
     throw new AppError(MSG.INVALID, 400);
   }
   if (coupon.endsAt && coupon.endsAt < now) throw new AppError(MSG.EXPIRED, 409);

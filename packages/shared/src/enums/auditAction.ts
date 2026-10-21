@@ -58,6 +58,7 @@ enum AuditAction {
   COUPON_UPDATED = "coupon_updated",
   COUPON_DEACTIVATED = "coupon_deactivated",
   COUPON_REACTIVATED = "coupon_reactivated",
+  COUPON_GRANTED = "coupon_granted",
   ORDER_CREATED = "order_created",
   ORDER_STATUS_CHANGED = "order_status_changed",
   ORDER_EXPIRED = "order_expired",

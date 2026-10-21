@@ -1,4 +1,11 @@
-import type { AdminCoupon, CouponDiscountType, CouponStatus, Wire } from "@gira/shared";
+import type {
+  AdminCoupon,
+  AssignedCustomer,
+  CouponDiscountType,
+  CouponKind,
+  CouponStatus,
+  Wire,
+} from "@gira/shared";
 
 /**
  * A coupon as the table and the modal hold it. The admin DTO already is the
@@ -9,6 +16,9 @@ interface PanelCoupon {
   id: string;
   code: string;
   name: string;
+  kind: CouponKind;
+  /** Present only on personal coupons. */
+  assignedCustomer?: AssignedCustomer;
   discountType: CouponDiscountType;
   percentOff?: number;
   amountOffMxn?: number;
@@ -28,6 +38,8 @@ const toPanelCoupon = (coupon: Wire<AdminCoupon>): PanelCoupon => ({
   id: coupon.id,
   code: coupon.code,
   name: coupon.name,
+  kind: coupon.kind,
+  ...(coupon.assignedCustomer ? { assignedCustomer: coupon.assignedCustomer } : {}),
   discountType: coupon.discountType,
   ...(coupon.percentOff !== undefined ? { percentOff: coupon.percentOff } : {}),
   ...(coupon.amountOffMxn !== undefined ? { amountOffMxn: coupon.amountOffMxn } : {}),

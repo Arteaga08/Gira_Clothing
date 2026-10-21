@@ -27,6 +27,10 @@ const adminOrderListQuerySchema = listQueryBase.keys({
   priority: Joi.string()
     .valid(...Object.values(OrderPriority))
     .messages({ "any.only": "La prioridad no es válida." }),
+  customer: Joi.string()
+    .hex()
+    .length(24)
+    .messages({ "string.hex": "El cliente no es válido.", "string.length": "El cliente no es válido." }),
   orderNumber: Joi.string()
     .trim()
     .uppercase()

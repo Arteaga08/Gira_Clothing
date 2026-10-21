@@ -8,6 +8,7 @@ import {
   DEFAULT_SORT,
   type CouponFilterPatch,
   type CouponFilters as Filters,
+  type CouponKindFilter,
   type CouponStatusFilter,
 } from "@/lib/coupons/filters";
 
@@ -25,6 +26,12 @@ const STATUS_OPTIONS: (SelectOption & { value: CouponStatusFilter })[] = [
   { value: "expired", label: "Vencidos" },
   { value: "exhausted", label: "Agotados" },
   { value: "retired", label: "Retirados" },
+];
+
+const KIND_OPTIONS: (SelectOption & { value: CouponKindFilter })[] = [
+  { value: "all", label: "Todos" },
+  { value: "campaign", label: "Campañas" },
+  { value: "personal", label: "Personales" },
 ];
 
 const SORT_OPTIONS: SelectOption[] = [
@@ -73,6 +80,13 @@ const CouponFilters = ({ filters, onChange }: CouponFiltersProps) => {
         options={STATUS_OPTIONS}
         value={filters.status}
         onChange={(next) => onChange({ status: next as CouponStatusFilter })}
+        containerClassName="min-w-44"
+      />
+      <SelectField
+        label="Clase"
+        options={KIND_OPTIONS}
+        value={filters.kind}
+        onChange={(next) => onChange({ kind: next as CouponKindFilter })}
         containerClassName="min-w-44"
       />
       <SelectField

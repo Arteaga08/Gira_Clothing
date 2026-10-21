@@ -70,17 +70,17 @@ describe("CommandPalette", () => {
     await userEvent.keyboard("{ArrowDown}");
     expect(screen.getByRole("option", { name: "Resumen" })).toHaveAttribute("aria-selected", "true");
 
-    // Hay ocho ítems disponibles (Resumen, Pedidos, Cupones, Productos, Estampas, Familias, Categorías y Variantes): las
+    // Hay nueve ítems disponibles (Resumen, Pedidos, Cupones, Productos, Estampas, Familias, Categorías, Variantes y Clientes): las
     // flechas los recorren sin pisar nunca uno deshabilitado y la novena da la vuelta a Resumen.
     const visited = ["Resumen"];
-    for (let step = 0; step < 7; step += 1) {
+    for (let step = 0; step < 8; step += 1) {
       await userEvent.keyboard("{ArrowDown}");
       const selected = screen.getAllByRole("option").find((option) => option.getAttribute("aria-selected") === "true");
       expect(selected).toBeDefined();
       expect(selected).not.toHaveAttribute("aria-disabled", "true");
       visited.push(selected?.textContent ?? "");
     }
-    expect(new Set(visited).size).toBe(8);
+    expect(new Set(visited).size).toBe(9);
     await userEvent.keyboard("{ArrowDown}");
     expect(screen.getByRole("option", { name: "Resumen" })).toHaveAttribute("aria-selected", "true");
   });
@@ -99,7 +99,7 @@ describe("CommandPalette", () => {
     renderPalette();
     await userEvent.click(screen.getByRole("button", { name: "Abrir paleta" }));
 
-    await userEvent.click(screen.getByRole("option", { name: /clientes/i }));
+    await userEvent.click(screen.getByRole("option", { name: /ajustes/i }));
 
     expect(router.push).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog")).toBeInTheDocument();

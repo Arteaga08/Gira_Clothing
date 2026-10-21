@@ -11,6 +11,7 @@ import { NB_SURFACE } from "@/components/ui/styles";
 import { useCouponList } from "@/hooks/useCouponList";
 import {
   applyFilterPatch,
+  DEFAULT_KIND,
   DEFAULT_SORT,
   DEFAULT_STATUS,
   toSearchParams,
@@ -81,18 +82,19 @@ const CouponsPage = ({ initialFilters, initialSelected }: CouponsPageProps) => {
   const openCoupon = (id: string) => writeUrl(filters, id);
   const openNew = () => writeUrl(filters, "nuevo");
   const closeModal = () => writeUrl(filters, undefined);
-  const clearFilters = () => updateFilters({ search: undefined, status: DEFAULT_STATUS, sort: DEFAULT_SORT });
+  const clearFilters = () => updateFilters({ search: undefined, status: DEFAULT_STATUS, kind: DEFAULT_KIND, sort: DEFAULT_SORT });
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Cupones"
-        subtitle="Descuentos de campaña. Solo aplican a clientes con cuenta."
+        subtitle="Descuentos de campaña y cupones personales. Solo aplican a clientes con cuenta."
         actions={<NewCouponButton onClick={openNew} />}
       />
 
       <div className={`${NB_SURFACE} p-4`}>
         <CouponFiltersBar filters={filters} onChange={updateFilters} />
+        <p className="mt-3 text-xs text-text-secondary">Para dar uno personal, entra a la cuenta del cliente.</p>
       </div>
 
       {list.status === "ready" && list.error ? (

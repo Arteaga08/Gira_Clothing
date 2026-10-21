@@ -1,4 +1,4 @@
-import { CouponDiscountType, CouponStatus } from "@gira/shared";
+import { CouponDiscountType, CouponKind, CouponStatus } from "@gira/shared";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -64,5 +64,35 @@ describe("CouponTable", () => {
     expect(screen.getByText("Programado")).toBeInTheDocument();
     expect(screen.getByText("Vencido")).toBeInTheDocument();
     expect(screen.getByText("Retirado")).toBeInTheDocument();
+  });
+});
+
+describe("CouponTable · cupones personales", () => {
+  const PERSONAL = makePanelCoupon({
+    id: COUPON_2_ID,
+    code: "GRACIAS-ANA",
+    name: "Personal · Ana Pérez",
+    kind: CouponKind.PERSONAL,
+    assignedCustomer: { id: "68f2ab12c3d4e5f6a7b8cbb1", firstName: "Ana", lastName: "Pérez" },
+  });
+
+  it("marca el personal con «Personal» y enlaza al cliente; la campaña no", () => {
+    render(<CouponTable items={[makePanelCoupon(), PERSONAL]} onOpen={vi.fn()} />);
+    const personalRow = screen.getByRole("button", { name: /GRACIAS-ANA/ }).closest("tr") as HTMLElement;
+    expect(within(personalRow).getByText("Personal")).toBeInTheDocument();
+    expect(within(personalRow).getByRole("link", { name: "Ana Pérez" })).toHaveAttribute(
+      "href",
+      "/clientes/68f2ab12c3d4e5f6a7b8cbb1",
+    );
+    const campaignRow = screen.getByRole("button", { name: /VERANO10/ }).closest("tr") as HTMLElement;
+    expect(within(campaignRow).queryByText("Personal")).not.toBeInTheDocument();
+    expect(within(campaignRow).queryByRole("link")).not.toBeInTheDocument();
+  });
+
+  it("abrir el cupón sigue funcionando en un personal", async () => {
+    const onOpen = vi.fn();
+    render(<CouponTable items={[PERSONAL]} onOpen={onOpen} />);
+    await userEvent.click(screen.getByRole("button", { name: /GRACIAS-ANA/ }));
+    expect(onOpen).toHaveBeenCalledWith(COUPON_2_ID);
   });
 });

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -129,6 +130,17 @@ const Editor = ({ coupon, onClose, onChanged }: EditorProps) => {
   return (
     <Modal open onClose={requestClose} title={editing ? "Editar cupón" : "Nuevo cupón"} footer={footer}>
       <div className="flex flex-col gap-5">
+        {coupon?.assignedCustomer ? (
+          <Notice variant="info" title="Cupón personal">
+            <p>
+              Solo lo puede usar{" "}
+              <Link href={`/clientes/${coupon.assignedCustomer.id}`} className="underline underline-offset-2">
+                {`${coupon.assignedCustomer.firstName} ${coupon.assignedCustomer.lastName}`}
+              </Link>
+              . Un solo uso.
+            </p>
+          </Notice>
+        ) : null}
         {editing && !coupon.isActive ? (
           <Notice variant="warning" title="Este cupón está retirado">
             <p>Ya no se puede usar. Reactívalo para volver a ofrecerlo.</p>

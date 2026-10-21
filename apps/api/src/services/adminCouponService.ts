@@ -1,6 +1,14 @@
 import { Types } from "mongoose";
-import { CouponStatus, type AdminCoupon, type ApiMeta, type CouponDiscountType } from "@gira/shared";
+import {
+  CouponKind,
+  CouponStatus,
+  type AdminCoupon,
+  type ApiMeta,
+  type CouponDiscountType,
+  type COUPON_KIND_FILTERS,
+} from "@gira/shared";
 import { Coupon } from "../models/Coupon.js";
+import { User } from "../models/User.js";
 import { AppError } from "../utils/AppError.js";
 import { parseListQuery, buildMeta, type ListQueryConfig } from "../utils/parseListQuery.js";
 import type { COUPON_STATUS_FILTERS } from "../validators/couponValidator.js";
@@ -23,6 +31,7 @@ const LIST_CONFIG: ListQueryConfig = {
 const COLLATION = { locale: "es", strength: 2 } as const;
 
 type CouponStatusFilter = (typeof COUPON_STATUS_FILTERS)[number];
+type CouponKindFilter = (typeof COUPON_KIND_FILTERS)[number];
 
 interface AdminCouponListQuery {
   page?: unknown;
@@ -30,12 +39,16 @@ interface AdminCouponListQuery {
   sort?: unknown;
   search?: unknown;
   estado?: CouponStatusFilter;
+  clase?: CouponKindFilter;
 }
 
 interface CouponRow {
   _id: Types.ObjectId;
   code: string;
   name: string;
+  kind?: CouponKind;
+  assignedUser?: Types.ObjectId;
+  assignedDoc?: { _id: Types.ObjectId; firstName: string; lastName: string }[];
   discountType: CouponDiscountType;
   percentOff?: number;
   amountOffMxn?: number;
@@ -88,10 +101,27 @@ const statusFilter = (estado: CouponStatusFilter, now: Date): Record<string, unk
   }
 };
 
+/** Campaign also matches coupons created before M12b (no `kind` stored). */
+const kindFilter = (clase: CouponKindFilter): Record<string, unknown> | undefined => {
+  if (clase === "personales") return { kind: CouponKind.PERSONAL };
+  if (clase === "campanas") return { kind: { $ne: CouponKind.PERSONAL } };
+  return undefined;
+};
+
 const toAdminCoupon = (row: CouponRow, now: Date): AdminCoupon => ({
   id: String(row._id),
   code: row.code,
   name: row.name,
+  kind: row.kind ?? CouponKind.CAMPAIGN,
+  ...(row.assignedDoc?.[0]
+    ? {
+        assignedCustomer: {
+          id: String(row.assignedDoc[0]._id),
+          firstName: row.assignedDoc[0].firstName,
+          lastName: row.assignedDoc[0].lastName,
+        },
+      }
+    : {}),
   discountType: row.discountType,
   ...(row.percentOff !== undefined ? { percentOff: row.percentOff } : {}),
   ...(row.amountOffMxn !== undefined ? { amountOffMxn: row.amountOffMxn } : {}),
@@ -111,13 +141,29 @@ const listAdminCoupons = async (
 ): Promise<{ items: AdminCoupon[]; meta: ApiMeta }> => {
   const now = new Date();
   const status = statusFilter(query.estado ?? "todos", now);
-  const { filter, sort, skip, limit, page } = parseListQuery(query, LIST_CONFIG, status ?? {});
+  const { filter, sort, skip, limit, page } = parseListQuery(query, LIST_CONFIG, {
+    ...(status ?? {}),
+    ...(kindFilter(query.clase ?? "todos") ?? {}),
+  });
 
   const [result] = await Coupon.aggregate<{ rows: CouponRow[]; total: { n: number }[] }>([
     { $match: filter },
     {
       $facet: {
-        rows: [{ $sort: sort }, { $skip: skip }, { $limit: limit }],
+        rows: [
+          { $sort: sort },
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $lookup: {
+              from: User.collection.name,
+              localField: "assignedUser",
+              foreignField: "_id",
+              pipeline: [{ $project: { firstName: 1, lastName: 1 } }],
+              as: "assignedDoc",
+            },
+          },
+        ],
         total: [{ $count: "n" }],
       },
     },
@@ -133,7 +179,12 @@ const listAdminCoupons = async (
 const getAdminCouponOrThrow = async (id: string): Promise<AdminCoupon> => {
   const row = await Coupon.findById(new Types.ObjectId(id)).lean<CouponRow>();
   if (!row) throw new AppError("El cupón no existe.", 404);
-  return toAdminCoupon(row, new Date());
+  const owner = row.assignedUser
+    ? await User.findById(row.assignedUser)
+        .select("firstName lastName")
+        .lean<{ _id: Types.ObjectId; firstName: string; lastName: string }>()
+    : null;
+  return toAdminCoupon(owner ? { ...row, assignedDoc: [owner] } : row, new Date());
 };
 
 export type { AdminCouponListQuery };

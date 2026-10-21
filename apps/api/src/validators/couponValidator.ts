@@ -6,7 +6,9 @@ import {
   COUPON_CODE_MAX,
   COUPON_CODE_MIN,
   COUPON_CODE_PATTERN,
+  COUPON_KIND_FILTERS,
   COUPON_MAX_REDEMPTIONS_MAX,
+  COUPON_MESSAGE_MAX,
   COUPON_MIN_SUBTOTAL_MAX,
   COUPON_NAME_MAX,
   COUPON_NAME_MIN,
@@ -111,6 +113,35 @@ const createCouponSchema = Joi.object({
   maxRedemptions,
 });
 
+const message = Joi.string()
+  .trim()
+  .max(COUPON_MESSAGE_MAX)
+  .allow("")
+  .messages({ "string.max": `El mensaje no puede exceder ${COUPON_MESSAGE_MAX} caracteres.` });
+
+/** Personal coupon from the customer's page: no name, no cap (fixed to one use), no kind/owner (the URL decides). */
+const giveCouponSchema = Joi.object({
+  code: code.required(),
+  discountType: Joi.string()
+    .valid(...Object.values(CouponDiscountType))
+    .required()
+    .messages({ "any.required": "Elige el tipo de descuento.", "any.only": "El tipo de descuento no es válido." }),
+  percentOff: Joi.when("discountType", {
+    is: CouponDiscountType.PERCENT,
+    then: percentOff.required(),
+    otherwise: Joi.forbidden(),
+  }),
+  amountOffMxn: Joi.when("discountType", {
+    is: CouponDiscountType.FIXED,
+    then: amountOffMxn.required(),
+    otherwise: Joi.forbidden(),
+  }),
+  minSubtotalMxn,
+  startsAt,
+  endsAt,
+  message,
+});
+
 const updateCouponSchema = Joi.object({
   code,
   name,
@@ -132,6 +163,9 @@ const couponListQuerySchema = listQueryBase.keys({
   estado: Joi.string()
     .valid(...COUPON_STATUS_FILTERS)
     .default("todos"),
+  clase: Joi.string()
+    .valid(...COUPON_KIND_FILTERS)
+    .default("todos"),
 });
 
-export { createCouponSchema, updateCouponSchema, couponListQuerySchema, COUPON_STATUS_FILTERS };
+export { createCouponSchema, giveCouponSchema, updateCouponSchema, couponListQuerySchema, COUPON_STATUS_FILTERS };

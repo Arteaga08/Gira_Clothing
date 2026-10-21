@@ -1,4 +1,4 @@
-import { CouponStatus, CouponDiscountType } from "@gira/shared";
+import { CouponStatus, CouponDiscountType, CouponKind } from "@gira/shared";
 import { vi } from "vitest";
 import type { PanelCoupon } from "@/lib/coupons/panelCoupon";
 
@@ -9,6 +9,7 @@ const makePanelCoupon = (overrides: Partial<PanelCoupon> = {}): PanelCoupon => (
   id: COUPON_ID,
   code: "VERANO10",
   name: "Verano",
+  kind: CouponKind.CAMPAIGN,
   discountType: CouponDiscountType.PERCENT,
   percentOff: 10,
   minSubtotalMxn: 0,

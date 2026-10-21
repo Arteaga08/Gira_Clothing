@@ -1,6 +1,7 @@
 import { Currency, DisputeStatus, OrderStatus } from "@gira/shared";
 import { Order } from "../models/Order.js";
 import { parseStatsRange, type StatsRangeQuery } from "../utils/parseStatsRange.js";
+import { mxnOf } from "../utils/orderMxnExpr.js";
 
 /**
  * Operational KPIs for the orders module.
@@ -118,15 +119,7 @@ const getOrderStats = async (query: StatsRangeQuery): Promise<OrderStats> => {
         { $match: { ...inRange, status: { $in: REVENUE_STATUSES } } },
         {
           $addFields: {
-            mxnEquivalent: {
-              $cond: {
-                if: { $eq: ["$currency", Currency.MXN] },
-                then: "$total",
-                else: {
-                  $round: [{ $divide: [{ $multiply: ["$total", "$exchangeRate"] }, 100] }, 0],
-                },
-              },
-            },
+            mxnEquivalent: mxnOf("$total"),
           },
         },
         { $group: { _id: null, totalMxnEquivalent: { $sum: "$mxnEquivalent" } } },
