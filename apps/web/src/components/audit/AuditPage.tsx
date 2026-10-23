@@ -93,7 +93,7 @@ const AuditPage = ({ initialFilters, initialSelected }: AuditPageProps) => {
       {list.status === "error" ? (
         <Notice variant="danger" title="No se pudo cargar la auditoría">
           <p>{list.error}</p>
-          <Button size="sm" className="mt-2" onClick={list.refresh}>
+          <Button variant="positive" size="sm" className="mt-2" onClick={list.refresh}>
             Reintentar
           </Button>
         </Notice>

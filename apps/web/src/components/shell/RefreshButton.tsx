@@ -12,6 +12,7 @@ const RefreshButton = () => {
 
   return (
     <IconButton
+      variant="positive"
       icon={ArrowClockwiseIcon}
       label="Actualizar datos"
       aria-busy={isPending}

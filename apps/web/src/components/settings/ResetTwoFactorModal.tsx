@@ -62,7 +62,7 @@ const ResetTwoFactorModal = ({ onClose }: ResetTwoFactorModalProps) => {
 
   const footer = (
     <>
-      <Button onClick={requestClose} disabled={pending}>
+      <Button variant="danger" onClick={requestClose} disabled={pending}>
         Cancelar
       </Button>
       <Button type="submit" form={formId} variant="danger" loading={pending}>

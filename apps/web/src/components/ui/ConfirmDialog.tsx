@@ -131,7 +131,7 @@ const ConfirmDialog = ({
           </Notice>
         ) : null}
         <div className="flex justify-end gap-2">
-          <Button onClick={close} disabled={busy}>
+          <Button variant="danger" onClick={close} disabled={busy}>
             Cancelar
           </Button>
           <Button

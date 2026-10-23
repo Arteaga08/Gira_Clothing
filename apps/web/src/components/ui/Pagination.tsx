@@ -22,10 +22,10 @@ const Pagination = ({ page, limit, total, onPageChange, className }: PaginationP
         {total === 0 ? "Sin resultados" : `${start}–${end} de ${total}`}
       </p>
       <div className="flex items-center gap-2">
-        <Button size="sm" variant="ghost" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+        <Button size="sm" variant="edit" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
           Anterior
         </Button>
-        <Button size="sm" variant="ghost" disabled={page >= lastPage} onClick={() => onPageChange(page + 1)}>
+        <Button size="sm" variant="edit" disabled={page >= lastPage} onClick={() => onPageChange(page + 1)}>
           Siguiente
         </Button>
       </div>

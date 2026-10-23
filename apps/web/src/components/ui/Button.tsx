@@ -2,11 +2,16 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { NB_CONTROL_CHROME, NB_PRESSABLE } from "./styles";
 
-type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+/**
+ * A button is coloured by what it does, never left white:
+ * primary (amarillo) save / confirm · danger (rojo) cancel, close, delete, leave ·
+ * edit (lila) edit, open, copy, move, navigate · positive (menta) create, refresh, retry, restore, clear.
+ */
+type ButtonVariant = "primary" | "danger" | "edit" | "positive";
 type ButtonSize = "sm" | "md";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: ButtonVariant;
+  variant: ButtonVariant;
   size?: ButtonSize;
   loading?: boolean;
   children: ReactNode;
@@ -17,14 +22,9 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   // else. Text is ink, not hueso: amarillo is far too light for white text
   // (~1.2:1) and ink reads at 17.8:1 on it.
   primary: "bg-cta text-text-primary hover:bg-cta-hover",
-  secondary: "bg-surface text-text-primary",
-  // Starts with no border/shadow (mirrors mockups/mockup.css .btn-ghost); its
-  // own hover state adds the treatment back in. Assumes a light-surface
-  // ancestor (a Panel/Card) for its ink text — every current usage (only
-  // inside Pagination, always inside a Panel) satisfies that.
-  ghost:
-    "border-transparent bg-transparent text-text-primary shadow-none hover:border-ink hover:bg-surface hover:shadow-nb-sm",
   danger: "bg-danger-soft text-danger",
+  edit: "bg-tile-alt text-text-primary",
+  positive: "bg-brand-subtle text-text-primary",
 };
 
 /* 12px vertical / 24px horizontal on md is a deliberate one-off: 12 + 16 of
@@ -42,7 +42,7 @@ const ButtonSpinner = () => (
   />
 );
 
-const buttonClassName = (variant: ButtonVariant = "secondary", size: ButtonSize = "md", className?: string): string =>
+const buttonClassName = (variant: ButtonVariant, size: ButtonSize = "md", className?: string): string =>
   cn(
     "inline-flex items-center justify-center gap-2 whitespace-nowrap font-bold",
     NB_CONTROL_CHROME,
@@ -54,7 +54,7 @@ const buttonClassName = (variant: ButtonVariant = "secondary", size: ButtonSize 
   );
 
 const Button = ({
-  variant = "secondary",
+  variant,
   size = "md",
   loading = false,
   disabled,

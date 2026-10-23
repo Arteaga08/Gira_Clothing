@@ -12,7 +12,7 @@ const SecurityPanel = ({ onReset }: SecurityPanelProps) => (
     title="Seguridad"
     hint="Tu cuenta de administrador"
     actions={
-      <Button size="sm" onClick={onReset}>
+      <Button variant="danger" size="sm" onClick={onReset}>
         Reiniciar 2FA
       </Button>
     }

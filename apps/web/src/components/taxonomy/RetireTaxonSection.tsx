@@ -42,7 +42,7 @@ const RetireTaxonSection = ({ config, taxon, error, onRetire, onReactivate }: Re
           <p>No se ofrece al crear {child.plural}. Reactívala para volver a usarla.</p>
         </Notice>
         <div>
-          <Button
+          <Button variant="positive"
             loading={reactivating}
             onClick={() => {
               setReactivating(true);

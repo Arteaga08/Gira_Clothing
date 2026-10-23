@@ -115,7 +115,7 @@ const Editor = ({ customer, onClose }: EditorProps) => {
 
   const footer = (
     <>
-      <Button onClick={requestClose} disabled={give.saving}>
+      <Button variant="danger" onClick={requestClose} disabled={give.saving}>
         Cancelar
       </Button>
       <Button type="submit" form={formId} variant="primary" loading={give.saving}>

@@ -22,7 +22,7 @@ const LogoutButton = () => {
   };
 
   return (
-    <Button variant="secondary" size="sm" loading={pending} onClick={() => void handleClick()}>
+    <Button variant="danger" size="sm" loading={pending} onClick={() => void handleClick()}>
       Cerrar sesión
     </Button>
   );

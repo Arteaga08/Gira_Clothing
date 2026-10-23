@@ -1,4 +1,4 @@
-import type { Settings, ShippingOrigin, ShippingParcelSettings, Wire } from "@gira/shared";
+import type { Settings, ShippingOrigin, ShippingParcelSettings, StorefrontAnnouncement, Wire } from "@gira/shared";
 import { browserRequest } from "./browser";
 import { ADMIN_SETTINGS_PATH } from "./paths";
 import { expectData, type ApiResult } from "./request";
@@ -19,6 +19,7 @@ interface SettingsClient {
   get: () => Promise<Wire<Settings>>;
   updateTax: (rateBps: number) => Promise<Wire<Settings>>;
   updateShipping: (body: ShippingSettingsBody) => Promise<Wire<Settings>>;
+  updateAnnouncement: (body: StorefrontAnnouncement) => Promise<Wire<Settings>>;
 }
 
 const settingsOf = async (call: Promise<ApiResult<{ settings: Settings }>>): Promise<Wire<Settings>> =>
@@ -30,6 +31,8 @@ const settingsClient: SettingsClient = {
     settingsOf(browserRequest(`${ADMIN_SETTINGS_PATH}/tax`, { method: "PATCH", body: { rateBps } })),
   updateShipping: (body) =>
     settingsOf(browserRequest(`${ADMIN_SETTINGS_PATH}/shipping`, { method: "PATCH", body })),
+  updateAnnouncement: (body) =>
+    settingsOf(browserRequest(`${ADMIN_SETTINGS_PATH}/announcement`, { method: "PATCH", body })),
 };
 
 export type { SettingsClient, ShippingSettingsBody };

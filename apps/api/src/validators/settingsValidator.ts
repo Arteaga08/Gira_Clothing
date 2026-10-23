@@ -1,5 +1,7 @@
 import Joi from "joi";
 import {
+  ANNOUNCEMENT_MAX_LENGTH,
+  ANNOUNCEMENT_MAX_MESSAGES,
   Currency,
   MEXICAN_STATE_CODES,
   PHONE_PATTERN,
@@ -96,10 +98,36 @@ const updateTaxSchema = Joi.object({
   }),
 });
 
+// strict(): "true" must not be coerced. An enabled bar needs something to say.
+const updateAnnouncementSchema = Joi.object({
+  enabled: Joi.boolean().strict().required().messages({
+    "any.required": "Indica si la barra se muestra.",
+    "boolean.base": "El estado de la barra debe ser verdadero o falso.",
+  }),
+  messages: Joi.array()
+    .items(
+      Joi.string().trim().min(1).max(ANNOUNCEMENT_MAX_LENGTH).messages({
+        "string.empty": "Los mensajes no pueden estar vacíos.",
+        "string.max": `Cada mensaje admite hasta ${ANNOUNCEMENT_MAX_LENGTH} caracteres.`,
+      }),
+    )
+    .max(ANNOUNCEMENT_MAX_MESSAGES)
+    .required()
+    .messages({
+      "any.required": "Envía la lista de mensajes.",
+      "array.max": `La barra admite hasta ${ANNOUNCEMENT_MAX_MESSAGES} mensajes.`,
+    }),
+})
+  .custom((value: { enabled: boolean; messages: string[] }, helpers) =>
+    value.enabled && value.messages.length === 0 ? helpers.error("announcement.empty") : value,
+  )
+  .messages({ "announcement.empty": "Agrega al menos un mensaje para mostrar la barra." });
+
 export {
   updateShippingSchema,
   updateCurrencySchema,
   updateReservationSchema,
   updateInventorySchema,
   updateTaxSchema,
+  updateAnnouncementSchema,
 };

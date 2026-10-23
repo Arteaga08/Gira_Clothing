@@ -43,7 +43,7 @@ const RetirePrintSection = ({ print, error, onRetire, onReactivate }: RetirePrin
           <p>No aparece al elegir estampas. Reactívala para volver a usarla en los modelos.</p>
         </Notice>
         <div>
-          <Button
+          <Button variant="positive"
             loading={reactivating}
             onClick={() => {
               setReactivating(true);

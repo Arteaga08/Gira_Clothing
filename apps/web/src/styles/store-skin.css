@@ -1,0 +1,77 @@
+/*
+ * Storefront skin. The navbar and the marquee read ONLY these variables, so a
+ * different visual direction (spec §4: A, B or C) is a change in this block,
+ * not in the components. Colours are references to tokens.css, never literals.
+ */
+.store-skin {
+  --store-marquee-bg: var(--color-accent);
+  --store-marquee-fg: var(--color-ink);
+  --store-marquee-height: 2.5rem;
+
+  --store-nav-height: 4.5rem;
+  --store-nav-fg: var(--color-text-inverse);
+  --store-nav-panel-bg: var(--color-wallpaper);
+
+  /* The bar has no fill: each pill carries its own so it reads over any section. */
+  --store-pill-bg: var(--color-surface);
+  --store-pill-fg: var(--color-text-primary);
+  --store-pill-current-bg: var(--color-brand-subtle);
+
+  --store-logo-size: 2.75rem;
+  --store-logo-scale-scrolled: 0.64;
+  --store-nav-ease: var(--ease-out-expo);
+}
+
+@media (min-width: 48rem) {
+  .store-skin {
+    --store-logo-size: 3.5rem;
+  }
+}
+
+/* Marquee: the track holds two identical groups, so -50% is exactly one group. */
+@keyframes store-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.store-marquee__track {
+  animation: store-marquee var(--store-marquee-duration, 30s) linear infinite;
+}
+
+.store-marquee:hover .store-marquee__track,
+.store-marquee:focus-within .store-marquee__track {
+  animation-play-state: paused;
+}
+
+/* Reduced motion: no travel at all. One static, centred copy of the messages. */
+@media (prefers-reduced-motion: reduce) {
+  .store-marquee__track {
+    animation: none;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .store-marquee__group {
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 0;
+  }
+
+  .store-marquee__group[aria-hidden="true"],
+  .store-marquee__repeat {
+    display: none;
+  }
+
+  .store-marquee__group {
+    min-width: 0;
+    flex-shrink: 1;
+    padding-block: 0.25rem;
+    padding-right: 0;
+    column-gap: 1.5rem;
+  }
+
+  .store-marquee__group li {
+    gap: 1.5rem;
+  }
+}

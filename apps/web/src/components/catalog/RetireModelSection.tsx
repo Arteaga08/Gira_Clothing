@@ -44,7 +44,7 @@ const RetireModelSection = ({
           <p>Reactívalo para volver a venderlo. Sus estampas hay que volver a elegirlas.</p>
         </Notice>
         <div>
-          <Button
+          <Button variant="positive"
             loading={reactivating}
             onClick={() => {
               setReactivating(true);

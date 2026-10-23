@@ -107,7 +107,7 @@ const OrdersPage = ({ initialFilters }: OrdersPageProps) => {
       {list.status === "ready" && list.error ? (
         <Notice variant="warning" title="No se pudo actualizar la lista">
           <p>{list.error} Estás viendo la última lista cargada.</p>
-          <Button size="sm" className="mt-2" onClick={refreshList}>
+          <Button variant="positive" size="sm" className="mt-2" onClick={refreshList}>
             Reintentar
           </Button>
         </Notice>
@@ -116,7 +116,7 @@ const OrdersPage = ({ initialFilters }: OrdersPageProps) => {
       {list.status === "error" ? (
         <Notice variant="danger" title="No se pudo cargar la lista">
           <p>{list.error}</p>
-          <Button size="sm" className="mt-2" onClick={refreshList}>
+          <Button variant="positive" size="sm" className="mt-2" onClick={refreshList}>
             Reintentar
           </Button>
         </Notice>

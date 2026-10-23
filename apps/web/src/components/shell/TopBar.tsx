@@ -23,6 +23,7 @@ const TopBar = () => {
     <header className="sticky top-0 z-(--z-topbar) flex min-h-(--topbar-height) items-center gap-3 border-b-2 border-ink bg-wallpaper px-4 lg:px-6">
       <IconButton
         icon={ListIcon}
+        variant="edit"
         label="Abrir navegación"
         aria-controls="sidebar"
         aria-expanded={open}
@@ -32,7 +33,7 @@ const TopBar = () => {
       <div className="ml-auto flex items-center gap-2">
         <RefreshButton />
         <NotificationBell />
-        <Segmented selected={false} onClick={openPalette}>
+        <Segmented selected={false} tone="edit" onClick={openPalette}>
           <Icon icon={MagnifyingGlassIcon} size={14} />
           Buscar
           <kbd className="rounded-nb-sm border border-ink bg-surface-sunken px-1.5 py-0.5 font-mono text-[10px]">

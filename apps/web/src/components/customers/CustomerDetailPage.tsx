@@ -39,7 +39,7 @@ const CustomerDetailPage = ({ customerId, initialGiveOpen }: CustomerDetailPageP
               Volver a Clientes
             </Link>
           ) : (
-            <Button size="sm" className="mt-2" onClick={customer.refresh}>
+            <Button variant="positive" size="sm" className="mt-2" onClick={customer.refresh}>
               Reintentar
             </Button>
           )}

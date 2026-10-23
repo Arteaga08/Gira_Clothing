@@ -125,7 +125,7 @@ const PrintForm = ({ mode, print, families, upload, uploading, saving, error, on
         </Notice>
       ) : null}
       <div className="flex justify-end gap-2">
-        <Button onClick={onCancel} disabled={saving}>
+        <Button variant="danger" onClick={onCancel} disabled={saving}>
           Cancelar
         </Button>
         <Button type="submit" variant="primary" loading={saving} disabled={uploading || unchanged}>

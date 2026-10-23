@@ -1,5 +1,6 @@
 import { AuditAction, AuditModule } from "@gira/shared";
 import type {
+  StorefrontAnnouncement,
   ShippingOrigin,
   ShippingParcelSettings,
   ShippingSettings as PublicShippingSettings,
@@ -13,6 +14,7 @@ import {
   type ReservationSettings,
   type InventorySettings,
   type TaxSettings,
+  type StorefrontSettings,
 } from "../models/Settings.js";
 import { recordAudit } from "./auditService.js";
 import type { RequestContext } from "../utils/requestContext.js";
@@ -34,7 +36,13 @@ interface PublicSettings {
   reservation: ReservationSettings;
   inventory: InventorySettings;
   tax: TaxSettings;
+  storefront: { announcement: StorefrontAnnouncement };
 }
+
+const toAnnouncementView = (doc: SettingsDocument): StorefrontAnnouncement => ({
+  enabled: doc.storefront?.announcement?.enabled ?? false,
+  messages: [...(doc.storefront?.announcement?.messages ?? [])],
+});
 
 const toShippingView = (shipping: ShippingSettings): PublicShippingSettings => ({
   // Explicit mapping: spreading a Mongoose subdocument would leak its internals.
@@ -62,6 +70,7 @@ const toPublicSettings = (doc: SettingsDocument): PublicSettings => ({
   reservation: doc.reservation,
   inventory: doc.inventory,
   tax: { rateBps: doc.tax.rateBps },
+  storefront: { announcement: toAnnouncementView(doc) },
 });
 
 const getSettings = async (): Promise<SettingsDocument> => {
@@ -244,6 +253,40 @@ const updateTaxSettings = async (input: TaxSettings, ctx: RequestContext): Promi
   return toPublicSettings(settings);
 };
 
+/**
+ * What the storefront may read without a session: the marquee and nothing
+ * else from the singleton. Hidden or empty collapses to `enabled: false`.
+ */
+const getPublicAnnouncement = async (): Promise<StorefrontAnnouncement> => {
+  const view = toAnnouncementView(await getSettings());
+  return view.enabled && view.messages.length > 0 ? view : { enabled: false, messages: [] };
+};
+
+const updateAnnouncementSettings = async (
+  input: StorefrontAnnouncement,
+  ctx: RequestContext,
+): Promise<PublicSettings> => {
+  const settings = await getSettings();
+  const before = { ...toAnnouncementView(settings) };
+
+  settings.storefront.announcement.enabled = input.enabled;
+  settings.storefront.announcement.messages = [...input.messages];
+
+  await settings.save();
+  await recordAudit({
+    actorId: ctx.actorId,
+    actorType: "user",
+    action: AuditAction.SETTINGS_ANNOUNCEMENT_UPDATED,
+    module: AuditModule.SETTINGS,
+    targetId: settings.id as string,
+    before,
+    after: { ...toAnnouncementView(settings) },
+    ip: ctx.ip,
+  });
+
+  return toPublicSettings(settings);
+};
+
 export type {
   PublicSettings,
   ShippingSettings,
@@ -251,6 +294,7 @@ export type {
   ReservationSettings,
   InventorySettings,
   TaxSettings,
+  StorefrontSettings,
 };
 export {
   getSettings,
@@ -260,4 +304,6 @@ export {
   updateReservationSettings,
   updateInventorySettings,
   updateTaxSettings,
+  updateAnnouncementSettings,
+  getPublicAnnouncement,
 };

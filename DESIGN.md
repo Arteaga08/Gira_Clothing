@@ -216,6 +216,19 @@ screen), `shadow-nb-pressed` (0, the pressed state). Press-into-shadow, never sc
 light for white text). Secondary = hueso + tinta, the default `NB_CONTROL` treatment. Ghost = starts
 transparent, gains border/shadow on hover; assumes a light-surface ancestor. Danger = danger-soft.
 
+**Action colour rule (global).** No button is left white. `variant` is required on `Button` and
+`IconButton`, so TypeScript rejects one without a colour. A control is coloured by what it does:
+
+| Variant | Colour | Actions |
+|---|---|---|
+| `primary` | amarillo | save, confirm, the screen's one main action (once per screen) |
+| `danger` | rojo | cancel, close (X), delete / remove, retire, log out, clear a selection |
+| `edit` | lila | edit, open, copy, move, previous / next, search trigger |
+| `positive` | menta | create (non-primary), refresh, retry, restore / reactivate, clear filters |
+
+Indicators (the notification bell) and filter toggles (`Segmented`, tabs) are not action buttons and
+keep their own treatment.
+
 ### Segmented / Badge / ListRow / MetricTile
 Four primitives extracted because each pattern was previously hand-copied 3–4 times with drifting
 details — see `apps/web/src/components/ui/{Segmented,Badge,ListRow,MetricTile}.tsx`. Badge is also

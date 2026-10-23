@@ -99,7 +99,7 @@ const ModalBody = ({ selected, items, onClose }: Omit<AuditLogModalProps, "selec
       ) : mine && "error" in mine ? (
         <Notice variant="danger" title={mine.gone ? "Registro no encontrado" : "No se pudo cargar"}>
           <p>{mine.error}</p>
-          <Button
+          <Button variant={mine.gone ? "danger" : "positive"}
             size="sm"
             className="mt-2"
             onClick={() => {

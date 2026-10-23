@@ -123,6 +123,7 @@ const VariantPhotos = ({ drafts, prints, activePrintId, onSelect, onImagesChange
               <IconButton
                 icon={ArrowLeftIcon}
                 label="Mover antes"
+                variant="edit"
                 size="sm"
                 disabled={uploading || index === 0}
                 onClick={() => move(index, -1)}
@@ -130,6 +131,7 @@ const VariantPhotos = ({ drafts, prints, activePrintId, onSelect, onImagesChange
               <IconButton
                 icon={ArrowRightIcon}
                 label="Mover después"
+                variant="edit"
                 size="sm"
                 disabled={uploading || index === active.images.length - 1}
                 onClick={() => move(index, 1)}
@@ -138,6 +140,7 @@ const VariantPhotos = ({ drafts, prints, activePrintId, onSelect, onImagesChange
                 icon={TrashIcon}
                 label="Quitar foto"
                 size="sm"
+                variant="danger"
                 className="ml-auto"
                 disabled={uploading}
                 onClick={() => remove(index)}

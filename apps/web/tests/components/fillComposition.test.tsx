@@ -19,9 +19,9 @@ const textColoursOf = (el: HTMLElement): string[] =>
 describe("composición de relleno y color de texto", () => {
   it.each<[ButtonVariant, string, string]>([
     ["primary", "bg-cta", "text-text-primary"],
-    ["secondary", "bg-surface", "text-text-primary"],
-    ["ghost", "bg-transparent", "text-text-primary"],
     ["danger", "bg-danger-soft", "text-danger"],
+    ["edit", "bg-tile-alt", "text-text-primary"],
+    ["positive", "bg-brand-subtle", "text-text-primary"],
   ])("Button %s declara un solo relleno y un solo color de texto", (variant, fill, text) => {
     render(<Button variant={variant}>Acción</Button>);
     const button = screen.getByRole("button", { name: "Acción" });

@@ -51,7 +51,7 @@ const Modal = ({ open, onClose, title, children, footer }: ModalProps) => {
           <h2 id={titleId} className={T_PANEL_TITLE}>
             {title}
           </h2>
-          <IconButton icon={XIcon} label="Cerrar" size="sm" onClick={onClose} />
+          <IconButton icon={XIcon} label="Cerrar" size="sm" variant="danger" onClick={onClose} />
         </div>
         <div className="flex-1 overflow-y-auto px-6 py-6">{children}</div>
         {footer ? (

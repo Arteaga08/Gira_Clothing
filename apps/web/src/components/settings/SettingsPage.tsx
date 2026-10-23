@@ -69,7 +69,7 @@ const SettingsPage = ({ initialSection }: SettingsPageProps) => {
         <PageHeader title="Ajustes" />
         <Notice variant="danger" title="No se pudieron cargar los ajustes">
           <p>{state.error}</p>
-          <Button size="sm" className="mt-2" onClick={refresh}>
+          <Button variant="positive" size="sm" className="mt-2" onClick={refresh}>
             Reintentar
           </Button>
         </Notice>

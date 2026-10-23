@@ -2,9 +2,11 @@ import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
 import type { ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/cn";
 import { Icon } from "./Icon";
-import { NB_ICON_TILE, NB_PRESSABLE } from "./styles";
+import { NB_ICON_TILE_CHROME, NB_PRESSABLE } from "./styles";
 
 type IconButtonSize = "sm" | "md";
+/** Same four-colour rule as Button: danger = close / cancel / delete, edit = open / move, positive = refresh / create. */
+type IconButtonVariant = "danger" | "edit" | "positive";
 
 interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   icon: PhosphorIcon;
@@ -15,6 +17,7 @@ interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
    */
   label: string;
   size?: IconButtonSize;
+  variant: IconButtonVariant;
 }
 
 /** Square, so it uses its own fixed h/w rather than NB_CONTROL's min-h. `md` still lands on the shared 40px control height. */
@@ -23,14 +26,21 @@ const SIZE_CLASSES: Record<IconButtonSize, string> = {
   md: "h-10 w-10",
 };
 
-const IconButton = ({ icon, label, size = "md", className, type = "button", ...rest }: IconButtonProps) => {
+const VARIANT_CLASSES: Record<IconButtonVariant, string> = {
+  danger: "bg-danger-soft text-danger",
+  edit: "bg-tile-alt text-text-primary",
+  positive: "bg-brand-subtle text-text-primary",
+};
+
+const IconButton = ({ icon, label, size = "md", variant, className, type = "button", ...rest }: IconButtonProps) => {
   return (
     <button
       type={type}
       aria-label={label}
       title={label}
       className={cn(
-        NB_ICON_TILE,
+        NB_ICON_TILE_CHROME,
+        VARIANT_CLASSES[variant],
         "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none",
         NB_PRESSABLE,
         SIZE_CLASSES[size],
@@ -43,5 +53,5 @@ const IconButton = ({ icon, label, size = "md", className, type = "button", ...r
   );
 };
 
-export type { IconButtonProps };
+export type { IconButtonProps, IconButtonVariant };
 export { IconButton };

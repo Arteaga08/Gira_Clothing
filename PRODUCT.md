@@ -56,3 +56,18 @@ WCAG AA como mínimo. Navegación completa por teclado con foco visible en cada 
 verificado en M6-M8). `prefers-reduced-motion: reduce` respetado — sin transiciones en gráficas o
 barras. Es una herramienta interna, no pública, pero el personal de operación puede incluir usuarios
 de tecnología asistiva, así que el estándar aplica igual.
+
+## Tienda pública (Bloque 3) — registro brand
+
+La tienda (`apps/web/src/app/(store)`) es **brand**: la voz visual importa y el diseño es parte del
+producto. El panel sigue siendo **product**; nunca se mezclan recetas de uno y otro en la misma
+pantalla. Mismos tokens y mismo lenguaje de forma, otra densidad (escala "Store" de DESIGN.md).
+Usuarios: clientas y clientes que navegan desde el celular, sin prisa, y compran solo con cuenta.
+Éxito = que la marca se sienta propia y que llegar a una prenda y pagarla sea obvio.
+
+- La piel vive en `src/styles/store-skin.css` (variables `--store-*` que apuntan a tokens). Cambiar de
+  dirección visual (A, B o C) debe costar un cambio ahí, no en los componentes.
+- Navbar: variante B (editorial). Logo centrado, transparente arriba, relleno verde bosque al hacer
+  scroll; sin pills ni sombras. Marquee de anuncios arriba, editable desde Ajustes.
+- Un solo botón primario (amarillo) por pantalla; el navbar no lleva ninguno.
+

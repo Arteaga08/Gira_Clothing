@@ -92,6 +92,8 @@ enum AuditAction {
   SETTINGS_INVENTORY_UPDATED = "settings_inventory_updated",
   /** IVA rate edited in Ajustes (M12c); orders already created keep their frozen rate. */
   SETTINGS_TAX_UPDATED = "settings_tax_updated",
+  /** Storefront announcement bar edited in Ajustes. */
+  SETTINGS_ANNOUNCEMENT_UPDATED = "settings_announcement_updated",
   LABEL_REQUESTED = "label_requested",
   LABEL_CREATED = "label_created",
   LABEL_FAILED = "label_failed",

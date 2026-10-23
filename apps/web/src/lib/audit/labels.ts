@@ -52,6 +52,7 @@ const ACTION_LABELS: Readonly<Record<AuditAction, string>> = {
   [AuditAction.SETTINGS_RESERVATION_UPDATED]: "Ajustes de reserva",
   [AuditAction.SETTINGS_INVENTORY_UPDATED]: "Ajustes de inventario",
   [AuditAction.SETTINGS_TAX_UPDATED]: "Tasa de IVA",
+  [AuditAction.SETTINGS_ANNOUNCEMENT_UPDATED]: "Barra de anuncios",
   [AuditAction.COUPON_CREATED]: "Cupón creado",
   [AuditAction.COUPON_UPDATED]: "Cupón editado",
   [AuditAction.COUPON_DEACTIVATED]: "Cupón retirado",
@@ -139,6 +140,7 @@ const MODULE_ACTIONS: Readonly<Record<AuditModule, readonly AuditAction[]>> = {
     AuditAction.SETTINGS_CURRENCY_UPDATED,
     AuditAction.SETTINGS_RESERVATION_UPDATED,
     AuditAction.SETTINGS_INVENTORY_UPDATED,
+    AuditAction.SETTINGS_ANNOUNCEMENT_UPDATED,
   ],
   [AuditModule.CART]: [],
   [AuditModule.ORDERS]: [

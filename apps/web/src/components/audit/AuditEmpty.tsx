@@ -16,7 +16,7 @@ const AuditEmpty = ({ filters, onClear }: AuditEmptyProps) =>
       title="Ningún registro coincide"
       description="Prueba con otro módulo, con «Todos» en Quién o con un periodo más largo."
       action={
-        <Button size="sm" onClick={onClear}>
+        <Button variant="positive" size="sm" onClick={onClear}>
           Limpiar filtros
         </Button>
       }

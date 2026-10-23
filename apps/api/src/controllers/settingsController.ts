@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import type { StorefrontAnnouncement } from "@gira/shared";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { sendResponse } from "../utils/sendResponse.js";
 import { buildContext } from "../utils/requestContext.js";
@@ -9,6 +10,8 @@ import {
   updateReservationSettings,
   updateInventorySettings,
   updateTaxSettings,
+  updateAnnouncementSettings,
+  getPublicAnnouncement,
   type ShippingSettings,
   type CurrencySettings,
   type ReservationSettings,
@@ -62,4 +65,23 @@ const updateTax = asyncHandler(async (req: Request, res: Response) => {
   sendResponse(res, 200, "Tasa de IVA actualizada correctamente.", { settings });
 });
 
-export { detail, updateShipping, updateCurrency, updateReservation, updateInventory, updateTax };
+const updateAnnouncement = asyncHandler(async (req: Request, res: Response) => {
+  const settings = await updateAnnouncementSettings(req.body as StorefrontAnnouncement, buildContext(req));
+  sendResponse(res, 200, "Barra de anuncios actualizada correctamente.", { settings });
+});
+
+const publicAnnouncement = asyncHandler(async (_req: Request, res: Response) => {
+  const announcement = await getPublicAnnouncement();
+  sendResponse(res, 200, "Anuncio obtenido correctamente.", { announcement });
+});
+
+export {
+  detail,
+  updateShipping,
+  updateCurrency,
+  updateReservation,
+  updateInventory,
+  updateTax,
+  updateAnnouncement,
+  publicAnnouncement,
+};

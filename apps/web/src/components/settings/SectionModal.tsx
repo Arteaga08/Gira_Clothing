@@ -32,7 +32,7 @@ const SectionModal = ({ title, formId, dirty, saving, onClose, children }: Secti
 
   const footer = (
     <>
-      <Button onClick={requestClose} disabled={saving}>
+      <Button variant="danger" onClick={requestClose} disabled={saving}>
         Cancelar
       </Button>
       <Button type="submit" form={formId} variant="primary" loading={saving} disabled={!dirty}>

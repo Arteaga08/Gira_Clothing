@@ -106,7 +106,7 @@ const KitContent = () => {
 
       <Panel title="Botones" hint="4 variantes × 2 tamaños, incluidos disabled y loading">
         <div className="flex flex-col gap-4">
-          {(["primary", "secondary", "ghost", "danger"] as const).map((variant) => (
+          {(["primary", "danger", "edit", "positive"] as const).map((variant) => (
             <div key={variant} className="flex flex-wrap items-center gap-3">
               <span className="w-20 shrink-0 text-xs font-bold uppercase text-text-secondary">
                 {variant}
@@ -123,16 +123,16 @@ const KitContent = () => {
             <span className="w-20 shrink-0 text-xs font-bold uppercase text-text-secondary">
               disabled
             </span>
-            <Button disabled>Guardar</Button>
+            <Button variant="primary" disabled>Guardar</Button>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <span className="w-20 shrink-0 text-xs font-bold uppercase text-text-secondary">
               loading
             </span>
-            <Button loading={loadingDemo} onClick={() => setLoadingDemo(true)}>
+            <Button variant="positive" loading={loadingDemo} onClick={() => setLoadingDemo(true)}>
               Guardar
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => setLoadingDemo(false)}>
+            <Button variant="danger" size="sm" onClick={() => setLoadingDemo(false)}>
               reset
             </Button>
           </div>
@@ -140,8 +140,8 @@ const KitContent = () => {
             <span className="w-20 shrink-0 text-xs font-bold uppercase text-text-secondary">
               icon
             </span>
-            <IconButton icon={TrashIcon} label="Eliminar" />
-            <IconButton icon={BellIcon} label="Notificaciones" />
+            <IconButton icon={TrashIcon} label="Eliminar" variant="danger" />
+            <IconButton icon={BellIcon} label="Notificaciones" variant="edit" />
           </div>
         </div>
       </Panel>
@@ -184,7 +184,7 @@ const KitContent = () => {
         </div>
       </Panel>
 
-      <Panel title="Panel + tabla" flush actions={<Button size="sm">Exportar</Button>}>
+      <Panel title="Panel + tabla" flush actions={<Button variant="edit" size="sm">Exportar</Button>}>
         <Table>
           <Thead>
             <Tr>
@@ -202,7 +202,7 @@ const KitContent = () => {
               </Td>
               <Td numeric>$540.00</Td>
               <Td actions>
-                <IconButton icon={CheckCircleIcon} label="Marcar procesado" size="sm" />
+                <IconButton icon={CheckCircleIcon} label="Marcar procesado" size="sm" variant="positive" />
               </Td>
             </Tr>
             <Tr busy>
@@ -212,7 +212,7 @@ const KitContent = () => {
               </Td>
               <Td numeric>$1,230.00</Td>
               <Td actions>
-                <IconButton icon={TrashIcon} label="Cancelar" size="sm" />
+                <IconButton icon={TrashIcon} label="Cancelar" size="sm" variant="danger" />
               </Td>
             </Tr>
           </Tbody>
@@ -296,7 +296,7 @@ const KitContent = () => {
           icon={PackageIcon}
           title="Sin pedidos todavía"
           description="Cuando entre el primer pedido, aparecerá aquí."
-          action={<Button size="sm">Ver catálogo</Button>}
+          action={<Button variant="edit" size="sm">Ver catálogo</Button>}
         />
       </Panel>
 
