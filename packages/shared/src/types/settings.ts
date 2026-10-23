@@ -29,6 +29,16 @@ interface TaxSettings {
   rateBps: number;
 }
 
+/** Marquee above the storefront navbar, edited in Ajustes. */
+interface StorefrontAnnouncement {
+  enabled: boolean;
+  messages: string[];
+}
+
+interface StorefrontSettings {
+  announcement: StorefrontAnnouncement;
+}
+
 interface Settings {
   id: string;
   shipping: ShippingSettings;
@@ -36,6 +46,7 @@ interface Settings {
   reservation: ReservationSettings;
   inventory: InventorySettings;
   tax: TaxSettings;
+  storefront: StorefrontSettings;
 }
 
 export type {
@@ -44,5 +55,7 @@ export type {
   ReservationSettings,
   InventorySettings,
   TaxSettings,
+  StorefrontAnnouncement,
+  StorefrontSettings,
   Settings,
 };

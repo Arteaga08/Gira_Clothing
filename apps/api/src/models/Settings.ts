@@ -1,5 +1,11 @@
 import { Schema, model, type HydratedDocument, type Model } from "mongoose";
-import { Currency, DEFAULT_TAX_RATE_BPS, PriceRounding } from "@gira/shared";
+import {
+  ANNOUNCEMENT_MAX_LENGTH,
+  ANNOUNCEMENT_MAX_MESSAGES,
+  Currency,
+  DEFAULT_TAX_RATE_BPS,
+  PriceRounding,
+} from "@gira/shared";
 import type { ShippingOrigin, ShippingParcelSettings } from "@gira/shared";
 
 /**
@@ -49,6 +55,13 @@ interface TaxSettings {
   rateBps: number;
 }
 
+interface StorefrontSettings {
+  announcement: {
+    enabled: boolean;
+    messages: string[];
+  };
+}
+
 interface SettingsAttrs {
   key: string;
   shipping: ShippingSettings;
@@ -56,6 +69,7 @@ interface SettingsAttrs {
   reservation: ReservationSettings;
   inventory: InventorySettings;
   tax: TaxSettings;
+  storefront: StorefrontSettings;
 }
 
 type SettingsModel = Model<SettingsAttrs>;
@@ -128,6 +142,19 @@ const settingsSchema = new Schema<SettingsAttrs, SettingsModel>(
         default: DEFAULT_TAX_RATE_BPS,
       },
     },
+    storefront: {
+      announcement: {
+        enabled: { type: Boolean, default: false },
+        messages: {
+          type: [{ type: String, trim: true, minlength: 1, maxlength: ANNOUNCEMENT_MAX_LENGTH }],
+          default: () => [],
+          validate: {
+            validator: (v: string[]) => v.length <= ANNOUNCEMENT_MAX_MESSAGES,
+            message: `Máximo ${ANNOUNCEMENT_MAX_MESSAGES} mensajes.`,
+          },
+        },
+      },
+    },
   },
   { timestamps: true },
 );
@@ -142,5 +169,6 @@ export type {
   ReservationSettings,
   InventorySettings,
   TaxSettings,
+  StorefrontSettings,
 };
 export { Settings, SINGLETON_KEY };

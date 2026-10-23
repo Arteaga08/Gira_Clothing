@@ -167,8 +167,11 @@ import type {
   ReservationSettings,
   InventorySettings,
   TaxSettings,
+  StorefrontAnnouncement,
+  StorefrontSettings,
   Settings,
 } from "./types/settings.js";
+import { ANNOUNCEMENT_MAX_MESSAGES, ANNOUNCEMENT_MAX_LENGTH } from "./constants/storefront.js";
 import type {
   RevenueEntry,
   TopProduct,
@@ -310,6 +313,8 @@ export type {
   ReservationSettings,
   InventorySettings,
   TaxSettings,
+  StorefrontAnnouncement,
+  StorefrontSettings,
   Settings,
   RevenueEntry,
   TopProduct,
@@ -330,6 +335,7 @@ export type {
   AuditChange,
 };
 export { AUDIT_ACTOR_FILTERS };
+export { ANNOUNCEMENT_MAX_MESSAGES, ANNOUNCEMENT_MAX_LENGTH };
 export type { StatsGranularity, PeriodPreset };
 export { STATS_GRANULARITIES, MAX_STATS_DAYS, PERIOD_PRESETS };
 export type { OrderStatusGroup };

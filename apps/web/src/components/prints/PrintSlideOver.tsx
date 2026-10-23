@@ -101,7 +101,7 @@ const PanelBody = ({ selected, prints, families, onClose, onChanged }: PanelBody
       return (
         <Notice variant="danger" title={mine.gone ? "Estampa no encontrada" : "No se pudo cargar la estampa"}>
           <p>{mine.error}</p>
-          <Button
+          <Button variant={mine.gone ? "danger" : "positive"}
             size="sm"
             className="mt-2"
             onClick={() => {

@@ -75,7 +75,7 @@ const TopCustomersSection = ({ filters, onPeriodChange, onSortChange }: TopCusto
       {top.status === "error" ? (
         <Notice variant="danger" title="No se pudo cargar el ranking">
           <p>{top.error}</p>
-          <Button size="sm" className="mt-2" onClick={top.refresh}>
+          <Button variant="positive" size="sm" className="mt-2" onClick={top.refresh}>
             Reintentar
           </Button>
         </Notice>

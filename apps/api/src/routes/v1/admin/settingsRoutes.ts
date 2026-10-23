@@ -6,6 +6,7 @@ import {
   updateReservationSchema,
   updateInventorySchema,
   updateTaxSchema,
+  updateAnnouncementSchema,
 } from "../../../validators/settingsValidator.js";
 import {
   detail,
@@ -14,6 +15,7 @@ import {
   updateReservation,
   updateInventory,
   updateTax,
+  updateAnnouncement,
 } from "../../../controllers/settingsController.js";
 
 const settingsRouter = Router();
@@ -24,5 +26,6 @@ settingsRouter.patch("/currency", validate(updateCurrencySchema), updateCurrency
 settingsRouter.patch("/reservation", validate(updateReservationSchema), updateReservation);
 settingsRouter.patch("/inventory", validate(updateInventorySchema), updateInventory);
 settingsRouter.patch("/tax", validate(updateTaxSchema), updateTax);
+settingsRouter.patch("/announcement", validate(updateAnnouncementSchema), updateAnnouncement);
 
 export { settingsRouter };

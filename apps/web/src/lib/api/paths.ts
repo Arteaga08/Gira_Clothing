@@ -21,6 +21,8 @@ const ADMIN_COUPONS_PATH = "/admin/coupons";
 const ADMIN_CUSTOMERS_PATH = "/admin/customers";
 const ADMIN_SETTINGS_PATH = "/admin/settings";
 const ADMIN_AUDIT_LOGS_PATH = "/admin/audit-logs";
+const CART_PATH = "/cart";
+const STOREFRONT_ANNOUNCEMENT_PATH = "/storefront/announcement";
 
 export {
   STATS_OVERVIEW_PATH,
@@ -38,4 +40,6 @@ export {
   ADMIN_CUSTOMERS_PATH,
   ADMIN_SETTINGS_PATH,
   ADMIN_AUDIT_LOGS_PATH,
+  CART_PATH,
+  STOREFRONT_ANNOUNCEMENT_PATH,
 };

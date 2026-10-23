@@ -27,7 +27,7 @@ const SizePhotoField = ({ imageUrl, busy, error, onPick, onRemove }: SizePhotoFi
             alt="Foto de tamaño del modelo"
             className="aspect-square w-full rounded-nb-sm border-2 border-ink"
           />
-          <Button size="sm" variant="ghost" onClick={onRemove} disabled={busy}>
+          <Button size="sm" variant="danger" onClick={onRemove} disabled={busy}>
             Quitar foto
           </Button>
         </div>

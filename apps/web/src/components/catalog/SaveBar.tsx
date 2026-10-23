@@ -24,7 +24,7 @@ const SaveBar = ({ dirty, saving, uploading, submitLabel, requireDirty, onSave, 
       <p className={`${T_CAPTION} min-w-0 flex-1 truncate`} aria-live="polite">
         {dirty ? "Cambios sin guardar" : "Sin cambios"}
       </p>
-      <Button variant="ghost" onClick={onCancel} disabled={saving}>
+      <Button variant="danger" onClick={onCancel} disabled={saving}>
         Cancelar
       </Button>
       <Button variant="primary" loading={saving} disabled={(requireDirty && !dirty) || uploading} onClick={onSave}>

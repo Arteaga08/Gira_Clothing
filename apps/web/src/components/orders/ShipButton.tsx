@@ -8,7 +8,7 @@ import { Icon } from "@/components/ui/Icon";
 
 interface ShipButtonProps {
   orderNumber: string;
-  variant: "primary" | "secondary";
+  variant: "primary" | "positive";
   loading: boolean;
   disabled?: boolean;
   className?: string;

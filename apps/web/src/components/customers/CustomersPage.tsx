@@ -94,7 +94,7 @@ const CustomersPage = ({ initialFilters }: CustomersPageProps) => {
         {list.status === "ready" && list.error ? (
           <Notice variant="warning" title="No se pudo actualizar la lista">
             <p>{list.error} Estás viendo la última lista cargada.</p>
-            <Button size="sm" className="mt-2" onClick={list.refresh}>
+            <Button variant="positive" size="sm" className="mt-2" onClick={list.refresh}>
               Reintentar
             </Button>
           </Notice>
@@ -103,7 +103,7 @@ const CustomersPage = ({ initialFilters }: CustomersPageProps) => {
         {list.status === "error" ? (
           <Notice variant="danger" title="No se pudieron cargar los clientes">
             <p>{list.error}</p>
-            <Button size="sm" className="mt-2" onClick={list.refresh}>
+            <Button variant="positive" size="sm" className="mt-2" onClick={list.refresh}>
               Reintentar
             </Button>
           </Notice>
@@ -120,7 +120,7 @@ const CustomersPage = ({ initialFilters }: CustomersPageProps) => {
               title="Sin resultados"
               description="Ningún cliente coincide con esa búsqueda."
               action={
-                <Button size="sm" onClick={() => updateFilters({ search: undefined })}>
+                <Button variant="positive" size="sm" onClick={() => updateFilters({ search: undefined })}>
                   Limpiar búsqueda
                 </Button>
               }

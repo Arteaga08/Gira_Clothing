@@ -98,7 +98,7 @@ const Editor = ({ config, taxon, onClose, onChanged }: EditorProps) => {
 
   const footer = (
     <>
-      <Button onClick={requestClose} disabled={save.saving}>
+      <Button variant="danger" onClick={requestClose} disabled={save.saving}>
         Cancelar
       </Button>
       <Button type="submit" form={formId} variant="primary" loading={save.saving} disabled={unchanged}>
@@ -204,7 +204,7 @@ const ModalBody = ({ config, selected, items, onClose, onChanged }: BodyProps) =
       <Modal key="error" open onClose={onClose} title={capitalize(config.singular)}>
         <Notice variant="danger" title={mine.gone ? `${capitalize(config.singular)} no encontrada` : "No se pudo cargar"}>
           <p>{mine.error}</p>
-          <Button
+          <Button variant={mine.gone ? "danger" : "positive"}
             size="sm"
             className="mt-2"
             onClick={() => {

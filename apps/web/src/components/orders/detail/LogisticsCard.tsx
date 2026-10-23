@@ -136,7 +136,7 @@ const LogisticsCard = ({ order, busy, version, onPrepare, onShip, onRetryLabel }
                 <p className={`${T_LABEL} text-text-muted`}>Número de guía</p>
                 <p className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-base font-bold tracking-wide">{label.trackingNumber}</span>
-                  <Button size="sm" onClick={() => void copyGuide()}>
+                  <Button variant="edit" size="sm" onClick={() => void copyGuide()}>
                     Copiar
                   </Button>
                 </p>
@@ -180,14 +180,14 @@ const LogisticsCard = ({ order, busy, version, onPrepare, onShip, onRetryLabel }
         {showShip ? (
           <ShipButton
             orderNumber={order.orderNumber}
-            variant={logistics.canPrepare ? "secondary" : "primary"}
+            variant={logistics.canPrepare ? "positive" : "primary"}
             disabled={!logistics.canShip}
             loading={busy}
             onShip={onShip}
           />
         ) : null}
         {logistics.canRetryLabel ? (
-          <Button disabled={busy} onClick={() => void retry()}>
+          <Button variant="positive" disabled={busy} onClick={() => void retry()}>
             <Icon icon={ArrowClockwiseIcon} />
             Reintentar guía
           </Button>

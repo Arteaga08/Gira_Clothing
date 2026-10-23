@@ -29,7 +29,7 @@ const AddressCard = ({ order, onSave }: AddressCardProps) => {
           Enviar a
         </h3>
         {editable ? (
-          <Button size="sm" onClick={() => setEditing(true)}>
+          <Button variant="edit" size="sm" onClick={() => setEditing(true)}>
             Corregir dirección
           </Button>
         ) : null}

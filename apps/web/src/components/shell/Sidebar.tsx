@@ -65,6 +65,7 @@ const Sidebar = ({ user }: SidebarProps) => {
           <IconButton
             icon={XIcon}
             label="Cerrar navegación"
+            variant="danger"
             className="lg:hidden"
             onClick={closeNav}
           />

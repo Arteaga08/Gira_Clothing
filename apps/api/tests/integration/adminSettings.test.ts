@@ -427,4 +427,86 @@ describe("Admin · Settings", () => {
       expect(after?.total).toBe(before?.total);
     });
   });
+
+  describe("PATCH /announcement", () => {
+    const patchAnnouncement = (body: Record<string, unknown>) =>
+      request(app)
+        .patch("/api/v1/admin/settings/announcement")
+        .set("Cookie", adminCookie)
+        .set("Origin", ORIGIN)
+        .send(body);
+
+    it("el singleton nace con la barra apagada y sin mensajes", async () => {
+      const res = await request(app).get("/api/v1/admin/settings").set("Cookie", adminCookie);
+      expect(res.body.data.settings.storefront.announcement).toEqual({ enabled: false, messages: [] });
+    });
+
+    it("anónimo responde 401 y cliente 403", async () => {
+      const anon = await request(app).patch("/api/v1/admin/settings/announcement").set("Origin", ORIGIN).send({});
+      expect(anon.status).toBe(401);
+      const customerCookie = await loginAsCustomer(app);
+      const res = await request(app)
+        .patch("/api/v1/admin/settings/announcement")
+        .set("Cookie", customerCookie)
+        .set("Origin", ORIGIN)
+        .send({ enabled: false, messages: [] });
+      expect(res.status).toBe(403);
+    });
+
+    it("guarda mensajes recortados, ignora campos extra y no toca otras secciones", async () => {
+      const before = await request(app).get("/api/v1/admin/settings").set("Cookie", adminCookie);
+      const res = await patchAnnouncement({ enabled: true, messages: ["  Envío gratis  ", "Nueva colección"], extra: "x" });
+      expect(res.status).toBe(200);
+      expect(res.body.data.settings.storefront.announcement).toEqual({
+        enabled: true,
+        messages: ["Envío gratis", "Nueva colección"],
+      });
+      expect(res.body.data.settings.tax).toEqual(before.body.data.settings.tax);
+      expect(res.body.data.settings.shipping).toEqual(before.body.data.settings.shipping);
+    });
+
+    it("permite apagar la barra con la lista vacía", async () => {
+      expect((await patchAnnouncement({ enabled: false, messages: [] })).status).toBe(200);
+    });
+
+    it.each([
+      ["encendida sin mensajes", { enabled: true, messages: [] }],
+      ["más de 5 mensajes", { enabled: true, messages: ["a", "b", "c", "d", "e", "f"] }],
+      ["mensaje de 81 caracteres", { enabled: true, messages: ["x".repeat(81)] }],
+      ["mensaje en blanco", { enabled: true, messages: ["   "] }],
+      ["enabled como cadena", { enabled: "true", messages: ["a"] }],
+      ["sin enabled", { messages: ["a"] }],
+    ])("rechaza %s con 400 y no cambia nada", async (_name, body) => {
+      const res = await patchAnnouncement(body);
+      expect(res.status).toBe(400);
+      const after = await request(app).get("/api/v1/admin/settings").set("Cookie", adminCookie);
+      expect(after.body.data.settings.storefront.announcement).toEqual({ enabled: false, messages: [] });
+    });
+
+    it("audita el cambio con el estado de antes y el de después", async () => {
+      await patchAnnouncement({ enabled: true, messages: ["Hola"] });
+      const entry = await AuditLog.findOne({ action: AuditAction.SETTINGS_ANNOUNCEMENT_UPDATED }).lean();
+      expect(entry?.module).toBe("settings");
+      expect(entry?.before).toEqual({ enabled: false, messages: [] });
+      expect(entry?.after).toEqual({ enabled: true, messages: ["Hola"] });
+    });
+  });
+
+  describe("GET /storefront/announcement (público)", () => {
+    it("sin sesión devuelve solo la barra y oculta si está apagada", async () => {
+      const res = await request(app).get("/api/v1/storefront/announcement");
+      expect(res.status).toBe(200);
+      expect(res.body.data).toEqual({ announcement: { enabled: false, messages: [] } });
+    });
+
+    it("expone los mensajes cuando la barra está encendida", async () => {
+      await request(app)
+        .patch("/api/v1/admin/settings/announcement")
+        .set("Cookie", adminCookie)
+        .set("Origin", ORIGIN)
+        .send({ enabled: true, messages: ["Envío gratis"] });
+      const res = await request(app).get("/api/v1/storefront/announcement");
+      expect(res.body.data).toEqual({ announcement: { enabled: true, messages: ["Envío gratis"] } });
+    });
+  });
 });

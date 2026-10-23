@@ -31,7 +31,7 @@ const CustomerOrdersCard = ({ state, onRetry }: CustomerOrdersCardProps) => (
     {state.status === "error" ? (
       <Notice variant="danger" title="No se pudieron cargar los pedidos">
         <p>{state.error}</p>
-        <Button size="sm" className="mt-2" onClick={onRetry}>
+        <Button variant="positive" size="sm" className="mt-2" onClick={onRetry}>
           Reintentar
         </Button>
       </Notice>

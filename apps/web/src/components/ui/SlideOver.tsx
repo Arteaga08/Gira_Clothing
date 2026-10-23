@@ -49,7 +49,7 @@ const SlideOver = ({ open, onClose, title, children, footer }: SlideOverProps) =
           <h2 id={titleId} className={T_PANEL_TITLE}>
             {title}
           </h2>
-          <IconButton icon={XIcon} label="Cerrar panel" size="sm" onClick={onClose} />
+          <IconButton icon={XIcon} label="Cerrar panel" size="sm" variant="danger" onClick={onClose} />
         </div>
         <div className="flex-1 overflow-y-auto px-6 py-6">{children}</div>
         {footer ? <div className="flex flex-wrap justify-end gap-2 border-t-2 border-ink px-6 py-4">{footer}</div> : null}

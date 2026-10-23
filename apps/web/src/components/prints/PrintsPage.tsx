@@ -99,7 +99,7 @@ const PrintsPage = ({ initialFilters, initialSelected }: PrintsPageProps) => {
       {list.status === "ready" && list.error ? (
         <Notice variant="warning" title="No se pudo actualizar la lista">
           <p>{list.error} Estás viendo la última lista cargada.</p>
-          <Button size="sm" className="mt-2" onClick={refresh}>
+          <Button variant="positive" size="sm" className="mt-2" onClick={refresh}>
             Reintentar
           </Button>
         </Notice>
@@ -108,7 +108,7 @@ const PrintsPage = ({ initialFilters, initialSelected }: PrintsPageProps) => {
       {list.status === "error" ? (
         <Notice variant="danger" title="No se pudieron cargar las estampas">
           <p>{list.error}</p>
-          <Button size="sm" className="mt-2" onClick={refresh}>
+          <Button variant="positive" size="sm" className="mt-2" onClick={refresh}>
             Reintentar
           </Button>
         </Notice>

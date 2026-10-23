@@ -13,6 +13,7 @@ describe("NAV_GROUPS / NAV_ITEMS", () => {
       "summary",
       "orders",
       "coupons",
+      "homeContent",
       "products",
       "prints",
       "printFamilies",

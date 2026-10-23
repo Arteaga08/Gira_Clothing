@@ -20,7 +20,7 @@ const TaxonEmpty = ({ config, filters, onClear, onCreate }: TaxonEmptyProps) =>
       title={`Ninguna ${config.singular} coincide`}
       description="Prueba con otra búsqueda o con el estado «Todas»."
       action={
-        <Button size="sm" onClick={onClear}>
+        <Button variant="positive" size="sm" onClick={onClear}>
           Limpiar filtros
         </Button>
       }
@@ -30,7 +30,7 @@ const TaxonEmpty = ({ config, filters, onClear, onCreate }: TaxonEmptyProps) =>
       icon={TagIcon}
       title={`Todavía no hay ${config.title.toLowerCase()}`}
       description={`Crea la primera para organizar tus ${config.child.plural}.`}
-      action={<NewTaxonButton label={config.newLabel} variant="secondary" onClick={onCreate} />}
+      action={<NewTaxonButton label={config.newLabel} variant="positive" onClick={onCreate} />}
     />
   );
 

@@ -101,7 +101,7 @@ const TaxonomyPage = ({ kind, initialFilters, initialSelected }: TaxonomyPagePro
       {list.status === "ready" && list.error ? (
         <Notice variant="warning" title="No se pudo actualizar la lista">
           <p>{list.error} Estás viendo la última lista cargada.</p>
-          <Button size="sm" className="mt-2" onClick={refresh}>
+          <Button variant="positive" size="sm" className="mt-2" onClick={refresh}>
             Reintentar
           </Button>
         </Notice>
@@ -110,7 +110,7 @@ const TaxonomyPage = ({ kind, initialFilters, initialSelected }: TaxonomyPagePro
       {list.status === "error" ? (
         <Notice variant="danger" title={`No se pudieron cargar las ${config.title.toLowerCase()}`}>
           <p>{list.error}</p>
-          <Button size="sm" className="mt-2" onClick={refresh}>
+          <Button variant="positive" size="sm" className="mt-2" onClick={refresh}>
             Reintentar
           </Button>
         </Notice>

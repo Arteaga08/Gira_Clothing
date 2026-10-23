@@ -311,7 +311,7 @@ const ProductEditor = ({ productId }: ProductEditorProps) => {
     return (
       <Notice variant="danger" title="No se pudo cargar el editor">
         <p>{editor.error}</p>
-        <Button size="sm" className="mt-2" onClick={editor.reload}>
+        <Button variant="positive" size="sm" className="mt-2" onClick={editor.reload}>
           Reintentar
         </Button>
       </Notice>

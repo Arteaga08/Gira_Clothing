@@ -33,7 +33,7 @@ const VariantActivity = ({ variantId, reloadKey }: VariantActivityProps) => {
     return (
       <Notice variant="danger" title="No se pudo cargar el historial">
         <p>{activity.error}</p>
-        <Button size="sm" className="mt-2" onClick={activity.refresh}>
+        <Button variant="positive" size="sm" className="mt-2" onClick={activity.refresh}>
           Reintentar
         </Button>
       </Notice>

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/Button";
 
 describe("Button", () => {
   it("loading deshabilita el botón y marca aria-busy", () => {
-    render(<Button loading>Guardar</Button>);
+    render(<Button variant="primary" loading>Guardar</Button>);
     const button = screen.getByRole("button", { name: "Guardar" });
     expect(button).toBeDisabled();
     expect(button).toHaveAttribute("aria-busy", "true");
@@ -14,7 +14,7 @@ describe("Button", () => {
   it("disabled no dispara onClick", async () => {
     const onClick = vi.fn();
     render(
-      <Button disabled onClick={onClick}>
+      <Button variant="primary" disabled onClick={onClick}>
         Guardar
       </Button>,
     );
@@ -24,7 +24,7 @@ describe("Button", () => {
 
   it("onClick se dispara en estado normal", async () => {
     const onClick = vi.fn();
-    render(<Button onClick={onClick}>Guardar</Button>);
+    render(<Button variant="primary" onClick={onClick}>Guardar</Button>);
     await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
     expect(onClick).toHaveBeenCalledOnce();
   });
@@ -37,7 +37,7 @@ describe("Button", () => {
   });
 
   it("por defecto es type=button (no envía formularios sin querer)", () => {
-    render(<Button>Cancelar</Button>);
+    render(<Button variant="danger">Cancelar</Button>);
     expect(screen.getByRole("button", { name: "Cancelar" })).toHaveAttribute("type", "button");
   });
 });

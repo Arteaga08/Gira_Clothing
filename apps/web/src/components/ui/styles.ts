@@ -49,8 +49,9 @@ const NB_CONTROL = `${NB_CONTROL_CHROME} bg-surface text-text-primary`;
  * press. Sharing this is what used to be missing: NotificationBell hand-wrote
  * its own copy of these five classes, one radius change away from drifting.
  */
-const NB_ICON_TILE =
-  "inline-flex items-center justify-center rounded-nb-sm border-2 border-ink bg-surface text-text-primary shadow-nb-sm";
+const NB_ICON_TILE_CHROME =
+  "inline-flex items-center justify-center rounded-nb-sm border-2 border-ink shadow-nb-sm";
+const NB_ICON_TILE = `${NB_ICON_TILE_CHROME} bg-surface text-text-primary`;
 
 /**
  * Press feedback translates INTO the shadow instead of scaling — the
@@ -87,6 +88,7 @@ export {
   NB_CONTROL,
   NB_CONTROL_CHROME,
   NB_ICON_TILE,
+  NB_ICON_TILE_CHROME,
   NB_PRESSABLE,
   ORDER_STATUS_BG,
 };

@@ -23,7 +23,7 @@ const RetireCouponButton = ({ coupon, disabled, onRetire, onReactivate }: Retire
 
   if (!coupon.isActive) {
     return (
-      <Button
+      <Button variant="positive"
         className="mr-auto"
         disabled={disabled}
         loading={reactivating}

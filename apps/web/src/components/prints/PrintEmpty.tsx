@@ -18,7 +18,7 @@ const PrintEmpty = ({ filters, onClear, onCreate }: PrintEmptyProps) =>
       title="Ninguna estampa coincide"
       description="Prueba con otra búsqueda, otra familia o el estado «Todas»."
       action={
-        <Button size="sm" onClick={onClear}>
+        <Button variant="positive" size="sm" onClick={onClear}>
           Limpiar filtros
         </Button>
       }
@@ -28,7 +28,7 @@ const PrintEmpty = ({ filters, onClear, onCreate }: PrintEmptyProps) =>
       icon={PaintBrushIcon}
       title="Todavía no hay estampas"
       description="Crea la primera para poder usarla en los modelos."
-      action={<NewPrintButton variant="secondary" onClick={onCreate} />}
+      action={<NewPrintButton variant="positive" onClick={onCreate} />}
     />
   );
 

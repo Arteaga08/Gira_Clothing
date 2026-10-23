@@ -18,7 +18,7 @@ const CouponEmpty = ({ filters, onClear, onCreate }: CouponEmptyProps) =>
       title="Ningún cupón coincide"
       description="Prueba con otra búsqueda o con el estado «Todos»."
       action={
-        <Button size="sm" onClick={onClear}>
+        <Button variant="positive" size="sm" onClick={onClear}>
           Limpiar filtros
         </Button>
       }
@@ -28,7 +28,7 @@ const CouponEmpty = ({ filters, onClear, onCreate }: CouponEmptyProps) =>
       icon={TicketIcon}
       title="Aún no hay cupones"
       description="Crea el primero para dar un descuento a tus clientes con cuenta. Podrás retirarlo cuando quieras."
-      action={<NewCouponButton variant="secondary" onClick={onCreate} />}
+      action={<NewCouponButton variant="positive" onClick={onCreate} />}
     />
   );
 

@@ -39,6 +39,7 @@ const makeSettings = (overrides: Record<string, unknown> = {}) => ({
   reservation: { ttlMinutes: 30, cartInactivityDays: 30 },
   inventory: { lowStockThreshold: 3 },
   tax: { rateBps: 1600 },
+  storefront: { announcement: { enabled: false, messages: [] } },
   ...overrides,
 });
 

@@ -29,7 +29,7 @@ const ShippingPanel = ({ shipping, onEdit }: ShippingPanelProps) => {
       title="Envío"
       hint="Origen, envío gratis y caja"
       actions={
-        <Button size="sm" onClick={onEdit}>
+        <Button variant="edit" size="sm" onClick={onEdit}>
           Editar
         </Button>
       }

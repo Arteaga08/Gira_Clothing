@@ -13,7 +13,7 @@ const TaxPanel = ({ rateBps, onEdit }: TaxPanelProps) => (
     title="IVA"
     hint="Incluido en los precios"
     actions={
-      <Button size="sm" onClick={onEdit}>
+      <Button variant="edit" size="sm" onClick={onEdit}>
         Editar
       </Button>
     }

@@ -23,7 +23,7 @@ const BulkBar = ({ count, busy, onClear, onPrepare }: BulkBarProps) => {
         {count >= MAX_BULK_ORDERS ? <span className="font-normal text-text-secondary"> (máximo por lote)</span> : null}
       </p>
       <div className="flex gap-2">
-        <Button variant="ghost" onClick={onClear} disabled={busy}>
+        <Button variant="danger" onClick={onClear} disabled={busy}>
           Limpiar
         </Button>
         <Button variant="primary" onClick={onPrepare} loading={busy}>

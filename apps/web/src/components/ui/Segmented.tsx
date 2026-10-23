@@ -12,6 +12,8 @@ interface SegmentedProps {
   /** Renders a `<button>` with `aria-pressed` — GranularitySelector / chart toggle's case. */
   onClick?: () => void;
   disabled?: boolean;
+  /** `edit` colours an unselected trigger lila: for a control that opens something (search), not a filter toggle. */
+  tone?: "choice" | "edit";
 }
 
 /**
@@ -23,12 +25,12 @@ interface SegmentedProps {
  * `href` renders a next/link (client-side navigation, `aria-current`);
  * `onClick` renders a `<button>` (`aria-pressed`). Exactly one is expected.
  */
-const Segmented = ({ selected, children, className, href, onClick, disabled }: SegmentedProps) => {
+const Segmented = ({ selected, children, className, href, onClick, disabled, tone = "choice" }: SegmentedProps) => {
   const classes = cn(
     NB_CONTROL_CHROME,
     "inline-flex items-center gap-2 whitespace-nowrap px-4 py-2 font-mono text-xs font-bold uppercase tracking-wide",
     NB_PRESSABLE,
-    selected ? "bg-brand text-text-inverse" : "bg-surface text-text-primary",
+    selected ? "bg-brand text-text-inverse" : tone === "edit" ? "bg-tile-alt text-text-primary" : "bg-surface text-text-primary",
     disabled && "pointer-events-none opacity-45 shadow-none",
     className,
   );

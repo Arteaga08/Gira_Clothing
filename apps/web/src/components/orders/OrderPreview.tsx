@@ -98,7 +98,7 @@ const OrderPreview = ({ order, busy, primaryAction, onPrepare, onShip }: OrderPr
 
       <div className="flex flex-wrap gap-2">
         {logistics.canPrepare ? (
-          <Button variant={primaryAction ? "primary" : "secondary"} loading={busy} onClick={onPrepare} className="flex-1">
+          <Button variant={primaryAction ? "primary" : "positive"} loading={busy} onClick={onPrepare} className="flex-1">
             <Icon icon={CheckIcon} />
             Pasar a en proceso
           </Button>
@@ -106,7 +106,7 @@ const OrderPreview = ({ order, busy, primaryAction, onPrepare, onShip }: OrderPr
         {logistics.canShip ? (
           <ShipButton
             orderNumber={order.orderNumber}
-            variant={primaryAction ? "primary" : "secondary"}
+            variant={primaryAction ? "primary" : "positive"}
             loading={busy}
             onShip={onShip}
             className="flex-1"

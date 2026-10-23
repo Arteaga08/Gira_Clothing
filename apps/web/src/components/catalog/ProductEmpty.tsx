@@ -17,7 +17,7 @@ const ProductEmpty = ({ filters, onClear }: ProductEmptyProps) =>
       title="Ningún modelo coincide"
       description="Prueba con otra búsqueda, otra categoría o el estado «Todos»."
       action={
-        <Button size="sm" onClick={onClear}>
+        <Button variant="positive" size="sm" onClick={onClear}>
           Limpiar filtros
         </Button>
       }
@@ -27,7 +27,7 @@ const ProductEmpty = ({ filters, onClear }: ProductEmptyProps) =>
       icon={TShirtIcon}
       title="Todavía no hay modelos"
       description="Crea el primero para empezar a armar el catálogo."
-      action={<NewProductButton variant="secondary" />}
+      action={<NewProductButton variant="positive" />}
     />
   );
 

@@ -82,7 +82,7 @@ const AddressForm = ({ address, labelWillBeReplaced, onSubmit, onCancel }: Addre
       />
       <Field label="Código postal" readOnly value={values.postalCode} helper={POSTAL_CODE_HELP} className="font-mono" />
       <div className="mt-2 flex justify-end gap-2">
-        <Button onClick={onCancel} disabled={saving}>
+        <Button variant="danger" onClick={onCancel} disabled={saving}>
           Cancelar
         </Button>
         <Button type="submit" variant="primary" loading={saving}>

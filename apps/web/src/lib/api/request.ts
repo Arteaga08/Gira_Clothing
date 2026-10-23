@@ -20,6 +20,8 @@ interface RequestOptions {
   timeoutMs?: number;
   credentials?: RequestCredentials;
   cache?: RequestCache;
+  /** Next data-cache hint for public, cacheable reads. Ignored by the browser. */
+  next?: { revalidate?: number };
 }
 
 interface ApiResult<T> {
@@ -47,6 +49,7 @@ const buildInit = (options: RequestOptions, signal: AbortSignal): RequestInit =>
   }
   if (options.credentials) init.credentials = options.credentials;
   if (options.cache) init.cache = options.cache;
+  if (options.next) (init as RequestInit & { next: { revalidate?: number } }).next = options.next;
 
   return init;
 };
