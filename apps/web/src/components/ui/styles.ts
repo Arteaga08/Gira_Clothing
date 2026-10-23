@@ -21,20 +21,26 @@ import { OrderStatus } from "@gira/shared";
  * hueso-on-hueso and vanish. Composing NB_SURFACE is what makes that reset
  * automatic instead of something every consumer has to remember.
  */
-const NB_SURFACE = "bg-surface border-2 border-ink rounded-nb shadow-nb text-text-primary";
+const NB_SURFACE_CHROME = "border-2 border-ink rounded-nb shadow-nb";
+const NB_SURFACE = `${NB_SURFACE_CHROME} bg-surface text-text-primary`;
 
 /**
  * The shared control chrome: height, radius, border, shadow, light-surface
  * text. Every text-input-height control reads this — Button (md), IconButton
  * (md), Field, SelectField, Segmented — so there is exactly one place that
- * says a control is 40px tall. Deliberately excludes background: Button's
- * primary/danger variants and Field's error state each override it, and
- * `bg-*` utilities of different values compose safely by simple class-string
- * concatenation the same way NB_PRESSABLE's ghost variant already overrides
- * NB_CONTROL's border/shadow below.
+ * says a control is 40px tall.
+ *
+ * FILL AND TEXT COLOUR: two `bg-*` (or two `text-*`) utilities on one element
+ * are the same specificity, and Tailwind v4 emits them sorted by name, NOT by
+ * their position in the class string. `bg-surface` therefore beats `bg-cta`
+ * and `bg-brand`, and `text-text-primary` beats `text-text-inverse`, no matter
+ * which comes last. A component that sets its own fill or text colour (Button
+ * variants, a selected Segmented, an accented StatCard, Toast variants) must
+ * compose the *_CHROME constant and name both explicitly — never add a second
+ * fill on top of NB_CONTROL / NB_SURFACE.
  */
-const NB_CONTROL =
-  "min-h-10 rounded-nb-sm border-2 border-ink bg-surface text-text-primary shadow-nb-sm";
+const NB_CONTROL_CHROME = "min-h-10 rounded-nb-sm border-2 border-ink shadow-nb-sm";
+const NB_CONTROL = `${NB_CONTROL_CHROME} bg-surface text-text-primary`;
 
 /**
  * The static (non-pressable) icon-tile chrome — IconButton composes this and
@@ -75,4 +81,12 @@ const ORDER_STATUS_BG: Record<OrderStatus, string> = {
   [OrderStatus.REFUNDED]: "bg-[var(--status-refunded)]",
 };
 
-export { NB_SURFACE, NB_CONTROL, NB_ICON_TILE, NB_PRESSABLE, ORDER_STATUS_BG };
+export {
+  NB_SURFACE,
+  NB_SURFACE_CHROME,
+  NB_CONTROL,
+  NB_CONTROL_CHROME,
+  NB_ICON_TILE,
+  NB_PRESSABLE,
+  ORDER_STATUS_BG,
+};

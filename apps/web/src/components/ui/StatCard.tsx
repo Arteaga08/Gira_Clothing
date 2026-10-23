@@ -2,7 +2,7 @@ import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { Icon } from "./Icon";
-import { NB_SURFACE } from "./styles";
+import { NB_SURFACE_CHROME } from "./styles";
 import { T_CAPTION, T_LABEL, T_METRIC } from "./typography";
 
 interface StatCardProps {
@@ -23,7 +23,7 @@ interface StatCardProps {
 }
 
 const StatCard = ({ label, value, unit, foot, icon, accent = false, className }: StatCardProps) => (
-  <div className={cn(NB_SURFACE, "p-6", accent && "bg-brand-subtle", className)}>
+  <div className={cn(NB_SURFACE_CHROME, "p-6", accent ? "bg-brand-subtle" : "bg-surface", "text-text-primary", className)}>
     <div className="flex items-start justify-between gap-2">
       <p className={T_LABEL}>{label}</p>
       {icon ? (

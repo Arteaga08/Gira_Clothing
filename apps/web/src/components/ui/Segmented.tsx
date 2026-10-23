@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
-import { NB_CONTROL, NB_PRESSABLE } from "./styles";
+import { NB_CONTROL_CHROME, NB_PRESSABLE } from "./styles";
 
 interface SegmentedProps {
   selected: boolean;
@@ -25,10 +25,10 @@ interface SegmentedProps {
  */
 const Segmented = ({ selected, children, className, href, onClick, disabled }: SegmentedProps) => {
   const classes = cn(
-    NB_CONTROL,
+    NB_CONTROL_CHROME,
     "inline-flex items-center gap-2 whitespace-nowrap px-4 py-2 font-mono text-xs font-bold uppercase tracking-wide",
     NB_PRESSABLE,
-    selected && "bg-brand text-text-inverse",
+    selected ? "bg-brand text-text-inverse" : "bg-surface text-text-primary",
     disabled && "pointer-events-none opacity-45 shadow-none",
     className,
   );

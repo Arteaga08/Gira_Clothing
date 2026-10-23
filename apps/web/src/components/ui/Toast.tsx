@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
-import { NB_SURFACE } from "./styles";
+import { NB_SURFACE_CHROME } from "./styles";
 
 type ToastVariant = "success" | "info" | "warning" | "error";
 
@@ -85,7 +85,7 @@ const ToastProvider = ({ children }: { children: ReactNode }) => {
           <div
             key={item.id}
             role={item.variant === "error" ? "alert" : "status"}
-            className={cn(NB_SURFACE, VARIANT_CLASSES[item.variant], "pointer-events-auto flex items-start gap-3 p-3")}
+            className={cn(NB_SURFACE_CHROME, "text-text-primary", VARIANT_CLASSES[item.variant], "pointer-events-auto flex items-start gap-3 p-3")}
           >
             <div className="min-w-0 flex-1">
               <p className="text-sm font-bold">{item.title}</p>
