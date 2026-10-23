@@ -32,7 +32,9 @@ ficha de producto) en tres direcciones groovy/retro con la paleta de Gira. Viven
 | Decisión | Elección | Por qué |
 |---|---|---|
 | Topología | **Misma app Next en `apps/web`**, nuevo route group `(store)` junto a `(admin)` y `(auth)`. | Ya cerrado en el spec del panel: la cookie es `sameSite: strict` y `cors.ts` permite un único origen. Una app aparte rompe la sesión o obliga a debilitarla. |
-| Compra | **Solo con cuenta.** Navegar el catálogo es público; pagar exige sesión verificada. | Pedido de Manuel. Elimina checkout de invitado y seguimiento por folio. |
+| Compra | **Solo con cuenta.** Navegar y **agregar al carrito es público**; al pasar al checkout se pide iniciar sesión o crear cuenta, y se vuelve al checkout. | Pedido de Manuel. Elimina checkout de invitado y seguimiento por folio. |
+| Carrito de visitante | Vive en el navegador (`localStorage`) y se vuelca a `/cart` al iniciar sesión. | Confirmado por Manuel. |
+| Merchandising | **Más vendidos** = marca por producto en su CRUD. **Rebaja** = campo en el precio del producto. **Banner de ofertas** = imagen con texto y URL, administrable. Sin ranking automático ni motor de promociones. | Confirmado por Manuel. Requiere M12d (backend + panel) antes de las secciones 3 y 7 del home. |
 | Pago | **Stripe Elements** con `PaymentIntent`. | El adapter (`adapters/payment/types.ts`) ya devuelve `clientSecret` "para montar el Element". Checkout alojado pediría un método nuevo en el adapter y otro flujo de confirmación. |
 | Fuente de verdad del pago | **Solo el webhook.** La pantalla de confirmación consulta la orden hasta ver `paid`; el retorno del navegador nunca la marca. | Invariante del spec maestro. |
 | Dirección visual | **Opción C (puente neo-groovy) como base de trabajo; la clienta decide entre A, B y C.** | C conserva borde tinta, sombra dura y Anton, así que reutiliza `components/ui` casi intacto. Cambiar de dirección debe costar un `skin`, no una reescritura (§4). |
@@ -64,11 +66,11 @@ Reglas de la tienda (extienden `DESIGN.md`, no lo reemplazan):
 |---|---|---|---|
 | 1 | Navbar | Estático + sesión + contador del carrito | Menú móvil accesible (aria-expanded, Esc, foco). |
 | 2 | Hero | Estático | Titular y CTA reales por definir con Manuel. |
-| 3 | Más vendidos | `GET /catalog/products` | **Hueco:** no hay orden por ventas en el API público (§7). |
+| 3 | Más vendidos | `GET /catalog/products?bestSeller=true` | Los marca el equipo en el CRUD de producto (M12d). Sin ranking automático. |
 | 4 | Categorías | `GET /catalog/categories` | |
 | 5 | Prints | `GET /catalog/families`, `/catalog/prints` | Entrada al selector de estampas. |
 | 6 | Novedades | `GET /catalog/products?sort=-createdAt` | `createdAt` ya es ordenable. |
-| 7 | Banner de ofertas | Estático | **Hueco:** no existe precio rebajado en el modelo (§7). |
+| 7 | Banner de ofertas | Banner administrable (M12d) | Imagen con el texto incluido y un enlace de destino. Las rebajas viven en el precio del producto. |
 | 8 | Local | Estático | Dirección y horario los da Manuel; los del mockup son de ejemplo. |
 | 9 | Footer | Estático | |
 
@@ -115,14 +117,15 @@ parcha localmente en la tienda.
 
 | Hueco | Dónde entra | Estado |
 |---|---|---|
-| **Más vendidos** no tiene ranking público | M13, sección 3 | **Por decidir con Manuel**: endpoint público nuevo (ranking por líneas de órdenes pagadas, con caché) o lista curada. Sin decisión, la sección usa `createdAt`. |
-| **Ofertas**: no hay precio rebajado ni etiqueta de promoción en `Product`/`Variant` | M13, sección 7 | **Por decidir**: banner estático que lleva al catálogo, o campo de precio comparado (feature nueva, requiere aprobación). |
+| **Más vendidos**: el producto no tiene marca | M12d | Campo booleano `bestSeller` en `Product`, editable en su CRUD, y filtro `bestSeller=true` en `GET /catalog/products`. |
+| **Rebaja**: no existe precio rebajado | M12d | Campo de rebaja en el precio del producto (CRUD). **Money-critical, TDD:** `pricingService` (`variant.priceOverride ?? product.basePrice`) debe resolver el precio vigente y congelarlo en el snapshot de la orden. Si una variante tiene `priceOverride`, se propone que gane el override (precio explícito); se confirma en el brainstorming de M12d. El DTO público expone precio y rebaja para tachar el anterior. |
+| **Banner de ofertas** | M12d | Entidad `Banner`: imagen (Cloudinary, con el texto dentro), texto alternativo obligatorio, URL de destino y activo. La URL admite solo ruta interna o `https://` (nunca `javascript:`). Pantalla en el panel y `GET /catalog/banner` público. Una sola imagen; si el recorte móvil no se lee, se decide una variante móvil en M12d. |
 | Cupón de 100 % con envío gratis deja total 0 (el pago falla y cancela) | M16 | Backend + prueba antes del checkout. |
 | Cupón ausente de `PublicOrder` / confirmación | M16 | Agregar al DTO compartido. |
 | Correos de reembolso y de pago fallido al cliente | M16 | Plantillas en `templates/orderEmails.ts`. |
 | `no-referrer` en páginas con token | M15 | §6. |
-| `POST /orders` sigue aceptando invitado (`optionalAuth`) | M16 | **Por decidir**: pasar a `protect`. Recomendado, porque la tienda no tiene flujo de invitado; rompe los tests que crean órdenes sin sesión y el campo `customer` congelado. |
-| Carrito de visitante | M14 | Vive en el navegador (`localStorage`) y se vuelca a `/cart` al iniciar sesión. **Por confirmar**; la alternativa es exigir sesión para agregar. |
+| `POST /orders` acepta invitado (`optionalAuth`) | M16 | **Decidido:** pasa a `protect`. Rompe los tests que crean órdenes sin sesión y vuelve obligatorio el vínculo orden-cuenta; el campo `customer` sigue congelado en la orden. |
+| Correo verificado para pagar | M16 | **Por decidir:** hoy el API no lo exige. Recomendado exigirlo, porque los correos de pedido y de seguimiento viajan a esa dirección. |
 | Ruta pública por folio (`GC-XXXXXXXX`) | — | **Descartada**: sin invitados, Mi Cuenta cubre el seguimiento. |
 
 ## 8. Roadmap
@@ -132,14 +135,15 @@ Una sesión por milestone; no se avanza sin verificar el anterior.
 | M | Alcance |
 |---|---|
 | Pre | `fix/ui-brand-fill`: relleno de `Button` y `Segmented`, verificado en el panel. |
-| **M13** | **Home, sección por sección** (§4): scaffold del route group `(store)`, layout y skin, y las 9 secciones en orden, cada una aprobada antes de la siguiente. Ampliar `PRODUCT.md` con el registro brand. |
-| **M14** | **Catálogo y ficha de producto.** Listado con filtros (categoría, familia, print) y orden, paginación, ficha con **selector de estampas** (radiogroup con flechas), estado agotado, carrito del navegador. |
+| **M12d** | **Merchandising (backend + panel).** `bestSeller` y rebaja en el CRUD de producto, `pricingService` con precio vigente (TDD), entidad `Banner` con su pantalla y `GET /catalog/banner`. Cierra el Bloque 2 de verdad: el Home no puede mostrar lo que el panel no puede editar. |
+| **M13** | **Home, sección por sección** (§4): scaffold del route group `(store)`, layout y skin, y las 9 secciones en orden, cada una aprobada antes de la siguiente. Las secciones 1, 2, 4, 5, 6, 8 y 9 no dependen de M12d. Ampliar `PRODUCT.md` con el registro brand. |
+| **M14** | **Catálogo y ficha de producto.** Listado con filtros (categoría, familia, print) y orden, paginación, ficha con **selector de estampas** (radiogroup con flechas), precio rebajado, estado agotado, carrito del navegador (agregar sin sesión). |
 | **M15** | **Cuentas.** Registro, verificar correo, reenviar, olvidé y restablecer contraseña, cerrar todas las sesiones, Mi Cuenta con lista y detalle de pedidos, página `/orden/[publicId]`. `no-referrer` en páginas con token. |
-| **M16** | **Carrito y checkout** *(alto riesgo, TDD)*. Carrito de cuenta, cotización Envía, cupón, Stripe Elements, confirmación por polling a la orden. CSP de Stripe. Cierra los huecos de §7 que lo tocan. |
+| **M16** | **Carrito y checkout** *(alto riesgo, TDD)*. Volcado del carrito del navegador a `/cart` al iniciar sesión, puerta de checkout (iniciar sesión o crear cuenta y volver), cotización Envía, cupón, Stripe Elements, confirmación por polling a la orden, `POST /orders` solo con sesión. CSP de Stripe. Cierra los huecos de §7 que lo tocan. |
 | **M17** | **SEO, rendimiento y cierre.** Metadata y Open Graph por página, `sitemap` y `robots`, Core Web Vitals (LCP/CLS/INP), `error.tsx`/`not-found`/`global-error`, pasada de a11y, auditoría de dependencias. |
 
-Dependencias reales: M14 necesita M13 (shell y skin). M16 necesita M15 (sesión verificada) y M14
-(carrito). M17 va al final porque mide lo ya construido.
+Dependencias reales: las secciones 3 y 7 de M13 necesitan M12d. M14 necesita M13 (shell y skin) y
+M12d (precio rebajado). M16 necesita M15 (sesión) y M14 (carrito). M17 va al final porque mide lo ya construido.
 
 ## 9. Verificación de cierre por milestone
 
@@ -156,9 +160,11 @@ con `GiraDemo2026`); puertos libres comprobados con `lsof`.
 ## 10. Pendientes conocidos
 
 - **Decisión de la clienta:** dirección visual A, B o C. Hasta entonces M13 usa C.
-- **Decisiones de Manuel abiertas** (§7): fuente de "Más vendidos", modelo de "Ofertas", `POST
-  /orders` solo con sesión, carrito de visitante.
-- **Contenido real:** titular y CTA del hero, dirección y horario del local, textos legales y de
+- **Por decidir** (§7): si el correo debe estar verificado para pagar; precedencia entre rebaja y
+  `priceOverride`; si el banner necesita imagen móvil aparte.
+- **Conflicto del carrito al iniciar sesión:** si la cuenta ya tenía líneas y el navegador otras,
+  se define en M16 (propuesta: cantidad mayor por variante, tope por stock disponible).
+- **Contenido real:** titular y CTA del hero, imagen del banner, dirección y horario del local, textos legales y de
   envíos, y las fotografías de producto (hoy ilustraciones de ejemplo).
 - **Heredados del panel:** `/kit` por borrar, CSP/`writtenUrls`/orden binario en Estampas y
   Productos, `adminAlertedAt`, `internalNotes`, campana del TopBar, 5 errores de lint de Ea.
