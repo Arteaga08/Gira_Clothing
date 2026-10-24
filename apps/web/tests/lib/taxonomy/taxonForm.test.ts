@@ -50,3 +50,14 @@ describe("toUpdateBody", () => {
     expect(toUpdateBody({ name: "Rayas", description: "", color: null }, baseline)).toEqual({ description: "" });
   });
 });
+
+describe("foto de categoría", () => {
+  const image = { url: "https://res.cloudinary.com/demo/image/upload/v1/a.jpg", publicId: "a", width: 800, height: 1000 };
+
+  it("se manda al crear y al editar solo si se subió una nueva", () => {
+    expect(toCreateBody({ name: "Gorras", description: "", color: "bone", image })).toEqual({ name: "Gorras", color: "bone", image });
+    const baseline = { name: "Gorras", description: "", color: "bone" as const };
+    expect(toUpdateBody({ name: "Gorras", description: "", color: "bone", image: null }, baseline)).toEqual({});
+    expect(toUpdateBody({ name: "Gorras", description: "", color: "bone", image }, baseline)).toEqual({ image });
+  });
+});

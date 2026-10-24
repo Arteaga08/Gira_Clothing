@@ -148,6 +148,7 @@ interface PublicCategory {
   slug: string;
   description?: string;
   color: CategoryColor;
+  image?: { url: string; width: number; height: number };
 }
 
 interface CategoryLean {
@@ -156,6 +157,7 @@ interface CategoryLean {
   slug: string;
   description?: string;
   color?: CategoryColor;
+  image?: { url: string; publicId: string; width: number; height: number };
 }
 
 const toPublicCategory = (doc: CategoryLean): PublicCategory => ({
@@ -164,6 +166,7 @@ const toPublicCategory = (doc: CategoryLean): PublicCategory => ({
   slug: doc.slug,
   ...(doc.description ? { description: doc.description } : {}),
   color: doc.color ?? CATEGORY_DEFAULT_COLOR,
+  ...(doc.image ? { image: { url: doc.image.url, width: doc.image.width, height: doc.image.height } } : {}),
 });
 
 const listPublicCategories = async (

@@ -200,3 +200,33 @@ describe("Admin · ProductCategory · baja lógica", () => {
     expect(res.status).toBe(200);
   });
 });
+
+const IMAGE = { url: "https://res.cloudinary.com/demo/image/upload/v1/gira/categories/a.jpg", publicId: "gira/categories/a", width: 800, height: 1000 };
+
+describe("Admin · ProductCategory · imagen", () => {
+  it("crea con imagen y la devuelve en admin y en la lectura pública sin publicId", async () => {
+    const cookie = await loginAsAdmin(app);
+    const created = await createCategory(cookie, { name: "Gorras", image: IMAGE });
+    expect(created.status).toBe(201);
+    expect(created.body.data.category.image).toEqual(IMAGE);
+
+    const publicList = await request(app).get("/api/v1/catalog/categories");
+    const listed = publicList.body.data.categories.find((c: { slug: string }) => c.slug === "gorras");
+    expect(listed.image).toEqual({ url: IMAGE.url, width: IMAGE.width, height: IMAGE.height });
+  });
+
+  it("reemplaza la imagen con PATCH", async () => {
+    const cookie = await loginAsAdmin(app);
+    const created = await createCategory(cookie, { name: "Tops" });
+    const id = created.body.data.category.id as string;
+    const res = await request(app).patch(`${BASE}/${id}`).set("Origin", ORIGIN).set("Cookie", cookie).send({ image: IMAGE });
+    expect(res.status).toBe(200);
+    expect(res.body.data.category.image.url).toBe(IMAGE.url);
+  });
+
+  it("rechaza una imagen con URL http", async () => {
+    const cookie = await loginAsAdmin(app);
+    const res = await createCategory(cookie, { name: "Pantalones", image: { ...IMAGE, url: "http://x.test/a.jpg" } });
+    expect(res.status).toBe(400);
+  });
+});

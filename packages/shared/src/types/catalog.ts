@@ -26,6 +26,8 @@ interface ProductCategory {
   slug: string;
   description?: string;
   color: CategoryColor;
+  /** Photo of the category on the storefront home; optional. */
+  image?: ImageAttrs;
   isActive: boolean;
 }
 

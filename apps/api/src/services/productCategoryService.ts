@@ -1,4 +1,5 @@
 import { AuditAction, AuditModule, CATEGORY_DEFAULT_COLOR, type CategoryColor } from "@gira/shared";
+import type { ImageAttrs } from "../models/schemas/image.js";
 import { ProductCategory } from "../models/ProductCategory.js";
 import { Product } from "../models/Product.js";
 import { AppError } from "../utils/AppError.js";
@@ -16,12 +17,14 @@ interface CreateProductCategoryInput {
   name: string;
   description?: string;
   color?: CategoryColor;
+  image?: ImageAttrs;
 }
 
 interface UpdateProductCategoryInput {
   name?: string;
   description?: string;
   color?: CategoryColor;
+  image?: ImageAttrs;
   isActive?: boolean;
 }
 
@@ -31,6 +34,7 @@ interface PublicProductCategory {
   slug: string;
   description?: string;
   color: CategoryColor;
+  image?: ImageAttrs;
   isActive: boolean;
 }
 
@@ -40,6 +44,7 @@ interface ProductCategoryLean {
   slug: string;
   description?: string;
   color?: CategoryColor;
+  image?: ImageAttrs;
   isActive: boolean;
 }
 
@@ -50,6 +55,7 @@ const toPublicProductCategory = (doc: ProductCategoryLean): PublicProductCategor
   slug: doc.slug,
   ...(doc.description ? { description: doc.description } : {}),
   color: doc.color ?? CATEGORY_DEFAULT_COLOR,
+  ...(doc.image ? { image: doc.image } : {}),
   isActive: doc.isActive,
 });
 
@@ -68,6 +74,7 @@ const createProductCategory = async (
     slug,
     description: input.description,
     color: input.color ?? CATEGORY_DEFAULT_COLOR,
+    ...(input.image ? { image: input.image } : {}),
   });
 
   await recordAudit({
@@ -115,6 +122,7 @@ const updateProductCategory = async (
   }
   if (input.description !== undefined) category.description = input.description;
   if (input.color !== undefined) category.color = input.color;
+  if (input.image !== undefined) category.image = input.image;
   if (input.isActive !== undefined) category.isActive = input.isActive;
 
   await category.save();

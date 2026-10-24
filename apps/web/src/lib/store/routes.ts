@@ -13,4 +13,7 @@ const STORE_ROUTES = {
 /** Product page; it arrives with the catalog milestone (M14). */
 const productRoute = (slug: string): string => `/tienda/${slug}`;
 
-export { STORE_ROUTES, productRoute };
+/** Catalog filtered by category; the catalog arrives with M14 (the `category` filter matches the API's). */
+const categoryRoute = (slug: string): string => `/tienda?categoria=${encodeURIComponent(slug)}`;
+
+export { STORE_ROUTES, productRoute, categoryRoute };

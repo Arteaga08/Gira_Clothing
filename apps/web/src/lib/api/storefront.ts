@@ -1,6 +1,6 @@
-import type { PublicProductSummary, PublicStorefrontHero, StorefrontAnnouncement } from "@gira/shared";
+import type { CategoryColor, PublicProductSummary, PublicStorefrontHero, StorefrontAnnouncement } from "@gira/shared";
 import { request, expectData } from "./request";
-import { CATALOG_PRODUCTS_PATH, STOREFRONT_ANNOUNCEMENT_PATH, STOREFRONT_HERO_PATH } from "./paths";
+import { CATALOG_CATEGORIES_PATH, CATALOG_PRODUCTS_PATH, STOREFRONT_ANNOUNCEMENT_PATH, STOREFRONT_HERO_PATH } from "./paths";
 
 /** Edits in Ajustes reach the storefront within this many seconds. */
 const ANNOUNCEMENT_REVALIDATE_SECONDS = 60;
@@ -72,4 +72,32 @@ const getBestSellers = async (): Promise<PublicProductSummary[]> => {
   }
 };
 
-export { getAnnouncement, getHero, getBestSellers };
+/** Category row of `GET /catalog/categories`. */
+interface PublicCategorySummary {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  color: CategoryColor;
+  /** Photo of the category tile; the team uploads it in the panel. */
+  image?: { url: string; width: number; height: number };
+}
+
+const CATEGORIES_REVALIDATE_SECONDS = 60;
+
+/** Like the other home reads: any failure collapses to "none" and the section is not drawn. */
+const getCategories = async (): Promise<PublicCategorySummary[]> => {
+  try {
+    return expectData(
+      await request<{ categories: PublicCategorySummary[] }>(`${CATALOG_CATEGORIES_PATH}?limit=24`, {
+        next: { revalidate: CATEGORIES_REVALIDATE_SECONDS },
+        timeoutMs: 3_000,
+      }),
+    ).categories;
+  } catch {
+    return [];
+  }
+};
+
+export type { PublicCategorySummary };
+export { getAnnouncement, getHero, getBestSellers, getCategories };
