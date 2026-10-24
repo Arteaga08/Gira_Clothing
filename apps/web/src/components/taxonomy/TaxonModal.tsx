@@ -7,6 +7,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Notice } from "@/components/ui/Notice";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
+import { useImageUpload } from "@/hooks/useImageUpload";
 import { useTaxonSave } from "@/hooks/useTaxonSave";
 import { isApiError } from "@/lib/api/ApiError";
 import type { TaxonConfig } from "@/lib/taxonomy/config";
@@ -48,11 +49,13 @@ interface EditorProps {
 const Editor = ({ config, taxon, onClose, onChanged }: EditorProps) => {
   const { toast } = useToast();
   const save = useTaxonSave(config);
+  const images = useImageUpload();
   const formId = `${FORM_ID}-${useId()}`;
   const [values, setValues] = useState<TaxonFormValues>({
     name: taxon?.name ?? "",
     description: taxon?.description ?? "",
     color: taxon ? taxon.color : config.kind === "category" ? "bone" : null,
+    image: null,
   });
   const [errors, setErrors] = useState<TaxonFormErrors>({});
   // The hook holds one error; this says which action it belongs to so it shows in one place only.
@@ -73,7 +76,8 @@ const Editor = ({ config, taxon, onClose, onChanged }: EditorProps) => {
   const dirty =
     values.name.trim() !== baseline.name ||
     values.description.trim() !== baseline.description.trim() ||
-    values.color !== baseline.color;
+    values.color !== baseline.color ||
+    values.image != null;
   const unchanged = editing && Object.keys(toUpdateBody(values, baseline)).length === 0;
 
   const finish = (title: string) => {
@@ -105,10 +109,10 @@ const Editor = ({ config, taxon, onClose, onChanged }: EditorProps) => {
 
   const footer = (
     <>
-      <Button variant="danger" onClick={requestClose} disabled={save.saving}>
+      <Button variant="danger" onClick={requestClose} disabled={save.saving || images.busy}>
         Cancelar
       </Button>
-      <Button type="submit" form={formId} variant="primary" loading={save.saving} disabled={unchanged}>
+      <Button type="submit" form={formId} variant="primary" loading={save.saving} disabled={unchanged || images.busy}>
         {editing ? "Guardar cambios" : `Crear ${config.singular}`}
       </Button>
     </>
@@ -122,6 +126,9 @@ const Editor = ({ config, taxon, onClose, onChanged }: EditorProps) => {
           config={config}
           mode={editing ? "edit" : "create"}
           values={values}
+          savedImageUrl={taxon?.imageUrl}
+          upload={images.upload}
+          uploading={images.busy}
           errors={errors}
           error={source === "form" ? save.error : null}
           onChange={setValues}

@@ -12,6 +12,8 @@ interface PanelTaxon {
   description: string;
   /** Categories only: the colour of their storefront cards. */
   color: CategoryColor | null;
+  /** Categories only: the photo of their storefront tile, when they have one. */
+  imageUrl?: string;
   isActive: boolean;
   childCount: number;
   activeChildCount: number;
@@ -37,6 +39,7 @@ const toPanelCategory = (category: Wire<AdminProductCategory>): PanelTaxon => ({
   name: category.name,
   description: category.description ?? "",
   color: category.color,
+  ...(category.image ? { imageUrl: category.image.url } : {}),
   isActive: category.isActive,
   childCount: category.productCount,
   activeChildCount: category.activeProductCount,

@@ -358,3 +358,35 @@
     translate: none !important;
   }
 }
+
+/*
+ * Categorías. The tile lifts on hover (200 ms, strong ease-out) and its arrow
+ * turns; the photo itself never zooms. Hover is gated to real pointers; the
+ * entrance reuses `.store-reveal`.
+ */
+.cat-tile-arrow {
+  transition: transform 200ms var(--store-nav-ease);
+}
+
+.store-reveal .cat-tile.reveal-item {
+  transition:
+    opacity 600ms var(--reveal-ease) calc(80ms + var(--i, 0) * 70ms),
+    transform 600ms var(--reveal-ease) calc(80ms + var(--i, 0) * 70ms),
+    translate 200ms var(--reveal-ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .cat-tile:hover {
+    translate: -2px -2px;
+  }
+
+  .cat-tile:hover .cat-tile-arrow {
+    transform: rotate(45deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cat-tile-arrow {
+    transform: none !important;
+  }
+}

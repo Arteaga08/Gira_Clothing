@@ -1,4 +1,5 @@
 import { Schema, model, type HydratedDocument, type Model } from "mongoose";
+import { imageSchema, type ImageAttrs } from "./schemas/image.js";
 import { CATEGORY_COLORS, CATEGORY_DEFAULT_COLOR, type CategoryColor } from "@gira/shared";
 
 /**
@@ -14,6 +15,8 @@ interface ProductCategoryAttrs {
   description?: string;
   /** Colour its storefront cards take (the team picks it in the category form). */
   color: CategoryColor;
+  /** Photo shown in the storefront «Categorías» section. */
+  image?: ImageAttrs;
   isActive: boolean;
 }
 
@@ -26,6 +29,7 @@ const productCategorySchema = new Schema<ProductCategoryAttrs, ProductCategoryMo
     slug: { type: String, required: true, unique: true, lowercase: true, trim: true },
     description: { type: String, trim: true, maxlength: 500 },
     color: { type: String, enum: CATEGORY_COLORS, default: CATEGORY_DEFAULT_COLOR },
+    image: { type: imageSchema },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true },

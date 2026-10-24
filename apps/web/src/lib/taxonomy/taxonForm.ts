@@ -1,10 +1,12 @@
-import type { CategoryColor } from "@gira/shared";
+import type { CategoryColor, ImageAttrs } from "@gira/shared";
 
 /** The form as the inputs hold it. `color` is null for families: they have none. */
 interface TaxonFormValues {
   name: string;
   description: string;
   color: CategoryColor | null;
+  /** Categories only: a photo uploaded in this session; null / absent keeps the one saved. */
+  image?: ImageAttrs | null;
 }
 
 /** What the server held when the modal opened: the reference an edit is diffed against. */
@@ -26,12 +28,14 @@ interface CreateTaxonBody {
   name: string;
   description?: string;
   color?: CategoryColor;
+  image?: ImageAttrs;
 }
 
 interface UpdateTaxonBody {
   name?: string;
   description?: string;
   color?: CategoryColor;
+  image?: ImageAttrs;
 }
 
 const validateTaxonForm = (values: TaxonFormValues, limits: TaxonLimits): TaxonFormErrors => {
@@ -49,7 +53,7 @@ const validateTaxonForm = (values: TaxonFormValues, limits: TaxonLimits): TaxonF
 /** Call only after `validateTaxonForm` passed. An empty description is simply not sent. */
 const toCreateBody = (values: TaxonFormValues): CreateTaxonBody => {
   const description = values.description.trim();
-  return { name: values.name.trim(), ...(description ? { description } : {}), ...(values.color ? { color: values.color } : {}) };
+  return { name: values.name.trim(), ...(description ? { description } : {}), ...(values.color ? { color: values.color } : {}), ...(values.image ? { image: values.image } : {}) };
 };
 
 /** Only what changed. Clearing the description sends `""`, which the API accepts. */
@@ -60,6 +64,7 @@ const toUpdateBody = (values: TaxonFormValues, baseline: TaxonBaseline): UpdateT
   if (name !== baseline.name) body.name = name;
   if (description !== baseline.description.trim()) body.description = description;
   if (values.color && values.color !== baseline.color) body.color = values.color;
+  if (values.image) body.image = values.image;
   return body;
 };
 

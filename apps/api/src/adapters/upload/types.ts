@@ -14,7 +14,7 @@ interface UploadedImage {
 interface UploadInput {
   buffer: Buffer;
   mimeType: string;
-  /** Logical folder: "prints" | "variants" | "products" | "home". */
+  /** Logical folder: "prints" | "variants" | "products" | "home" | "categories". */
   folder: string;
 }
 
