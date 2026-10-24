@@ -24,7 +24,9 @@ const PRINT_SKU_MAX = 24;
 /** Uppercase letters, digits and hyphens: the print SKU feeds every variant SKU. */
 const PRINT_SKU_PATTERN = /^[A-Z0-9-]+$/;
 /** Slots of the «Prints» section of the home: a print with a position (1..max) is shown there. */
-const PRINT_HOME_POSITION_MAX = 6;
+const PRINT_HOME_POSITION_MAX = 5;
+/** Line under the print's name in that section. */
+const PRINT_HOME_BLURB_MAX = 140;
 
 const PRINT_FAMILY_NAME_MIN = 2;
 const PRINT_FAMILY_NAME_MAX = 80;
@@ -63,6 +65,7 @@ export {
   PRINT_SKU_MAX,
   PRINT_SKU_PATTERN,
   PRINT_HOME_POSITION_MAX,
+  PRINT_HOME_BLURB_MAX,
   PRINT_FAMILY_NAME_MIN,
   PRINT_FAMILY_NAME_MAX,
   PRINT_FAMILY_DESCRIPTION_MAX,

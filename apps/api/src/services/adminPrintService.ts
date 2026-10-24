@@ -37,6 +37,7 @@ interface AdminPrintRow {
   image: ImageAttrs;
   isActive: boolean;
   homePosition?: number;
+  homeBlurb?: string;
   updatedAt: Date;
   familyDoc: { _id: Types.ObjectId; name: string; slug: string };
   variantDocs: { isActive: boolean; productDoc?: { _id: Types.ObjectId; name: string } }[];
@@ -62,6 +63,7 @@ const toAdminPrint = (row: AdminPrintRow): AdminPrint => {
     image: row.image,
     isActive: row.isActive,
     ...(row.homePosition !== undefined ? { homePosition: row.homePosition } : {}),
+    ...(row.homeBlurb ? { homeBlurb: row.homeBlurb } : {}),
     variantCount: row.variantDocs.length,
     activeVariantCount: active.length,
     activeProducts: products,

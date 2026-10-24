@@ -17,6 +17,7 @@ const PRINT: PanelPrint = {
   imageUrl: "https://cdn/x.jpg",
   isActive: true,
   homePosition: null,
+  homeBlurb: "",
   variantCount: 0,
   activeVariantCount: 0,
   activeProducts: [],

@@ -107,6 +107,8 @@ interface PublicPrintSummary {
   sku: string;
   family: { id: string; name: string; slug: string };
   image: { url: string; width: number; height: number };
+  /** Line under the name in the home: the print's own text, or its family description. */
+  blurb?: string;
 }
 
 const FEATURED_PRINTS_REVALIDATE_SECONDS = 60;

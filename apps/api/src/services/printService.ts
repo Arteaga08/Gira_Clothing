@@ -21,6 +21,7 @@ interface CreatePrintInput {
   family: string;
   image: ImageAttrs;
   homePosition?: number;
+  homeBlurb?: string;
 }
 
 interface UpdatePrintInput {
@@ -30,6 +31,8 @@ interface UpdatePrintInput {
   isActive?: boolean;
   /** null takes the print out of the home. */
   homePosition?: number | null;
+  /** "" clears it. */
+  homeBlurb?: string;
 }
 
 const findActiveFamilyOrThrow = async (familyId: string) => {
@@ -74,6 +77,7 @@ const createPrint = async (
     family: family._id,
     image: input.image,
     homePosition: input.homePosition,
+    homeBlurb: input.homeBlurb || undefined,
   });
 
   await recordAudit({
@@ -132,6 +136,7 @@ const updatePrint = async (
     await assertHomePositionFree(input.homePosition, id);
     print.homePosition = input.homePosition;
   }
+  if (input.homeBlurb !== undefined) print.homeBlurb = input.homeBlurb || undefined;
   // A retired print never keeps a home slot: it frees it for another.
   if (!print.isActive) print.homePosition = undefined;
 

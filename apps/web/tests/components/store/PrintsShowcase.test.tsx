@@ -13,7 +13,11 @@ const print = (name: string, slug: string): PublicPrintSummary => ({
   image: { url: `https://res.cloudinary.com/gira/image/upload/v1/${slug}.jpg`, width: 864, height: 576 },
 });
 
-const PRINTS = [print("Amapolas", "amapolas"), print("Cempasúchil", "cempasuchil"), print("La Luna", "la-luna")];
+const PRINTS = [
+  { ...print("Amapolas", "amapolas"), blurb: "Flores rojas, bordadas a mano." },
+  print("Cempasúchil", "cempasuchil"),
+  { ...print("La Luna", "la-luna"), blurb: "Cartas clásicas de la lotería." },
+];
 
 const visibleHeading = () => screen.getByRole("heading", { level: 3 });
 const cta = () => screen.getByRole("link", { name: /Ver prendas con la estampa/ });
@@ -25,7 +29,7 @@ describe("PrintsShowcase", () => {
     expect(visibleHeading()).toHaveTextContent("Amapolas");
     expect(screen.getByRole("tab", { name: "Amapolas" })).toHaveAttribute("aria-selected", "true");
     expect(cta()).toHaveAttribute("href", "/tienda?estampa=amapolas");
-    expect(cta()).toHaveTextContent("Ver prendas con esta estampa");
+    expect(cta()).toHaveTextContent("¡Quiero de esta!");
   });
 
   it("al elegir otra estampa cambia el título, la foto activa y el CTA", async () => {
@@ -50,6 +54,17 @@ describe("PrintsShowcase", () => {
     expect(screen.getByRole("tab", { name: "Amapolas" })).toHaveFocus();
     await userEvent.keyboard("{End}");
     expect(screen.getByRole("tab", { name: "La Luna" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("muestra la frase de la estampa elegida y ninguna si no tiene", async () => {
+    render(<PrintsShowcase prints={PRINTS} />);
+    const panel = screen.getByRole("tabpanel");
+    expect(panel).toHaveTextContent("Flores rojas, bordadas a mano.");
+    await userEvent.click(screen.getByRole("tab", { name: "Cempasúchil" }));
+    const visible = [...panel.querySelectorAll('[data-active="true"] p')];
+    expect(visible).toHaveLength(0);
+    await userEvent.click(screen.getByRole("tab", { name: "La Luna" }));
+    expect(panel.querySelector('[data-active="true"] p')).toHaveTextContent("Cartas clásicas de la lotería.");
   });
 
   it("solo la pestaña seleccionada entra al orden de tabulación", () => {

@@ -50,14 +50,14 @@ describe("Admin · Print · posición en la home", () => {
     expect(cleared.body.data.print.homePosition).toBeUndefined();
   });
 
-  it("rechaza posiciones fuera de 1 a 6", async () => {
+  it("rechaza posiciones fuera de 1 a 5", async () => {
     const cookie = await loginAsAdmin(app);
     const familyId = await createFamily(cookie);
     const created = await createPrint(cookie, familyId, "Rosas", "FLR-001");
     const id = created.body.data.print.id as string;
 
     expect((await patchPrint(cookie, id, { homePosition: 0 })).status).toBe(400);
-    expect((await patchPrint(cookie, id, { homePosition: 7 })).status).toBe(400);
+    expect((await patchPrint(cookie, id, { homePosition: 6 })).status).toBe(400);
     expect((await patchPrint(cookie, id, { homePosition: 1.5 })).status).toBe(400);
   });
 
@@ -103,7 +103,7 @@ describe("Admin · Print · retiro por DELETE", () => {
   it("libera la posición de la home", async () => {
     const cookie = await loginAsAdmin(app);
     const familyId = await createFamily(cookie);
-    const created = await createPrint(cookie, familyId, "Rosas", "FLR-001", { homePosition: 6 });
+    const created = await createPrint(cookie, familyId, "Rosas", "FLR-001", { homePosition: 5 });
 
     const res = await request(app)
       .delete(`${PRINTS_BASE}/${created.body.data.print.id as string}`)
@@ -137,5 +137,49 @@ describe("Catálogo público · estampas destacadas", () => {
 
     const res = await request(app).get(CATALOG_PRINTS);
     expect(res.body.data.prints.map((print: { name: string }) => print.name)).toEqual(["Amapolas", "Zinnias"]);
+  });
+});
+
+describe("Estampa · texto en la home", () => {
+  it("se guarda al crear y al editar, se recorta, y vacío lo quita", async () => {
+    const cookie = await loginAsAdmin(app);
+    const familyId = await createFamily(cookie);
+    const created = await createPrint(cookie, familyId, "Rosas", "FLR-001", { homeBlurb: "  Flores bordadas a mano.  " });
+    expect(created.status).toBe(201);
+    expect(created.body.data.print.homeBlurb).toBe("Flores bordadas a mano.");
+
+    const id = created.body.data.print.id as string;
+    const edited = await patchPrint(cookie, id, { homeBlurb: "Otra frase." });
+    expect(edited.body.data.print.homeBlurb).toBe("Otra frase.");
+
+    const cleared = await patchPrint(cookie, id, { homeBlurb: "" });
+    expect(cleared.status).toBe(200);
+    expect(cleared.body.data.print.homeBlurb).toBeUndefined();
+  });
+
+  it("rechaza un texto de más de 140 caracteres", async () => {
+    const cookie = await loginAsAdmin(app);
+    const familyId = await createFamily(cookie);
+    const res = await createPrint(cookie, familyId, "Rosas", "FLR-001", { homeBlurb: "x".repeat(141) });
+    expect(res.status).toBe(400);
+  });
+
+  it("la lectura pública da el texto de la estampa o, sin él, la descripción de su familia", async () => {
+    const cookie = await loginAsAdmin(app);
+    const family = await request(app)
+      .post(FAMILIES_BASE)
+      .set("Origin", ORIGIN)
+      .set("Cookie", cookie)
+      .send({ name: "Lotería", description: "Cartas clásicas de la lotería." });
+    const familyId = family.body.data.family.id as string;
+    await createPrint(cookie, familyId, "El Gallo", "LOT-001", { homePosition: 1, homeBlurb: "Canta antes de que salga el sol." });
+    await createPrint(cookie, familyId, "La Luna", "LOT-002", { homePosition: 2 });
+
+    const res = await request(app).get(`${CATALOG_PRINTS}?featured=true`);
+    const blurbs = res.body.data.prints.map((print: { name: string; blurb?: string }) => [print.name, print.blurb]);
+    expect(blurbs).toEqual([
+      ["El Gallo", "Canta antes de que salga el sol."],
+      ["La Luna", "Cartas clásicas de la lotería."],
+    ]);
   });
 });

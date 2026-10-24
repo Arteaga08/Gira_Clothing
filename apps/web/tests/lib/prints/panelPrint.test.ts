@@ -24,6 +24,7 @@ describe("toPanelPrint", () => {
       imageUrl: "https://cdn/x.jpg",
       isActive: true,
       homePosition: null,
+      homeBlurb: "",
       variantCount: 3,
       activeVariantCount: 2,
       activeProducts: [{ id: "m1", name: "Neceser" }],

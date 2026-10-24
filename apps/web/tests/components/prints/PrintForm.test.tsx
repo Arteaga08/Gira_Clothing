@@ -50,6 +50,7 @@ describe("PrintForm · crear", () => {
       familyId: FAMILY_B_ID,
       image: makeImage("nueva"),
       homePosition: "",
+      homeBlurb: "",
     });
   });
 
@@ -59,9 +60,10 @@ describe("PrintForm · crear", () => {
     await userEvent.type(screen.getByLabelText("SKU"), "flr-9");
     await chooseOption(screen.getByRole("combobox", { name: "Familia" }), "Geométricas");
     await chooseOption(screen.getByRole("combobox", { name: "Posición en la home" }), "Posición 2");
+    await userEvent.type(screen.getByLabelText("Texto en la home"), "Flores a mano.");
     await userEvent.upload(screen.getByLabelText(/Subir imagen/), new File(["x"], "r.png", { type: "image/png" }));
     await userEvent.click(screen.getByRole("button", { name: "Crear estampa" }));
-    expect(props.onSubmit).toHaveBeenCalledWith(expect.objectContaining({ homePosition: "2" }));
+    expect(props.onSubmit).toHaveBeenCalledWith(expect.objectContaining({ homePosition: "2", homeBlurb: "Flores a mano." }));
   });
 
   it("muestra el error del API", () => {
@@ -94,7 +96,14 @@ describe("PrintForm · editar", () => {
     const props = setup({ mode: "edit", print });
     await userEvent.type(screen.getByLabelText("Nombre"), " 2");
     await userEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
-    expect(props.onSubmit).toHaveBeenCalledWith({ name: "Rosas de verano 2", sku: "FLR-001", familyId: FAMILY_A_ID, image: null, homePosition: "" });
+    expect(props.onSubmit).toHaveBeenCalledWith({ name: "Rosas de verano 2", sku: "FLR-001", familyId: FAMILY_A_ID, image: null, homePosition: "", homeBlurb: "" });
+  });
+
+  it("una posición fuera del máximo actual se muestra como «No aparece en la home» y al guardar se quita", async () => {
+    const props = setup({ mode: "edit", print: makePanelPrint({ homePosition: 6 }) });
+    expect(screen.getByRole("combobox", { name: "Posición en la home" })).toHaveTextContent("No aparece en la home");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
+    expect(props.onSubmit).toHaveBeenCalledWith(expect.objectContaining({ homePosition: "" }));
   });
 
   it("reemplazar la imagen la sube a la carpeta de estampas", async () => {

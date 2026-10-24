@@ -1,6 +1,6 @@
 "use client";
 
-import type { ImageAttrs } from "@gira/shared";
+import { PRINT_HOME_BLURB_MAX, PRINT_HOME_POSITION_MAX, type ImageAttrs } from "@gira/shared";
 import { useId, useState, type FormEvent } from "react";
 import { ImageTile } from "@/components/catalog/ImageTile";
 import { UploadTile } from "@/components/catalog/UploadTile";
@@ -45,11 +45,16 @@ const PrintForm = ({ mode, print, families, upload, uploading, saving, error, on
   const [sku, setSku] = useState(print?.sku ?? "");
   const [familyId, setFamilyId] = useState(print?.family.id ?? "");
   const [image, setImage] = useState<ImageAttrs | null>(null);
-  const [homePosition, setHomePosition] = useState(print?.homePosition ? String(print.homePosition) : "");
+  // A slot past the current maximum (saved before it shrank) no longer exists: it reads as "not in the home".
+  const savedSlot = print?.homePosition;
+  const [homePosition, setHomePosition] = useState(
+    savedSlot && savedSlot <= PRINT_HOME_POSITION_MAX ? String(savedSlot) : "",
+  );
+  const [homeBlurb, setHomeBlurb] = useState(print?.homeBlurb ?? "");
   const [errors, setErrors] = useState<PrintFormErrors>({});
 
   const editing = mode === "edit" && print !== undefined;
-  const values: PrintFormValues = { name, sku, familyId, image, homePosition };
+  const values: PrintFormValues = { name, sku, familyId, image, homePosition, homeBlurb };
   const unchanged = editing && Object.keys(toUpdateBody(values, baselineFromPrint(print))).length === 0;
   const previewUrl = image?.url ?? print?.imageUrl;
   const familyOptions = editing ? withCurrentCategory(families, print.family.id, print.family.name) : families;
@@ -127,6 +132,14 @@ const PrintForm = ({ mode, print, families, upload, uploading, saving, error, on
         value={homePosition}
         helper="Las estampas con posición salen en la sección «Prints» de la tienda, en ese orden."
         onChange={setHomePosition}
+      />
+      <Field
+        label="Texto en la home"
+        value={homeBlurb}
+        maxLength={PRINT_HOME_BLURB_MAX}
+        error={errors.homeBlurb}
+        helper={`Una frase bajo el nombre de la estampa (${homeBlurb.length}/${PRINT_HOME_BLURB_MAX}). Vacío: se usa la descripción de su familia.`}
+        onChange={(event) => setHomeBlurb(event.target.value)}
       />
       {error ? (
         <Notice variant="danger" title={editing ? "No se pudo guardar la estampa" : "No se pudo crear la estampa"}>
