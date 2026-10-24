@@ -50,9 +50,9 @@ const toAnnouncementView = (doc: SettingsDocument): StorefrontAnnouncement => ({
 });
 
 const toHeroView = (doc: SettingsDocument): StorefrontHero => ({
-  headline: doc.storefront?.hero?.headline ?? "",
   // Explicit mapping: spreading a Mongoose subdocument would leak its internals.
   slides: (doc.storefront?.hero?.slides ?? []).map((slide) => ({
+    headline: slide.headline ?? "",
     image: {
       url: slide.image.url,
       publicId: slide.image.publicId,
@@ -326,8 +326,8 @@ const getPublicHero = async (): Promise<PublicStorefrontHero> => {
   const byId = new Map(products.map((product) => [String(product._id), { slug: product.slug, name: product.name }]));
 
   return {
-    headline: hero.headline,
     slides: hero.slides.map((slide) => ({
+      headline: slide.headline,
       image: { url: slide.image.url, width: slide.image.width, height: slide.image.height },
       product: slide.productId ? (byId.get(slide.productId) ?? null) : null,
       titleColor: slide.titleColor,
@@ -346,8 +346,8 @@ const updateHeroSettings = async (input: StorefrontHero, ctx: RequestContext): P
   const settings = await getSettings();
   const before = { ...toHeroView(settings) };
 
-  settings.storefront.hero.headline = input.headline;
   settings.storefront.hero.slides = input.slides.map((slide) => ({
+    headline: slide.headline,
     image: { ...slide.image },
     productId: slide.productId ? new Types.ObjectId(slide.productId) : null,
     titleColor: slide.titleColor,

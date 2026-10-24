@@ -23,6 +23,7 @@ interface HeroCardDraft {
 
 interface HeroSlideDraft {
   key: string;
+  headline: string;
   image: ImageAttrs;
   /** "" = no model: the photo's button leads to the shop. */
   productId: string;
@@ -32,7 +33,6 @@ interface HeroSlideDraft {
 }
 
 interface HeroDraft {
-  headline: string;
   slides: HeroSlideDraft[];
 }
 
@@ -50,9 +50,9 @@ let keyCounter = 0;
 const nextSlideKey = (): string => `slide-${(keyCounter += 1)}`;
 
 const toDraft = (hero: StorefrontHero): HeroDraft => ({
-  headline: hero.headline,
   slides: hero.slides.map((slide) => ({
     key: nextSlideKey(),
+    headline: slide.headline,
     image: slide.image,
     productId: slide.productId ?? "",
     titleColor: slide.titleColor,
@@ -64,6 +64,7 @@ const toDraft = (hero: StorefrontHero): HeroDraft => ({
 /** A new photo starts plain: bone title, yellow button, no cards, no model. */
 const newSlideDraft = (image: ImageAttrs): HeroSlideDraft => ({
   key: nextSlideKey(),
+  headline: "",
   image,
   productId: "",
   titleColor: "bone",
@@ -73,17 +74,13 @@ const newSlideDraft = (image: ImageAttrs): HeroSlideDraft => ({
 
 const countWords = (text: string): number => text.split(/\s+/).filter(Boolean).length;
 
+const normalizeHeadline = (text: string): string => text.trim().replace(/\s+/g, " ");
+
 const parseHero = (draft: HeroDraft): HeroParseResult => {
-  const headline = draft.headline.trim().replace(/\s+/g, " ");
-  if (headline.length > HERO_HEADLINE_MAX_LENGTH) {
-    return { error: `El titular admite hasta ${HERO_HEADLINE_MAX_LENGTH} caracteres.` };
-  }
-  if (countWords(headline) > HERO_HEADLINE_MAX_WORDS) {
-    return { error: `El titular admite hasta ${HERO_HEADLINE_MAX_WORDS} palabras.` };
-  }
   if (draft.slides.length > HERO_MAX_SLIDES) return { error: `Máximo ${HERO_MAX_SLIDES} fotos.` };
 
   const slides = draft.slides.map((slide) => ({
+    headline: normalizeHeadline(slide.headline),
     image: slide.image,
     productId: slide.productId === "" ? null : slide.productId,
     titleColor: slide.titleColor,
@@ -92,13 +89,21 @@ const parseHero = (draft: HeroDraft): HeroParseResult => {
       .map((card) => ({ text: card.text.trim(), color: card.color }))
       .filter((card) => card.text.length > 0),
   }));
+  const tooLong = slides.findIndex((slide) => slide.headline.length > HERO_HEADLINE_MAX_LENGTH);
+  if (tooLong >= 0) {
+    return { error: `Foto ${tooLong + 1}: el titular admite hasta ${HERO_HEADLINE_MAX_LENGTH} caracteres.` };
+  }
+  const tooManyWords = slides.findIndex((slide) => countWords(slide.headline) > HERO_HEADLINE_MAX_WORDS);
+  if (tooManyWords >= 0) {
+    return { error: `Foto ${tooManyWords + 1}: el titular admite hasta ${HERO_HEADLINE_MAX_WORDS} palabras.` };
+  }
   if (slides.some((slide) => slide.cards.length > HERO_MAX_CARDS)) {
     return { error: `Máximo ${HERO_MAX_CARDS} cards por foto.` };
   }
   if (slides.some((slide) => slide.cards.some((card) => card.text.length > HERO_CARD_MAX_LENGTH))) {
     return { error: `Cada card admite hasta ${HERO_CARD_MAX_LENGTH} caracteres.` };
   }
-  return { hero: { headline, slides } };
+  return { hero: { slides } };
 };
 
 /** What would be saved, as a string: equal signatures mean nothing changed. */

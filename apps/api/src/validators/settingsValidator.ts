@@ -143,7 +143,23 @@ const heroCardSchema = Joi.object({
     .messages({ "any.only": "El color de la card no es válido." }),
 });
 
+// Empty is allowed: the storefront then shows the brand name for that photo.
+const heroHeadlineSchema = Joi.string()
+  .trim()
+  .allow("")
+  .max(HERO_HEADLINE_MAX_LENGTH)
+  .required()
+  .custom((value: string, helpers) =>
+    value.split(/\s+/).filter(Boolean).length > HERO_HEADLINE_MAX_WORDS ? helpers.error("hero.words") : value,
+  )
+  .messages({
+    "string.max": `El titular admite hasta ${HERO_HEADLINE_MAX_LENGTH} caracteres.`,
+    "hero.words": `El titular admite hasta ${HERO_HEADLINE_MAX_WORDS} palabras.`,
+    "any.required": "Cada foto necesita su titular (puede ir vacío).",
+  });
+
 const heroSlideSchema = Joi.object({
+  headline: heroHeadlineSchema,
   image: imageObjectSchema.required(),
   productId: objectId.allow(null).required().messages({
     "any.required": "Indica el producto de la foto o déjalo vacío.",
@@ -161,21 +177,7 @@ const heroSlideSchema = Joi.object({
   }),
 });
 
-// Empty is allowed: the storefront then shows the brand name.
 const updateHeroSchema = Joi.object({
-  headline: Joi.string()
-    .trim()
-    .allow("")
-    .max(HERO_HEADLINE_MAX_LENGTH)
-    .required()
-    .custom((value: string, helpers) =>
-      value.split(/\s+/).filter(Boolean).length > HERO_HEADLINE_MAX_WORDS ? helpers.error("hero.words") : value,
-    )
-    .messages({
-      "string.max": `El titular admite hasta ${HERO_HEADLINE_MAX_LENGTH} caracteres.`,
-      "hero.words": `El titular admite hasta ${HERO_HEADLINE_MAX_WORDS} palabras.`,
-      "any.required": "El titular es obligatorio (puede ir vacío).",
-    }),
   slides: Joi.array().items(heroSlideSchema).max(HERO_MAX_SLIDES).required().messages({
     "array.max": `Máximo ${HERO_MAX_SLIDES} fotos.`,
     "any.required": "Envía la lista de fotos.",

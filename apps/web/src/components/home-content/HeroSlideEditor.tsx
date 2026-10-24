@@ -1,12 +1,13 @@
-import { HERO_BUTTON_COLORS, HERO_SURFACE_COLORS } from "@gira/shared";
+import { HERO_BUTTON_COLORS, HERO_HEADLINE_MAX_LENGTH, HERO_HEADLINE_MAX_WORDS, HERO_SURFACE_COLORS } from "@gira/shared";
 import { ArrowDown, ArrowUp, Trash } from "@phosphor-icons/react/dist/ssr";
 import { ImageTile } from "@/components/catalog/ImageTile";
 import { UploadTile } from "@/components/catalog/UploadTile";
+import { Field } from "@/components/ui/Field";
 import { IconButton } from "@/components/ui/IconButton";
 import { SelectField } from "@/components/ui/SelectField";
 import { T_LABEL } from "@/components/ui/typography";
 import { BUTTON_FILL, SURFACE_FILL } from "@/lib/store/heroColors";
-import type { HeroSlideDraft } from "@/lib/settings/hero";
+import { countWords, type HeroSlideDraft } from "@/lib/settings/hero";
 import { ColorChoice } from "./ColorChoice";
 import { HeroCardsEditor } from "./HeroCardsEditor";
 
@@ -54,6 +55,14 @@ const HeroSlideEditor = ({
           <UploadTile label="Cambiar foto" busy={busy} className="w-full" onFiles={(files) => onReplaceImage(files[0] as File)} />
         </div>
         <div className="flex min-w-0 flex-col gap-4">
+          <Field
+            label="Titular de esta foto"
+            helper={`${countWords(slide.headline)}/${HERO_HEADLINE_MAX_WORDS} palabras · ${slide.headline.length}/${HERO_HEADLINE_MAX_LENGTH}`}
+            maxLength={HERO_HEADLINE_MAX_LENGTH}
+            autoComplete="off"
+            value={slide.headline}
+            onChange={(event) => onChange({ ...slide, headline: event.target.value })}
+          />
           <SelectField
             label="Producto al que lleva"
             options={[NO_PRODUCT, ...productOptions]}

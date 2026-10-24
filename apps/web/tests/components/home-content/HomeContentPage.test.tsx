@@ -17,7 +17,7 @@ const IMAGE = { url: "https://res.cloudinary.com/gira/image/upload/a.jpg", publi
 
 const makeSettings = (
   announcement = { enabled: false, messages: [] as string[] },
-  hero: { headline: string; slides: unknown[] } = { headline: "", slides: [] },
+  hero: { slides: unknown[] } = { slides: [] },
 ) => ({
   id: "s1",
   storefront: { announcement, hero },
@@ -73,38 +73,30 @@ describe("HomeContentPage", () => {
     const openHero = async () => {
       renderPage();
       const card = (await screen.findByText("Sin fotos")).closest("section") ?? document.body;
-      expect(within(card as HTMLElement).getByText("Gira Clothing (por defecto)")).toBeInTheDocument();
       await userEvent.click(within(card as HTMLElement).getByRole("button", { name: "Editar" }));
     };
 
-    it("guarda el titular sin fotos", async () => {
-      client.updateHero.mockResolvedValue(makeSettings(undefined, { headline: "Estampa que gira", slides: [] }));
-      await openHero();
-      await userEvent.type(await screen.findByLabelText("Titular"), "  Estampa que gira ");
-      await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
-      await waitFor(() => expect(client.updateHero).toHaveBeenCalledWith({ headline: "Estampa que gira", slides: [] }));
-    });
-
     it("no envía un titular de más de 3 palabras", async () => {
       await openHero();
-      await userEvent.type(await screen.findByLabelText("Titular"), "uno dos tres cuatro");
+      await userEvent.upload(await firstPhotoInput(), new File(["x"], "foto.jpg", { type: "image/jpeg" }));
+      await userEvent.type(await screen.findByLabelText("Titular de esta foto"), "uno dos tres cuatro");
       await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
-      expect(await screen.findByText("El titular admite hasta 3 palabras.")).toBeInTheDocument();
+      expect(await screen.findByText("Foto 1: el titular admite hasta 3 palabras.")).toBeInTheDocument();
       expect(client.updateHero).not.toHaveBeenCalled();
     });
 
-    it("sube una foto y la manda con valores por defecto (hueso, amarillo, sin producto ni cards)", async () => {
+    it("sube una foto con su titular y la manda con valores por defecto (hueso, amarillo, sin producto ni cards)", async () => {
       client.updateHero.mockResolvedValue(makeSettings());
       await openHero();
       await userEvent.upload(await firstPhotoInput(), new File(["x"], "foto.jpg", { type: "image/jpeg" }));
       expect(await screen.findByRole("heading", { name: "Foto 1" })).toBeInTheDocument();
       expect(uploads.uploadImage).toHaveBeenCalledWith(expect.any(File), "home");
+      await userEvent.type(screen.getByLabelText("Titular de esta foto"), "  Estampa que gira ");
 
       await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
       await waitFor(() =>
         expect(client.updateHero).toHaveBeenCalledWith({
-          headline: "",
-          slides: [{ image: IMAGE, productId: null, titleColor: "bone", buttonColor: "yellow", cards: [] }],
+          slides: [{ headline: "Estampa que gira", image: IMAGE, productId: null, titleColor: "bone", buttonColor: "yellow", cards: [] }],
         }),
       );
     });

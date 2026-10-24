@@ -1,11 +1,13 @@
 "use client";
 
 import type { PublicStorefrontHero } from "@gira/shared";
+import { useRef } from "react";
 import { HeroButton } from "./HeroButton";
 import { HeroCards } from "./HeroCards";
-import { HeroTitle } from "./HeroTitle";
-import { HeroTrack } from "./HeroTrack";
+import { HeroPhotos } from "./HeroPhotos";
+import { HeroTitles } from "./HeroTitles";
 import { useHeroCarousel } from "./useHeroCarousel";
+import { useHeroControls } from "./useHeroControls";
 
 interface HeroCarouselProps {
   hero: PublicStorefrontHero;
@@ -14,27 +16,30 @@ interface HeroCarouselProps {
 }
 
 /**
- * The hero is the photo: full-bleed behind the transparent navbar, rising to
- * the next one on its own. The title and the one button sit at the bottom
- * left; cards float on the right. Colours and cards belong to the visible
- * photo, so they change with it.
+ * The hero is the photo: full-bleed behind the transparent navbar, handing over
+ * to the next one on its own (it drifts in from the right). Each photo has its
+ * own title, cards and button colour; they change with it. By hand: arrow
+ * keys on a computer, a horizontal swipe on a phone.
  */
 const HeroCarousel = ({ hero, fallbackHeadline }: HeroCarouselProps) => {
-  const { pos, active, animate, focusProps } = useHeroCarousel(hero.slides.length);
+  const { active, previous, next, goPrevious, focusProps } = useHeroCarousel(hero.slides.length);
+  const sectionRef = useRef<HTMLElement>(null);
+  const swipeProps = useHeroControls(sectionRef, { next, previous: goPrevious });
   const slide = hero.slides[active]!;
 
   return (
     <section
+      ref={sectionRef}
       aria-label="Portada"
-      className="relative -mt-[var(--store-nav-height)] h-[calc(100dvh-var(--store-marquee-height))] min-h-[34rem] overflow-hidden"
+      aria-roledescription="carrusel"
+      className="store-hero relative -mt-[calc(var(--store-nav-height)+var(--store-marquee-block))] h-dvh min-h-[34rem] touch-pan-y overflow-hidden"
       {...focusProps}
+      {...swipeProps}
     >
-      <div className="absolute inset-0">
-        <HeroTrack slides={hero.slides} pos={pos} animate={animate} />
-      </div>
-      <HeroCards cards={slide.cards} cycleKey={pos} />
+      <HeroPhotos slides={hero.slides} active={active} previous={previous} />
+      <HeroCards slides={hero.slides} active={active} />
       <div className="relative mx-auto flex h-full max-w-[90rem] flex-col justify-end gap-8 px-4 pb-10 md:px-8 md:pb-14">
-        <HeroTitle headline={hero.headline.trim() || fallbackHeadline} color={slide.titleColor} />
+        <HeroTitles slides={hero.slides} active={active} fallbackHeadline={fallbackHeadline} />
         <HeroButton product={slide.product} color={slide.buttonColor} />
       </div>
     </section>

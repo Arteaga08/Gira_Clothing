@@ -7,6 +7,8 @@
   --store-marquee-bg: var(--color-accent);
   --store-marquee-fg: var(--color-ink);
   --store-marquee-height: 2.5rem;
+  /* Marquee pill plus the inset above it: the hero pulls up under all of it. */
+  --store-marquee-block: calc(var(--store-marquee-height) + 0.75rem);
 
   --store-nav-height: 4.5rem;
   --store-nav-fg: var(--color-text-inverse);
@@ -15,6 +17,9 @@
   /* The bar has no fill: each pill carries its own so it reads over any section. */
   --store-pill-bg: var(--color-surface);
   --store-pill-fg: var(--color-text-primary);
+  --store-pill-hover-lila: var(--lila-suave);
+  --store-pill-hover-menta: var(--menta);
+  --store-pill-hover-rosa: var(--rosa-chicle);
   --store-pill-current-bg: var(--color-brand-subtle);
 
   --store-logo-size: 2.75rem;
@@ -76,25 +81,6 @@
   }
 }
 
-/* Hero entrance: each word rises once, staggered by --rise-delay. */
-@keyframes store-rise {
-  from {
-    opacity: 0;
-    transform: translateY(0.4em);
-  }
-}
-
-.store-rise {
-  animation: store-rise 700ms var(--store-nav-ease) both;
-  animation-delay: var(--rise-delay, 0ms);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .store-rise {
-    animation: none;
-  }
-}
-
 /* Hero stickers: rise faster than the page while the hero scrolls away (scroll-linked, no JS). */
 @keyframes store-scroll-rise {
   to {
@@ -113,5 +99,110 @@
 @media (prefers-reduced-motion: reduce) {
   .store-scroll-rise {
     animation: none;
+  }
+}
+
+/*
+ * Hero change of photo. The components only mark their state (`data-state` on
+ * photos, words and cards); this is the whole look of the change: the next photo
+ * glides in from the right (3%) while the one that leaves stays opaque under it,
+ * and text rises out of a soft blur.
+ *
+ * Motion brief: what leaves goes fast (200 ms) and what enters comes a beat
+ * later and one piece after another, so old and new never overlap half-faded;
+ * strong ease-out; only opacity, transform and filter move. `@starting-style`
+ * plays the same entry the first time the hero paints, with no JavaScript.
+ */
+.store-hero {
+  --hero-ease: var(--store-nav-ease);
+}
+
+.store-hero .hero-photo {
+  z-index: 0;
+  transition:
+    opacity 800ms var(--hero-ease),
+    translate 800ms var(--hero-ease);
+}
+
+.store-hero .hero-photo[data-state="waiting"] {
+  translate: 3% 0;
+  opacity: 0;
+}
+
+.store-hero .hero-photo[data-state="active"] {
+  z-index: 10;
+  translate: 0 0;
+  opacity: 1;
+}
+
+/* The one that leaves stays opaque UNDER the new one: fading both dips to half opacity and flashes the ground. */
+.store-hero .hero-photo[data-state="leaving"] {
+  translate: -3% 0;
+  opacity: 1;
+}
+
+.store-hero .hero-word {
+  --enter-delay: 140ms;
+  --stagger: 70ms;
+}
+
+.store-hero .hero-card {
+  --enter-delay: 280ms;
+  --stagger: 90ms;
+}
+
+.store-hero :is(.hero-word, .hero-card) {
+  transition:
+    opacity 200ms var(--hero-ease),
+    translate 200ms var(--hero-ease),
+    filter 200ms var(--hero-ease);
+}
+
+.store-hero :is(.hero-word, .hero-card)[data-state="hidden"] {
+  opacity: 0;
+  translate: 0 0.75rem;
+  filter: blur(3px);
+}
+
+.store-hero :is(.hero-word, .hero-card)[data-state="shown"] {
+  opacity: 1;
+  translate: 0 0;
+  filter: blur(0);
+  transition-duration: 550ms;
+  transition-delay: calc(var(--enter-delay) + var(--i, 0) * var(--stagger));
+}
+
+/* First paint: words and cards play their own entry once. */
+@starting-style {
+  .store-hero :is(.hero-word, .hero-card)[data-state="shown"] {
+    opacity: 0;
+    translate: 0 0.75rem;
+    filter: blur(3px);
+  }
+}
+
+/*
+ * Reduced motion: fewer and gentler, not none. No travel or blur; only a short
+ * fade, so the change stays legible.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .store-hero .hero-photo,
+  .store-hero :is(.hero-word, .hero-card) {
+    translate: none !important;
+    filter: none !important;
+    transition-property: opacity !important;
+    transition-duration: 350ms !important;
+    transition-delay: 0ms !important;
+  }
+
+  .store-hero .hero-photo[data-state="waiting"],
+  .store-hero :is(.hero-word, .hero-card)[data-state="hidden"] {
+    opacity: 0 !important;
+  }
+
+  .store-hero .hero-photo[data-state="active"],
+  .store-hero .hero-photo[data-state="leaving"],
+  .store-hero :is(.hero-word, .hero-card)[data-state="shown"] {
+    opacity: 1 !important;
   }
 }

@@ -1,5 +1,5 @@
 import { HeroButton } from "./HeroButton";
-import { HeroTitle } from "./HeroTitle";
+import { HeroTitleWords } from "./HeroTitleWords";
 
 interface HeroFallbackProps {
   headline: string;
@@ -9,10 +9,12 @@ interface HeroFallbackProps {
 const HeroFallback = ({ headline }: HeroFallbackProps) => (
   <section
     aria-label="Portada"
-    className="relative -mt-[var(--store-nav-height)] h-[calc(100dvh-var(--store-marquee-height))] min-h-[34rem] overflow-hidden"
+    className="store-hero relative -mt-[calc(var(--store-nav-height)+var(--store-marquee-block))] h-dvh min-h-[34rem] overflow-hidden"
   >
     <div className="relative mx-auto flex h-full max-w-[90rem] flex-col justify-end gap-8 px-4 pb-10 md:px-8 md:pb-14">
-      <HeroTitle headline={headline} color="bone" />
+      <h1>
+        <HeroTitleWords headline={headline} color="bone" />
+      </h1>
       <HeroButton product={null} color="yellow" />
     </div>
   </section>

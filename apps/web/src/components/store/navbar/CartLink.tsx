@@ -14,7 +14,7 @@ const CartLink = ({ authenticated }: CartLinkProps) => {
   const label = count === 1 ? "1 artículo" : `${count} artículos`;
 
   return (
-    <NavLink href={STORE_ROUTES.cart}>
+    <NavLink tone="rosa" href={STORE_ROUTES.cart}>
       <span aria-hidden="true">Carrito</span>{" "}
       <span aria-hidden="true" className="ml-1.5 font-mono tabular-nums">
         ({count})

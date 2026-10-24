@@ -1,0 +1,106 @@
+/*
+ * TEMPORARY: design samples for M13 section 3 (Más vendidos). Delete with the
+ * route once Manuel picks a card. Colours are token references only.
+ */
+.bs-mock {
+  --bs-ease: var(--ease-out-expo);
+}
+
+/* Category colour pairs: a strong fill and its soft tint. */
+.bs-mock [data-tone="pink"] {
+  --tone: var(--rosa-chicle);
+  --tone-soft: var(--color-accent-soft);
+}
+.bs-mock [data-tone="lilac"] {
+  --tone: var(--lila-suave);
+  --tone-soft: color-mix(in srgb, var(--lila-suave) 32%, var(--blanco-hueso));
+}
+.bs-mock [data-tone="mint"] {
+  --tone: var(--menta);
+  --tone-soft: color-mix(in srgb, var(--menta) 45%, var(--blanco-hueso));
+}
+.bs-mock [data-tone="bone"] {
+  --tone: var(--color-surface-sunken);
+  --tone-soft: var(--color-surface-raised);
+}
+
+.bs-tone {
+  background: var(--tone);
+}
+.bs-tone-soft {
+  background: var(--tone-soft);
+}
+
+/* Shared entrance: stagger by --i, strong ease-out, opacity + transform only. */
+.bs-enter {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 600ms var(--bs-ease) calc(120ms + var(--i, 0) * 70ms),
+    transform 600ms var(--bs-ease) calc(120ms + var(--i, 0) * 70ms);
+
+  @starting-style {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+
+/* Card hover: lift into a larger hard shadow; the photo drifts a hair. */
+.bs-lift {
+  transition:
+    transform 200ms var(--bs-ease),
+    box-shadow 200ms var(--bs-ease);
+}
+.bs-photo {
+  transition: transform 600ms var(--bs-ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .bs-lift:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: var(--nb-shadow-lg);
+  }
+  .bs-lift:hover .bs-photo {
+    transform: scale(1.04);
+  }
+  .bs-lift:hover .bs-sticker {
+    transform: rotate(var(--tilt-hover, 0deg));
+  }
+}
+
+.bs-lift:active {
+  transform: translate(2px, 2px);
+  box-shadow: var(--nb-shadow-pressed);
+}
+
+.bs-sticker {
+  transform: rotate(var(--tilt, 0deg));
+  transition: transform 200ms var(--bs-ease);
+}
+
+/* Hang tag: the punched hole shows the section ground through the card. */
+.bs-hole {
+  background: var(--color-wallpaper);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bs-enter {
+    transform: none;
+    transition: opacity 300ms ease calc(var(--i, 0) * 40ms);
+
+    @starting-style {
+      opacity: 0;
+      transform: none;
+    }
+  }
+  .bs-lift,
+  .bs-photo,
+  .bs-sticker {
+    transition: none;
+  }
+  .bs-lift:hover,
+  .bs-lift:active,
+  .bs-lift:hover .bs-photo {
+    transform: none;
+  }
+}

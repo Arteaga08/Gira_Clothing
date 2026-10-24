@@ -65,7 +65,7 @@ Reglas de la tienda (extienden `DESIGN.md`, no lo reemplazan):
 | # | Sección | Datos | Nota |
 |---|---|---|---|
 | 1 | Navbar | Estático + sesión + contador del carrito | Menú móvil accesible (aria-expanded, Esc, foco). |
-| 2 | Hero | **Administrable** (`Settings.storefront.hero`, `GET /storefront/hero`) | Hasta 5 fotos que suben solas (3 s c/u); por foto: producto, color del titular y del botón, hasta 2 cards. Titular de 3 palabras. |
+| 2 | Hero | **Administrable** (`Settings.storefront.hero`, `GET /storefront/hero`) | Hasta 5 fotos que se turnan solas (3 s c/u; la nueva entra desde la derecha con un desplazamiento corto); por foto: titular propio (≤3 palabras), producto, color del titular y del botón, hasta 2 cards. |
 | 3 | Más vendidos | `GET /catalog/products?bestSeller=true` | Los marca el equipo en el CRUD de producto (se construye en este paso). Sin ranking automático. |
 | 4 | Categorías | `GET /catalog/categories` | |
 | 5 | Prints | `GET /catalog/families`, `/catalog/prints` | Entrada al selector de estampas. |
@@ -76,7 +76,7 @@ Reglas de la tienda (extienden `DESIGN.md`, no lo reemplazan):
 
 **Sección 1 (Navbar), hecha:** variante B (editorial); el marquee de anuncios es administrable (`Settings.storefront.announcement`, tarjeta «Barra de anuncios» en la pantalla «Contenido de home» (grupo Operación, bajo Cupones), `GET /storefront/announcement` público). Robots sigue en noindex hasta M17. Además de 3 y 7, ahora también el marquee es administrable.
 
-**Sección 2 (Hero), implementada:** la foto es el hero a pantalla completa tras el navbar; titular y cards como etiquetas flotantes con pinta de botón (no lo son); las cards de la derecha suben con el scroll (CSS `animation-timeline: scroll()`, sin librería). Administrable desde «Contenido de home» (tarjeta «Portada»): titular, hasta 5 fotos, y por foto el producto al que lleva (selector; un producto retirado deja la foto sin enlace en vez de 404), color del fondo del titular, color del botón y hasta 2 cards. Sin fotos, la tienda muestra «Gira Clothing» y un botón a la tienda. Pendientes: contraste del logo sobre fotos claras (decisión de Manuel: píldora o contorno) y que las cards no se ven en móvil.
+**Sección 2 (Hero), implementada:** la foto es el hero a pantalla completa tras el navbar; titular y cards como etiquetas flotantes con pinta de botón (no lo son); las cards de la derecha suben con el scroll (CSS `animation-timeline: scroll()`, sin librería). Administrable desde «Contenido de home» (tarjeta «Portada»): titular, hasta 5 fotos, y por foto el producto al que lleva (selector; un producto retirado deja la foto sin enlace en vez de 404), color del fondo del titular, color del botón y hasta 2 cards. Titular, cards y botón de todas las fotos quedan montados y se funden entre sí (remontarlos parpadeaba). Sin fotos, la tienda muestra «Gira Clothing» y un botón a la tienda. Pendientes: contraste del logo sobre fotos claras (decisión de Manuel: píldora o contorno) y que las cards no se ven en móvil.
 
 Solo 3 y 7 estaban definidas como administrables antes de la sección 1. Manuel indicó que habrá más secciones editables desde el panel: **se decide sección por sección, al llegar a cada una**, y no se anticipa ningún backend antes de ese paso.
 

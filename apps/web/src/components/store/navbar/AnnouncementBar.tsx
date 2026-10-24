@@ -52,7 +52,7 @@ const AnnouncementBar = ({ announcement }: AnnouncementBarProps) => {
   const style = { "--store-marquee-duration": `${duration}s` } as CSSProperties;
 
   return (
-    <div className="px-4 pt-3 md:px-8">
+    <div className="relative z-[var(--z-topbar)] px-4 pt-3 md:px-8">
       <section
         aria-label="Anuncios"
         className="store-marquee mx-auto flex max-w-[90rem] items-center overflow-hidden rounded-nb-pill border-2 border-ink bg-[var(--store-marquee-bg)] text-[var(--store-marquee-fg)] shadow-nb-sm"

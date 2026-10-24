@@ -6,7 +6,7 @@ import { useCallback, useEffect, useId, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { STORE_ROUTES } from "@/lib/store/routes";
-import { NAV_PILL } from "./navPill";
+import { NAV_PILL, NAV_PILL_TONES } from "./navPill";
 import { AccountLink } from "./AccountLink";
 import { NavLink } from "./NavLink";
 
@@ -62,7 +62,7 @@ const MobileMenu = ({ authenticated }: MobileMenuProps) => {
         aria-controls={panelId}
         aria-label={open ? "Cerrar menú" : "Abrir menú"}
         onClick={() => setOpenedOn(open ? null : pathname)}
-        className={`${NAV_PILL} size-11`}
+        className={`${NAV_PILL} ${NAV_PILL_TONES.lila} size-11`}
       >
         <Icon icon={open ? X : List} size={22} />
       </button>

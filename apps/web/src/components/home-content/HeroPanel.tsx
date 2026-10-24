@@ -9,7 +9,7 @@ interface HeroPanelProps {
   onEdit: () => void;
 }
 
-/** Summary of the home hero: its title and the photos in order. Editing happens in the modal. */
+/** Summary of the home hero: the photos in order, each with its title. Editing happens in the modal. */
 const HeroPanel = ({ hero, onEdit }: HeroPanelProps) => (
   <Panel
     title="Portada"
@@ -28,24 +28,24 @@ const HeroPanel = ({ hero, onEdit }: HeroPanelProps) => (
         {hero.slides.length} de {HERO_MAX_SLIDES} fotos
       </span>
     </div>
-    <p className="mt-3 text-sm text-text-primary">
-      Titular: <strong>{hero.headline.trim() || "Gira Clothing (por defecto)"}</strong>
-    </p>
     {hero.slides.length > 0 ? (
       <ol className="mt-3 flex flex-wrap gap-2">
         {hero.slides.map((slide, index) => (
-          <li key={`${slide.image.publicId}-${index}`}>
+          <li key={`${slide.image.publicId}-${index}`} className="flex w-24 flex-col gap-1">
             <ImageTile
               url={slide.image.url}
               alt={`Foto ${index + 1} de la portada`}
               className="h-16 w-24 rounded-nb-sm border-2 border-ink object-cover"
             />
+            <span className="truncate text-xs text-text-secondary" title={slide.headline || "Gira Clothing (por defecto)"}>
+              {slide.headline.trim() || "Sin titular"}
+            </span>
           </li>
         ))}
       </ol>
     ) : (
       <p className="mt-3 text-sm text-text-secondary">
-        Aún no hay fotos. La tienda muestra el nombre de la marca y un botón a la tienda.
+        Aún no hay fotos. La tienda muestra «Gira Clothing» y un botón a la tienda.
       </p>
     )}
   </Panel>

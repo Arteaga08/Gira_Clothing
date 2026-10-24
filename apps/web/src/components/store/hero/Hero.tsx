@@ -10,7 +10,7 @@ const Hero = async () => {
   return hero.slides.length > 0 ? (
     <HeroCarousel hero={hero} fallbackHeadline={BRAND_HEADLINE} />
   ) : (
-    <HeroFallback headline={hero.headline.trim() || BRAND_HEADLINE} />
+    <HeroFallback headline={BRAND_HEADLINE} />
   );
 };
 

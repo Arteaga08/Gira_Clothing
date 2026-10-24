@@ -28,7 +28,7 @@ const getAnnouncement = async (): Promise<StorefrontAnnouncement> => {
 /** Edits in «Contenido de home» reach the storefront within this many seconds. */
 const HERO_REVALIDATE_SECONDS = 60;
 
-const NO_HERO: PublicStorefrontHero = { headline: "", slides: [] };
+const NO_HERO: PublicStorefrontHero = { slides: [] };
 
 /**
  * Like the marquee, the hero must never break the home: any failure collapses

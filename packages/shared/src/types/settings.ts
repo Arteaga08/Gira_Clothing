@@ -46,6 +46,8 @@ interface HeroCard {
 }
 
 interface HeroSlide {
+  /** At most three words; empty falls back to the brand name. */
+  headline: string;
   image: ImageAttrs;
   /** The model the photo and its button lead to. null: the button leads to the shop. */
   productId: string | null;
@@ -56,13 +58,12 @@ interface HeroSlide {
 
 /** Hero of the storefront home, edited in «Contenido de home». */
 interface StorefrontHero {
-  /** At most three words; empty falls back to the brand name. */
-  headline: string;
   slides: HeroSlide[];
 }
 
 /** What the public storefront may read of a hero slide: no ids, no publicId. */
 interface PublicHeroSlide {
+  headline: string;
   image: Pick<ImageAttrs, "url" | "width" | "height">;
   /** null when the model was retired or removed: the button leads to the shop. */
   product: { slug: string; name: string } | null;
@@ -72,7 +73,6 @@ interface PublicHeroSlide {
 }
 
 interface PublicStorefrontHero {
-  headline: string;
   slides: PublicHeroSlide[];
 }
 

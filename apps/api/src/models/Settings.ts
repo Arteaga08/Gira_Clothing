@@ -69,6 +69,7 @@ interface TaxSettings {
 }
 
 interface HeroSlideAttrs {
+  headline: string;
   image: ImageAttrs;
   /** null: the slide's button leads to the shop instead of a model. */
   productId: Types.ObjectId | null;
@@ -83,7 +84,6 @@ interface StorefrontSettings {
     messages: string[];
   };
   hero: {
-    headline: string;
     slides: HeroSlideAttrs[];
   };
 }
@@ -121,6 +121,7 @@ const heroCardSchema = new Schema<HeroCard>(
 
 const heroSlideSchema = new Schema<HeroSlideAttrs>(
   {
+    headline: { type: String, trim: true, maxlength: HERO_HEADLINE_MAX_LENGTH, default: "" },
     image: { type: heroImageSchema, required: true },
     productId: { type: Schema.Types.ObjectId, ref: "Product", default: null },
     titleColor: { type: String, enum: HERO_SURFACE_COLORS, required: true },
@@ -217,7 +218,6 @@ const settingsSchema = new Schema<SettingsAttrs, SettingsModel>(
         },
       },
       hero: {
-        headline: { type: String, trim: true, maxlength: HERO_HEADLINE_MAX_LENGTH, default: "" },
         slides: {
           type: [heroSlideSchema],
           default: () => [],

@@ -1,8 +1,6 @@
 "use client";
 
 import {
-  HERO_HEADLINE_MAX_LENGTH,
-  HERO_HEADLINE_MAX_WORDS,
   HERO_MAX_SLIDES,
   HERO_SLIDE_SECONDS,
   type Settings,
@@ -11,7 +9,6 @@ import {
 } from "@gira/shared";
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { UploadTile } from "@/components/catalog/UploadTile";
-import { Field } from "@/components/ui/Field";
 import { Notice } from "@/components/ui/Notice";
 import { useToast } from "@/components/ui/Toast";
 import { SectionModal } from "@/components/settings/SectionModal";
@@ -21,7 +18,6 @@ import { uploadImage } from "@/lib/api/adminUploads";
 import { isApiError } from "@/lib/api/ApiError";
 import { validateImageFile } from "@/lib/catalog/imageFile";
 import {
-  countWords,
   heroSignature,
   newSlideDraft,
   parseHero,
@@ -40,7 +36,7 @@ interface HeroModalProps {
 const GENERIC_ERROR = "No se pudo guardar la portada.";
 const PRODUCTS_ERROR = "No se pudo cargar la lista de productos. Puedes guardar sin elegir producto.";
 
-/** Edits the home hero: the title and up to five photos, each with its model, colours and cards. */
+/** Edits the home hero: up to five photos, each with its title, model, colours and cards. */
 const HeroModal = ({ hero, onClose, onSaved }: HeroModalProps) => {
   const { toast } = useToast();
   const formId = `hero-form-${useId()}`;
@@ -124,15 +120,13 @@ const HeroModal = ({ hero, onClose, onSaved }: HeroModalProps) => {
     }
   };
 
-  const words = countWords(draft.headline);
-
   return (
     <SectionModal title="Portada de la tienda" formId={formId} dirty={dirty} saving={saving} onClose={onClose}>
       <form id={formId} onSubmit={(event) => void handleSubmit(event)} noValidate className="flex flex-col gap-5">
         <Notice variant="info" title="Cómo funciona">
           <p>
-            Las fotos suben solas y cada una se queda {HERO_SLIDE_SECONDS} segundos. El titular, el botón y las cards
-            cambian con la foto. Los cambios pueden tardar hasta un minuto en aparecer.
+            Las fotos suben solas y cada una se queda {HERO_SLIDE_SECONDS} segundos. Cada foto trae su propio titular, botón y
+            cards, y cambian con ella. Los cambios pueden tardar hasta un minuto en aparecer.
           </p>
         </Notice>
         {error ? (
@@ -145,17 +139,6 @@ const HeroModal = ({ hero, onClose, onSaved }: HeroModalProps) => {
             <p>{PRODUCTS_ERROR}</p>
           </Notice>
         ) : null}
-        <Field
-          label="Titular"
-          helper={`${words}/${HERO_HEADLINE_MAX_WORDS} palabras · ${draft.headline.length}/${HERO_HEADLINE_MAX_LENGTH}`}
-          maxLength={HERO_HEADLINE_MAX_LENGTH}
-          autoComplete="off"
-          value={draft.headline}
-          onChange={(event) => {
-            setError(null);
-            setDraft((current) => ({ ...current, headline: event.target.value }));
-          }}
-        />
         <ul className="flex flex-col gap-4">
           {draft.slides.map((slide, index) => (
             <HeroSlideEditor
