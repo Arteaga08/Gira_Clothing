@@ -390,3 +390,202 @@
     transform: none !important;
   }
 }
+
+/*
+ * Section cuts. Below the hero, sections alternate colour bands and each one
+ * cuts into the section above with a shape drawn in ink. Every boundary takes a
+ * different shape, cycling in this order as the home grows: ola, cupón, nubes,
+ * olita, festón, lomas, onda larga, and back to ola. No sawtooth shape (it reads
+ * as teeth). The hero never gets one. The ink layer sits a few px above the
+ * colour layer, so the edge carries the same hard ink line as everything else.
+ */
+.store-cut {
+  --cut-height: 18px;
+  --cut-line: 2.5px;
+  position: relative;
+}
+
+.store-cut::before,
+.store-cut::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  height: var(--cut-height);
+  pointer-events: none;
+  -webkit-mask: var(--cut-shape) repeat-x 0 0 / var(--cut-tile) var(--cut-height);
+  mask: var(--cut-shape) repeat-x 0 0 / var(--cut-tile) var(--cut-height);
+}
+
+.store-cut::before {
+  top: calc(-1 * var(--cut-height));
+  background: var(--color-ink);
+}
+
+.store-cut::after {
+  top: calc(var(--cut-line) - var(--cut-height));
+  background: var(--cut-fill);
+}
+
+.store-cut-ola {
+  --cut-shape: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 50 18'%3E%3Cpath d='M0 14 Q12.5 -1 25 7 T50 14 L50 18 L0 18Z'/%3E%3C/svg%3E");
+  --cut-tile: 50px;
+}
+
+.store-cut-nubes {
+  --cut-shape: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 18'%3E%3Cpath d='M0 18 V17 A9 9 0 0 1 18 17 A14 14 0 0 1 46 17 A9 9 0 0 1 64 17 V18Z'/%3E%3C/svg%3E");
+  --cut-tile: 64px;
+}
+
+.store-cut-cupon {
+  --cut-shape: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath d='M0 2 A9 9 0 0 0 18 2 V18 H0Z'/%3E%3C/svg%3E");
+  --cut-tile: 18px;
+}
+
+.store-cut-lomas {
+  --cut-shape: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 18'%3E%3Cpath d='M0 16 C8 16 12 2 20 2 C28 2 32 16 40 16 V18 H0Z'/%3E%3C/svg%3E");
+  --cut-tile: 40px;
+}
+
+.store-cut-olita {
+  --cut-shape: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 18'%3E%3Cpath d='M0 12 Q6 2 12 10 T24 12 V18 H0Z'/%3E%3C/svg%3E");
+  --cut-tile: 24px;
+}
+
+.store-cut-larga {
+  --cut-shape: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 18'%3E%3Cpath d='M0 12 C40 -4 80 -4 80 10 C80 24 120 24 160 12 V18 H0Z'/%3E%3C/svg%3E");
+  --cut-tile: 160px;
+}
+
+.store-cut-feston {
+  --cut-shape: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 18'%3E%3Cpath d='M0 18 L0 17 A18 15 0 0 1 36 17 L36 18Z'/%3E%3C/svg%3E");
+  --cut-tile: 36px;
+}
+
+/* Bands: the section's own fill, which its cut takes too. Text on them is ink or verde. */
+.store-band-mint {
+  --cut-fill: var(--color-brand-subtle);
+  background: var(--color-brand-subtle);
+  color: var(--color-text-primary);
+}
+
+/*
+ * Prints. The selected print's photo fills the section; its base is ink, and
+ * so is its cupón cut (a photo cannot fill a cut). Photos and names stay
+ * mounted and stacked: the new photo fades in OVER the old one, which holds
+ * until covered (no dip to the base); the old name leaves fast (200 ms) and
+ * the new one comes in a beat later with a short rise. Only opacity and
+ * transform move; reduced motion: fade only.
+ */
+.prints-section {
+  --cut-fill: var(--color-ink);
+  position: relative;
+  isolation: isolate;
+  background: var(--color-ink);
+  color: var(--color-text-inverse);
+}
+
+.prints-photo {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 200ms var(--store-nav-ease) 500ms;
+}
+
+.prints-photo[data-active="true"] {
+  z-index: 1;
+  opacity: 1;
+  transition: opacity 500ms var(--store-nav-ease);
+}
+
+.prints-headline {
+  opacity: 0;
+  transform: translateY(12px);
+  transition:
+    opacity 200ms var(--store-nav-ease),
+    transform 200ms var(--store-nav-ease);
+}
+
+.prints-headline[data-active="true"] {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 450ms var(--store-nav-ease) 150ms,
+    transform 450ms var(--store-nav-ease) 150ms;
+}
+
+/* Names over the photo: hueso with an ink outline and a hard ink shadow, so they read on light and dark photos. */
+.prints-tab {
+  position: relative;
+  flex: none;
+  white-space: nowrap;
+  line-height: 1;
+  color: var(--color-text-inverse);
+  -webkit-text-stroke: 2px var(--color-ink);
+  paint-order: stroke fill;
+  text-shadow: 3px 3px 0 var(--color-ink);
+  opacity: 0.6;
+  transition:
+    opacity 200ms var(--store-nav-ease),
+    transform 160ms var(--store-nav-ease);
+}
+
+.prints-tab::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: -0.6rem;
+  height: 0.45rem;
+  border: 2px solid var(--color-ink);
+  border-radius: var(--nb-radius-pill);
+  background: var(--color-text-inverse);
+  transform: scaleX(0);
+  transition: transform 200ms var(--store-nav-ease);
+}
+
+.prints-tab[aria-selected="true"] {
+  opacity: 1;
+}
+
+.prints-tab[aria-selected="true"]::after {
+  transform: scaleX(1);
+  transition-duration: 400ms;
+}
+
+.prints-tab:active {
+  transform: scale(0.97);
+}
+
+.prints-tab:focus-visible {
+  outline: 2px solid var(--color-text-inverse);
+  outline-offset: 6px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .prints-tab:not([aria-selected="true"]):hover {
+    opacity: 0.85;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prints-headline,
+  .prints-headline[data-active="true"] {
+    transform: none;
+  }
+
+  .prints-photo,
+  .prints-photo[data-active="true"],
+  .prints-headline,
+  .prints-headline[data-active="true"] {
+    transition-duration: 250ms;
+    transition-timing-function: ease;
+  }
+
+  .prints-tab::after,
+  .prints-tab[aria-selected="true"]::after {
+    transition: none;
+  }
+
+  .prints-tab:active {
+    transform: none;
+  }
+}

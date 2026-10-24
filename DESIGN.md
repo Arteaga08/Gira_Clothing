@@ -129,6 +129,12 @@ hueso, rosa, lila, menta and four more, literals in `tokens.css`: azul ikat (`#8
 They identify; they never stand for a state (that is the status vocabulary below). Utilities:
 `bg-cat-<color>` / `bg-cat-<color>-soft`, mapped in `lib/store/categoryColors.ts`.
 
+### Section bands and cuts (storefront)
+Below the hero, home sections alternate verde bosque with colour bands (menta first). Each band cuts
+into the section above with a shape drawn in ink, and every boundary takes a different shape, in this
+cycling order: ola, cupón, nubes, olita, festón, lomas, onda larga, then back to ola. No sawtooth shapes (they read as teeth). The hero never gets a cut. Classes `store-band-*` and `store-cut-*` live
+in `store-skin.css`.
+
 ### Status colors
 Nine order-status hues and five shipment-status hues (`--status-*`, `--ship-*`) are their own flat
 pastel vocabulary, independent of the brand palette — a status is never conveyed by brand color.
