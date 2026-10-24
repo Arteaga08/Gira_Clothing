@@ -39,6 +39,7 @@ import { PrintPicker } from "./PrintPicker";
 import { PrintPriceOverrides } from "./PrintPriceOverrides";
 import { RetireModelSection } from "./RetireModelSection";
 import { SaveBar } from "./SaveBar";
+import { StoreCardSection } from "./StoreCardSection";
 import { VariantPhotos } from "./VariantPhotos";
 
 interface ProductEditorProps {
@@ -104,6 +105,7 @@ const EditorForm = ({ options, baseline, onReload, onPrintCreated }: EditorFormP
   const categories = baseline
     ? withCurrentCategory(options.categories, baseline.product.categoryId, baseline.product.categoryName)
     : options.categories;
+  const currentCategory = categories.find((category) => category.value === state.model.categoryId);
   const activeId = selectedIds.has(activePrintId ?? "") ? activePrintId : (state.selected[0]?.printId ?? null);
 
   const togglePrint = (printId: string) => {
@@ -237,6 +239,15 @@ const EditorForm = ({ options, baseline, onReload, onPrintCreated }: EditorFormP
           uploading={uploader.busy}
         />
       </EditorSection>
+
+      <StoreCardSection
+        model={state.model}
+        errors={errors}
+        selectedPrints={state.selected.flatMap((draft) => printsById.get(draft.printId) ?? [])}
+        categoryName={currentCategory?.label}
+        categoryColor={currentCategory?.color}
+        onChange={(patch) => setState((previous) => ({ ...previous, model: { ...previous.model, ...patch } }))}
+      />
       </fieldset>
 
       {baseline ? (

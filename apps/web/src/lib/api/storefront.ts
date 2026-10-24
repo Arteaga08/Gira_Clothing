@@ -1,6 +1,6 @@
-import type { PublicStorefrontHero, StorefrontAnnouncement } from "@gira/shared";
+import type { PublicProductSummary, PublicStorefrontHero, StorefrontAnnouncement } from "@gira/shared";
 import { request, expectData } from "./request";
-import { STOREFRONT_ANNOUNCEMENT_PATH, STOREFRONT_HERO_PATH } from "./paths";
+import { CATALOG_PRODUCTS_PATH, STOREFRONT_ANNOUNCEMENT_PATH, STOREFRONT_HERO_PATH } from "./paths";
 
 /** Edits in Ajustes reach the storefront within this many seconds. */
 const ANNOUNCEMENT_REVALIDATE_SECONDS = 60;
@@ -47,4 +47,29 @@ const getHero = async (): Promise<PublicStorefrontHero> => {
   }
 };
 
-export { getAnnouncement, getHero };
+/** Products the team flagged «Más vendido» show within this many seconds of the flag. */
+const BEST_SELLERS_REVALIDATE_SECONDS = 60;
+const BEST_SELLERS_LIMIT = 12;
+const BEST_SELLERS_QUERY = `?bestSeller=true&sort=-createdAt&limit=${BEST_SELLERS_LIMIT}`;
+
+/**
+ * Newest flagged products first (no ranking: the team decides). Like the hero,
+ * the section must never break the home: any failure collapses to "none" and
+ * the section simply is not drawn. A model with no purchasable variant has no
+ * card, so it is dropped here.
+ */
+const getBestSellers = async (): Promise<PublicProductSummary[]> => {
+  try {
+    const { products } = expectData(
+      await request<{ products: PublicProductSummary[] }>(`${CATALOG_PRODUCTS_PATH}${BEST_SELLERS_QUERY}`, {
+        next: { revalidate: BEST_SELLERS_REVALIDATE_SECONDS },
+        timeoutMs: 3_000,
+      }),
+    );
+    return products.filter((product) => product.card !== undefined);
+  } catch {
+    return [];
+  }
+};
+
+export { getAnnouncement, getHero, getBestSellers };

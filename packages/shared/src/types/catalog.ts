@@ -1,5 +1,9 @@
 import type { AuditAction } from "../enums/auditAction.js";
+import type { CATEGORY_COLORS } from "../constants/catalog.js";
 import type { ImageAttrs } from "./order.js";
+
+/** Colour a category gives its storefront cards (spec: M13 Más vendidos). */
+type CategoryColor = (typeof CATEGORY_COLORS)[number];
 
 /** Populated reference the catalog API returns in place of a bare id. */
 interface CatalogRef {
@@ -21,6 +25,7 @@ interface ProductCategory {
   name: string;
   slug: string;
   description?: string;
+  color: CategoryColor;
   isActive: boolean;
 }
 
@@ -53,6 +58,12 @@ interface Product {
   materials?: string[];
   /** One photo (or diagram) that shows the real size of the model. Optional, one per model. */
   sizeImage?: ImageAttrs;
+  /** Flagged by the team in the CRUD: shows in «Más vendidos». No automatic ranking. */
+  bestSeller: boolean;
+  /** Up to three words printed on the storefront card. */
+  cardTags: string[];
+  /** Print whose variant (and photos) the card shows; null/absent: the first active variant with photos. */
+  cardPrintId?: string;
   isActive: boolean;
 }
 
@@ -77,6 +88,31 @@ interface PublicVariant {
   images: ImageAttrs[];
   priceOverride?: number;
   isAvailable: boolean;
+}
+
+/** Storefront card of a product: the chosen variant's two photos, its price and whether it can be bought. */
+interface PublicProductCard {
+  variantId: string;
+  /** [main, hover?]; empty when the variant has no photo (the print image is used). */
+  images: ImageAttrs[];
+  /** MXN centavos: `priceOverride ?? basePrice`. */
+  price: number;
+  isAvailable: boolean;
+}
+
+/** Product row of `GET /catalog/products`. */
+interface PublicProductSummary {
+  id: string;
+  name: string;
+  slug: string;
+  category: CatalogRef & { color: CategoryColor };
+  basePrice: number;
+  measurements: Measurements;
+  materials: string[];
+  bestSeller: boolean;
+  cardTags: string[];
+  /** Absent when the model has no purchasable variant yet. */
+  card?: PublicProductCard;
 }
 
 /** Admin inventory row: one Variant (Product × Print) with its names resolved. */
@@ -173,6 +209,9 @@ interface AdminVariantActivity {
 }
 
 export type {
+  CategoryColor,
+  PublicProductCard,
+  PublicProductSummary,
   CatalogRef,
   AdminProduct,
   AdminProductPrint,

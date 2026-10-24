@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/Badge";
 import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/Table";
 import { cn } from "@/lib/cn";
+import { CATEGORY_TONE } from "@/lib/store/categoryColors";
 import { formatShortDate } from "@/lib/format";
 import type { TaxonConfig } from "@/lib/taxonomy/config";
 import type { PanelTaxon } from "@/lib/taxonomy/panelTaxon";
@@ -41,6 +42,9 @@ const TaxonTable = ({ config, items, onOpen }: TaxonTableProps) => (
               onClick={() => onOpen(item.id)}
               className="block max-w-full cursor-pointer text-left text-base font-bold after:absolute after:inset-0 after:content-['']"
             >
+              {item.color ? (
+                <span aria-hidden className={cn("mr-2 inline-block size-3 rounded-full border-2 border-ink align-middle", CATEGORY_TONE[item.color].strong)} />
+              ) : null}
               {item.name}
             </button>
             {item.description ? <p className="max-w-[46ch] truncate text-sm text-text-muted">{item.description}</p> : null}

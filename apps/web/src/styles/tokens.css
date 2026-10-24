@@ -31,6 +31,13 @@
   --lila-suave: #c9a8ff; /* tile variant inside an icon grid */
   --menta: #d9f2d0; /* soft secondary background, alternate card */
 
+  /* Category colours: identification fills for a category's storefront cards (and its chip in the
+     panel), always under ink text. Chosen from the cosmetic bags of the collection; never yellow. */
+  --azul-ikat: #86a9ec;
+  --mandarina: #ffa552;
+  --cereza: #ee4b5e;
+  --cielo: #c2e1f6;
+
   /* ── SURFACES ── mapped from the brand literals above ────────────────────── */
   --color-wallpaper: var(--verde-bosque);
   --color-surface: var(--blanco-hueso);
@@ -67,6 +74,24 @@
   --color-accent: var(--rosa-chicle);
   --color-accent-soft: color-mix(in srgb, var(--rosa-chicle) 14%, var(--blanco-hueso));
   --color-tile-alt: var(--lila-suave);
+
+  /* ── CATEGORY TONES ── a strong fill (name band) and its soft tint (detail bands) ── */
+  --color-cat-bone: var(--color-surface-sunken);
+  --color-cat-bone-soft: var(--color-surface-raised);
+  --color-cat-pink: var(--rosa-chicle);
+  --color-cat-pink-soft: var(--color-accent-soft);
+  --color-cat-lilac: var(--lila-suave);
+  --color-cat-lilac-soft: color-mix(in srgb, var(--lila-suave) 32%, var(--blanco-hueso));
+  --color-cat-mint: var(--menta);
+  --color-cat-mint-soft: color-mix(in srgb, var(--menta) 45%, var(--blanco-hueso));
+  --color-cat-ikat: var(--azul-ikat);
+  --color-cat-ikat-soft: color-mix(in srgb, var(--azul-ikat) 28%, var(--blanco-hueso));
+  --color-cat-tangerine: var(--mandarina);
+  --color-cat-tangerine-soft: color-mix(in srgb, var(--mandarina) 28%, var(--blanco-hueso));
+  --color-cat-cherry: var(--cereza);
+  --color-cat-cherry-soft: color-mix(in srgb, var(--cereza) 24%, var(--blanco-hueso));
+  --color-cat-sky: var(--cielo);
+  --color-cat-sky-soft: color-mix(in srgb, var(--cielo) 40%, var(--blanco-hueso));
 
   /* ── STATUS ── one entry per enum member ────────────────────────────────── */
   /* OrderStatus — packages/shared/src/enums/orderStatus.ts                    */

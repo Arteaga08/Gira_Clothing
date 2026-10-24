@@ -1,5 +1,5 @@
 import { Types, type PipelineStage } from "mongoose";
-import type { AdminProductCategory, ApiMeta } from "@gira/shared";
+import { CATEGORY_DEFAULT_COLOR, type AdminProductCategory, type ApiMeta, type CategoryColor } from "@gira/shared";
 import { ProductCategory } from "../models/ProductCategory.js";
 import { AppError } from "../utils/AppError.js";
 import { parseListQuery, buildMeta, type ListQueryConfig } from "../utils/parseListQuery.js";
@@ -35,6 +35,7 @@ interface AdminProductCategoryRow {
   name: string;
   slug: string;
   description?: string;
+  color?: CategoryColor;
   isActive: boolean;
   updatedAt: Date;
   productDocs: { _id: Types.ObjectId; name: string; isActive: boolean }[];
@@ -49,6 +50,7 @@ const toAdminProductCategory = (row: AdminProductCategoryRow): AdminProductCateg
     name: row.name,
     slug: row.slug,
     ...(row.description ? { description: row.description } : {}),
+    color: row.color ?? CATEGORY_DEFAULT_COLOR,
     isActive: row.isActive,
     productCount: row.productDocs.length,
     activeProductCount: active.length,

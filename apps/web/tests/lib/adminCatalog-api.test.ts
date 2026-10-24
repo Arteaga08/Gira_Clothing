@@ -54,6 +54,9 @@ describe("adminProducts", () => {
       description: "",
       basePrice: 100,
       weightGrams: 10,
+      bestSeller: false,
+      cardTags: [],
+      cardPrint: null,
       measurements: {},
       materials: [],
     });

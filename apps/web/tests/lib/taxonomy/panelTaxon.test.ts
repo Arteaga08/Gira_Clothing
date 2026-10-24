@@ -20,6 +20,7 @@ describe("toPanelFamily", () => {
       id: "f1",
       name: "Florales",
       description: "",
+      color: null,
       isActive: true,
       childCount: 8,
       activeChildCount: 6,
@@ -37,13 +38,14 @@ describe("toPanelCategory", () => {
       name: "Bolsas",
       slug: "bolsas",
       description: "Todas",
+      color: "pink",
       isActive: false,
       productCount: 2,
       activeProductCount: 0,
       activeProducts: [],
       updatedAt: "2026-10-20T10:00:00.000Z",
     } as Wire<AdminProductCategory>);
-    expect(panel).toMatchObject({ description: "Todas", isActive: false, childCount: 2, activeChildCount: 0, activeChildren: [] });
+    expect(panel).toMatchObject({ description: "Todas", color: "pink", isActive: false, childCount: 2, activeChildCount: 0, activeChildren: [] });
     expect(panel).not.toHaveProperty("slug");
   });
 });

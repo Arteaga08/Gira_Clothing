@@ -2,6 +2,7 @@ import { AuditAction, AuditModule } from "@gira/shared";
 import { Product, type Measurements } from "../models/Product.js";
 import { ProductCategory } from "../models/ProductCategory.js";
 import { Variant } from "../models/Variant.js";
+import { Print } from "../models/Print.js";
 import { AppError } from "../utils/AppError.js";
 import { slugify, resolveUniqueSlug } from "../utils/slug.js";
 import type { ImageAttrs } from "../models/schemas/image.js";
@@ -23,6 +24,9 @@ interface CreateProductInput {
   measurements?: Measurements;
   materials?: string[];
   sizeImage?: ImageAttrs;
+  bestSeller?: boolean;
+  cardTags?: string[];
+  cardPrint?: string | null;
 }
 
 interface UpdateProductInput {
@@ -34,6 +38,9 @@ interface UpdateProductInput {
   measurements?: Measurements;
   materials?: string[];
   sizeImage?: ImageAttrs | null;
+  bestSeller?: boolean;
+  cardTags?: string[];
+  cardPrint?: string | null;
   isActive?: boolean;
 }
 
@@ -91,11 +98,21 @@ const findActiveCategoryOrThrow = async (categoryId: string) => {
   return category;
 };
 
+/**
+ * The card print only has to exist: the editor saves the model BEFORE its
+ * variants, so the variant of a print added in the same save is not there yet.
+ * The public read falls back when no active variant matches.
+ */
+const assertCardPrintExists = async (printId: string): Promise<void> => {
+  if ((await Print.exists({ _id: printId })) === null) throw new AppError("La estampa de la card no existe.", 400);
+};
+
 const createProduct = async (
   input: CreateProductInput,
   ctx: RequestContext,
 ): Promise<PublicProduct> => {
   const category = await findActiveCategoryOrThrow(input.category);
+  if (input.cardPrint) await assertCardPrintExists(input.cardPrint);
 
   const slug = await resolveUniqueSlug(
     slugify(input.name),
@@ -113,6 +130,9 @@ const createProduct = async (
     measurements: input.measurements ?? {},
     materials: input.materials ?? [],
     sizeImage: input.sizeImage,
+    bestSeller: input.bestSeller ?? false,
+    cardTags: input.cardTags ?? [],
+    ...(input.cardPrint ? { cardPrint: input.cardPrint } : {}),
   });
 
   await recordAudit({
@@ -173,6 +193,13 @@ const updateProduct = async (
   if (input.materials !== undefined) product.materials = input.materials;
   if (input.sizeImage === null) product.set("sizeImage", undefined);
   else if (input.sizeImage !== undefined) product.sizeImage = input.sizeImage;
+  if (input.bestSeller !== undefined) product.bestSeller = input.bestSeller;
+  if (input.cardTags !== undefined) product.cardTags = input.cardTags;
+  if (input.cardPrint === null) product.set("cardPrint", undefined);
+  else if (input.cardPrint !== undefined) {
+    await assertCardPrintExists(input.cardPrint);
+    product.set("cardPrint", input.cardPrint);
+  }
   if (input.isActive !== undefined) product.isActive = input.isActive;
 
   await product.save();

@@ -44,6 +44,9 @@ interface AdminProductRow {
   measurements?: Measurements;
   materials?: string[];
   sizeImage?: ImageAttrs;
+  bestSeller?: boolean;
+  cardTags?: string[];
+  cardPrint?: Types.ObjectId;
   isActive: boolean;
   updatedAt: Date;
   categoryDoc: { _id: Types.ObjectId; name: string; slug: string };
@@ -68,6 +71,9 @@ const toAdminProduct = (row: AdminProductRow): AdminProduct => {
     measurements: row.measurements ?? {},
     materials: row.materials ?? [],
     ...(row.sizeImage ? { sizeImage: row.sizeImage } : {}),
+    bestSeller: row.bestSeller ?? false,
+    cardTags: row.cardTags ?? [],
+    ...(row.cardPrint ? { cardPrintId: String(row.cardPrint) } : {}),
     isActive: row.isActive,
     variantCount: row.variantDocs.length,
     activeVariantCount: active.length,

@@ -31,6 +31,15 @@ const PRODUCT_CATEGORY_NAME_MIN = 2;
 const PRODUCT_CATEGORY_NAME_MAX = 80;
 const PRODUCT_CATEGORY_DESCRIPTION_MAX = 500;
 
+
+/** Colours a category may carry; its best-seller cards take it. Text on top is always ink; yellow is never one (CTA only). */
+const CATEGORY_COLORS = ["bone", "pink", "lilac", "mint", "ikat", "tangerine", "cherry", "sky"] as const;
+const CATEGORY_DEFAULT_COLOR = "bone";
+
+/** The three words printed on a product's storefront card. */
+const PRODUCT_CARD_TAGS_MAX = 3;
+const PRODUCT_CARD_TAG_MAX_LENGTH = 20;
+
 const UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
 const UPLOAD_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"] as const;
 
@@ -57,6 +66,10 @@ export {
   PRODUCT_CATEGORY_NAME_MIN,
   PRODUCT_CATEGORY_NAME_MAX,
   PRODUCT_CATEGORY_DESCRIPTION_MAX,
+  CATEGORY_COLORS,
+  CATEGORY_DEFAULT_COLOR,
+  PRODUCT_CARD_TAGS_MAX,
+  PRODUCT_CARD_TAG_MAX_LENGTH,
   UPLOAD_MAX_BYTES,
   UPLOAD_MIME_TYPES,
 };

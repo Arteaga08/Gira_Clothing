@@ -9,7 +9,7 @@ const CONFIG = {
   client,
   limits: { nameMin: 2, nameMax: 80, descriptionMax: 500 },
 } as unknown as TaxonConfig;
-const BASELINE = { name: "Florales", description: "" };
+const BASELINE = { name: "Florales", description: "", color: null };
 
 beforeEach(() => {
   Object.values(client).forEach((mock) => mock.mockReset());
@@ -21,7 +21,7 @@ describe("useTaxonSave", () => {
     const { result } = renderHook(() => useTaxonSave(CONFIG));
     let done = false;
     await act(async () => {
-      done = await result.current.create({ name: " Rayas ", description: "" });
+      done = await result.current.create({ name: " Rayas ", description: "", color: null });
     });
     expect(done).toBe(true);
     expect(client.create).toHaveBeenCalledWith({ name: "Rayas" });
@@ -31,7 +31,7 @@ describe("useTaxonSave", () => {
     const { result } = renderHook(() => useTaxonSave(CONFIG));
     let done = true;
     await act(async () => {
-      done = await result.current.create({ name: "a", description: "" });
+      done = await result.current.create({ name: "a", description: "", color: null });
     });
     expect(done).toBe(false);
     expect(client.create).not.toHaveBeenCalled();
@@ -41,7 +41,7 @@ describe("useTaxonSave", () => {
     const { result } = renderHook(() => useTaxonSave(CONFIG));
     let done = false;
     await act(async () => {
-      done = await result.current.update("f1", { name: "Florales", description: "" }, BASELINE);
+      done = await result.current.update("f1", { name: "Florales", description: "", color: null }, BASELINE);
     });
     expect(done).toBe(true);
     expect(client.update).not.toHaveBeenCalled();
@@ -51,7 +51,7 @@ describe("useTaxonSave", () => {
     client.update.mockResolvedValue({});
     const { result } = renderHook(() => useTaxonSave(CONFIG));
     await act(async () => {
-      await result.current.update("f1", { name: "Florales 2", description: "" }, BASELINE);
+      await result.current.update("f1", { name: "Florales 2", description: "", color: null }, BASELINE);
     });
     expect(client.update).toHaveBeenCalledWith("f1", { name: "Florales 2" });
   });

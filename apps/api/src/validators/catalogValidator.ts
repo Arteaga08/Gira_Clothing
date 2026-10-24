@@ -1,3 +1,4 @@
+import Joi from "joi";
 import { listQueryBase } from "./listQueryValidator.js";
 import { slugValue } from "./commonValidator.js";
 
@@ -10,6 +11,7 @@ const publicProductQuerySchema = listQueryBase.keys({
   category: slugValue,
   print: slugValue,
   family: slugValue,
+  bestSeller: Joi.boolean(),
 });
 
 export { publicListQuerySchema, publicPrintQuerySchema, publicProductQuerySchema };

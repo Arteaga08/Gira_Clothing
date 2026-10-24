@@ -39,6 +39,9 @@ const MODEL: ModelFields = {
   height: "",
   depth: "",
   materials: "",
+  bestSeller: false,
+  cardTags: ["", "", ""],
+  cardPrintId: "",
 };
 const NAMES = new Map([
   [PRINT_A_ID, "Nopal en flor"],

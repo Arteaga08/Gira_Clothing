@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { toCatalogOptions, toPickerPrint, withCurrentCategory } from "@/lib/catalog/catalogOptions";
 import { makeImage, PUBLIC_ID_SENTINEL, SLUG_SENTINEL } from "../../helpers/catalog";
 
-const category = (id: string, name: string): Wire<ProductCategory> => ({ id, name, slug: SLUG_SENTINEL, isActive: true });
+const category = (id: string, name: string): Wire<ProductCategory> => ({ id, name, slug: SLUG_SENTINEL, color: "bone", isActive: true });
 const family = (id: string, name: string): Wire<PrintFamily> => ({ id, name, slug: SLUG_SENTINEL, isActive: true });
 const print = (id: string, name: string, familyId: string, familyName: string): Wire<Print> => ({
   id,

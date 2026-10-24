@@ -9,6 +9,7 @@ const makePanelTaxon = (overrides: Partial<PanelTaxon> = {}): PanelTaxon => ({
   id: FAMILY_ID,
   name: "Florales",
   description: "Rosas y peonías",
+  color: null,
   isActive: true,
   childCount: 8,
   activeChildCount: 6,

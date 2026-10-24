@@ -38,6 +38,9 @@ const VALID: ModelFields = {
   height: "11",
   depth: "6",
   materials: "Lona de algodón, forro impermeable",
+  bestSeller: false,
+  cardTags: ["", "", ""],
+  cardPrintId: "",
 };
 
 const baseline = (variants: ExistingVariant[] = []): ProductBaseline => ({
@@ -105,7 +108,31 @@ describe("toCreateBody", () => {
       weightGrams: 140,
       measurements: { widthCm: 18, heightCm: 11, depthCm: 6 },
       materials: ["Lona de algodón", "forro impermeable"],
+      bestSeller: false,
+      cardTags: [],
+      cardPrint: null,
     });
+  });
+
+  it("manda la marca de más vendido, las palabras recortadas sin vacías y la variante de la card", () => {
+    const body = toCreateBody({
+      ...emptyFormState(),
+      model: { ...VALID, bestSeller: true, cardTags: [" Fresca ", "", "Suave"], cardPrintId: PRINT_A_ID },
+    });
+    expect(body).toMatchObject({ bestSeller: true, cardTags: ["Fresca", "Suave"], cardPrint: PRINT_A_ID });
+  });
+
+  it("rechaza una palabra de card de más de 20 caracteres", () => {
+    expect(validateModel({ ...VALID, cardTags: ["x".repeat(21), "", ""] }).cardTags).toMatch(/20/);
+  });
+
+  it("al quitar la estampa de la card, la card vuelve a automática", () => {
+    const state = {
+      ...emptyFormState(),
+      model: { ...VALID, cardPrintId: PRINT_A_ID },
+      selected: [{ printId: PRINT_A_ID, priceOverride: "", images: [] }],
+    };
+    expect(removePrint(state, PRINT_A_ID).model.cardPrintId).toBe("");
   });
 
   it("omite las medidas vacías e incluye la foto de tamaño si hay", () => {

@@ -206,3 +206,155 @@
     opacity: 1 !important;
   }
 }
+
+/*
+ * Más vendidos. Sections below the first screen enter once, as they come into
+ * view: each part (`.reveal-item`) rises and fades in with a stagger (--i), a
+ * strong ease-out, only opacity and transform. The hook marks `pending` only
+ * when the section really starts below the fold, so with no script the content
+ * is simply there. Reduced motion: fade only, no travel.
+ */
+.store-reveal {
+  --reveal-ease: var(--store-nav-ease);
+}
+
+.store-reveal .reveal-item {
+  transition:
+    opacity 600ms var(--reveal-ease) calc(80ms + var(--i, 0) * 70ms),
+    transform 600ms var(--reveal-ease) calc(80ms + var(--i, 0) * 70ms);
+}
+
+.store-reveal[data-reveal="pending"] .reveal-item {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .store-reveal .reveal-item {
+    transition: opacity 300ms ease calc(var(--i, 0) * 40ms);
+  }
+
+  .store-reveal[data-reveal="pending"] .reveal-item {
+    transform: none;
+  }
+}
+
+/* Track: native scroll-snap, no scrollbar; the first card lines up with the page margin. */
+.best-track {
+  display: flex;
+  gap: 1.5rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 1rem;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  padding: 0.5rem 1rem 1.25rem;
+}
+
+.best-track::-webkit-scrollbar {
+  display: none;
+}
+
+.best-track > * {
+  flex: 0 0 min(17rem, 72vw);
+  scroll-snap-align: start;
+}
+
+@media (min-width: 48rem) {
+  .best-track {
+    padding-inline: 2rem;
+    scroll-padding-inline: 2rem;
+  }
+}
+
+/* Second photo: appears and goes away instantly, no transition and no zoom. */
+.best-photo-hover {
+  opacity: 0;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .best-photo:hover .best-photo-hover {
+    opacity: 1;
+  }
+}
+
+/*
+ * Card: lifts into a bigger hard shadow. The lift uses `translate` and the
+ * entrance `transform`, so each keeps its own timing: the entrance is staggered,
+ * the lift answers at once.
+ */
+.store-reveal .best-card.reveal-item {
+  transition:
+    opacity 600ms var(--reveal-ease) calc(80ms + var(--i, 0) * 70ms),
+    transform 600ms var(--reveal-ease) calc(80ms + var(--i, 0) * 70ms),
+    translate 200ms var(--reveal-ease),
+    box-shadow 200ms var(--reveal-ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .best-card:hover {
+    translate: -2px -2px;
+    box-shadow: var(--nb-shadow-lg);
+  }
+}
+
+/*
+ * Side arrows: invisible until the pointer is over the carousel or one has
+ * focus; they ease in from the edge (opacity + a short slide), quick on the way
+ * out. The slide uses `transform`, leaving the `translate` property to the
+ * button's own press feedback. Phones swipe instead, so there they never show.
+ */
+.best-arrow {
+  position: absolute;
+  top: 50%;
+  z-index: 20;
+  display: none;
+  margin-top: -1.25rem;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 200ms var(--reveal-ease),
+    transform 200ms var(--reveal-ease),
+    translate 150ms var(--reveal-ease),
+    box-shadow 150ms var(--reveal-ease);
+}
+
+.best-arrow-start {
+  left: 1.5rem;
+  transform: translateX(-0.5rem);
+}
+
+.best-arrow-end {
+  right: 1.5rem;
+  transform: translateX(0.5rem);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .best-arrow[data-available="true"] {
+    display: inline-flex;
+  }
+
+  .best-carousel:hover .best-arrow[data-available="true"],
+  .best-carousel:focus-within .best-arrow[data-available="true"] {
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+    transition-duration: 300ms, 300ms, 150ms, 150ms;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .best-arrow {
+    transform: none !important;
+    transition-property: opacity !important;
+  }
+
+  .store-reveal .best-card.reveal-item {
+    transition: opacity 300ms ease calc(var(--i, 0) * 40ms);
+  }
+
+  .best-card:hover {
+    translate: none !important;
+  }
+}

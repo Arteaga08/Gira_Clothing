@@ -9,6 +9,8 @@ import {
   PRODUCT_MEASURE_MAX,
   PRODUCT_MATERIALS_MAX,
   PRODUCT_MATERIAL_MAX,
+  PRODUCT_CARD_TAGS_MAX,
+  PRODUCT_CARD_TAG_MAX_LENGTH,
 } from "@gira/shared";
 import { listQueryBase } from "./listQueryValidator.js";
 import { objectId, imageObjectSchema } from "./commonValidator.js";
@@ -47,6 +49,15 @@ const materials = Joi.array().items(Joi.string().trim().max(PRODUCT_MATERIAL_MAX
   "array.max": "No puedes registrar más de 10 materiales.",
 });
 
+const cardTags = Joi.array()
+  .items(Joi.string().trim().min(1).max(PRODUCT_CARD_TAG_MAX_LENGTH))
+  .max(PRODUCT_CARD_TAGS_MAX)
+  .messages({
+    "array.max": `La card admite hasta ${PRODUCT_CARD_TAGS_MAX} palabras.`,
+    "string.max": `Cada palabra admite hasta ${PRODUCT_CARD_TAG_MAX_LENGTH} caracteres.`,
+    "string.empty": "Las palabras de la card no pueden ir vacías.",
+  });
+
 const createProductSchema = Joi.object({
   name: name.required(),
   category: objectId.required().messages({ "any.required": "La categoría es obligatoria." }),
@@ -56,6 +67,9 @@ const createProductSchema = Joi.object({
   measurements,
   materials,
   sizeImage: imageObjectSchema,
+  bestSeller: Joi.boolean(),
+  cardTags,
+  cardPrint: objectId.allow(null),
 });
 
 const updateProductSchema = Joi.object({
@@ -67,6 +81,9 @@ const updateProductSchema = Joi.object({
   measurements,
   materials,
   sizeImage: imageObjectSchema.allow(null),
+  bestSeller: Joi.boolean(),
+  cardTags,
+  cardPrint: objectId.allow(null),
   isActive: Joi.boolean(),
 })
   .min(1)

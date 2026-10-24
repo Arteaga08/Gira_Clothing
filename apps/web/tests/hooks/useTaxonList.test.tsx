@@ -13,6 +13,7 @@ const ITEM: PanelTaxon = {
   id: "f1",
   name: "Florales",
   description: "",
+  color: null,
   isActive: true,
   childCount: 0,
   activeChildCount: 0,
