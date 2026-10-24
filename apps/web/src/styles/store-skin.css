@@ -75,3 +75,43 @@
     gap: 1.5rem;
   }
 }
+
+/* Hero entrance: each word rises once, staggered by --rise-delay. */
+@keyframes store-rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.4em);
+  }
+}
+
+.store-rise {
+  animation: store-rise 700ms var(--store-nav-ease) both;
+  animation-delay: var(--rise-delay, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .store-rise {
+    animation: none;
+  }
+}
+
+/* Hero stickers: rise faster than the page while the hero scrolls away (scroll-linked, no JS). */
+@keyframes store-scroll-rise {
+  to {
+    transform: translateY(var(--rise-distance, -10rem));
+  }
+}
+
+@supports (animation-timeline: scroll()) {
+  .store-scroll-rise {
+    animation: store-scroll-rise linear both;
+    animation-timeline: scroll(root);
+    animation-range: 0 90dvh;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .store-scroll-rise {
+    animation: none;
+  }
+}

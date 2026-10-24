@@ -8,15 +8,17 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useSettings } from "@/hooks/useSettings";
 import { AnnouncementModal } from "./AnnouncementModal";
 import { AnnouncementPanel } from "./AnnouncementPanel";
+import { HeroModal } from "./HeroModal";
+import { HeroPanel } from "./HeroPanel";
 
 /**
  * Contenido de home: what the team edits to change the storefront's home.
- * Today only the announcement bar; each home section that becomes editable
+ * The announcement bar and the hero; each home section that becomes editable
  * (spec §4) adds its own panel here.
  */
 const HomeContentPage = () => {
   const { state, refresh, replace } = useSettings();
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState<"announcement" | "hero" | null>(null);
 
   if (state.status === "error") {
     return (
@@ -38,18 +40,23 @@ const HomeContentPage = () => {
       {state.status === "loading" ? (
         <div className="grid gap-5 lg:grid-cols-2" aria-busy="true">
           <Skeleton className="h-44 w-full" />
+          <Skeleton className="h-44 w-full" />
         </div>
       ) : (
         <div className="grid items-start gap-5 lg:grid-cols-2">
-          <AnnouncementPanel announcement={state.settings.storefront.announcement} onEdit={() => setEditing(true)} />
+          <AnnouncementPanel announcement={state.settings.storefront.announcement} onEdit={() => setEditing("announcement")} />
+          <HeroPanel hero={state.settings.storefront.hero} onEdit={() => setEditing("hero")} />
         </div>
       )}
-      {state.status === "ready" && editing ? (
+      {state.status === "ready" && editing === "announcement" ? (
         <AnnouncementModal
           announcement={state.settings.storefront.announcement}
-          onClose={() => setEditing(false)}
+          onClose={() => setEditing(null)}
           onSaved={replace}
         />
+      ) : null}
+      {state.status === "ready" && editing === "hero" ? (
+        <HeroModal hero={state.settings.storefront.hero} onClose={() => setEditing(null)} onSaved={replace} />
       ) : null}
     </div>
   );

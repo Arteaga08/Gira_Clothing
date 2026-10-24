@@ -1,4 +1,5 @@
 import type { Currency, PriceRounding } from "../enums/money.js";
+import type { ImageAttrs } from "./order.js";
 import type { ShippingOrigin, ShippingParcelSettings } from "./shipping.js";
 
 interface ShippingSettings {
@@ -35,8 +36,49 @@ interface StorefrontAnnouncement {
   messages: string[];
 }
 
+type HeroSurfaceColor = "bone" | "pink" | "lilac" | "mint";
+type HeroButtonColor = "yellow" | "pink" | "lilac" | "mint";
+
+/** Floating card beside the photo; each photo carries its own. */
+interface HeroCard {
+  text: string;
+  color: HeroSurfaceColor;
+}
+
+interface HeroSlide {
+  image: ImageAttrs;
+  /** The model the photo and its button lead to. null: the button leads to the shop. */
+  productId: string | null;
+  titleColor: HeroSurfaceColor;
+  buttonColor: HeroButtonColor;
+  cards: HeroCard[];
+}
+
+/** Hero of the storefront home, edited in «Contenido de home». */
+interface StorefrontHero {
+  /** At most three words; empty falls back to the brand name. */
+  headline: string;
+  slides: HeroSlide[];
+}
+
+/** What the public storefront may read of a hero slide: no ids, no publicId. */
+interface PublicHeroSlide {
+  image: Pick<ImageAttrs, "url" | "width" | "height">;
+  /** null when the model was retired or removed: the button leads to the shop. */
+  product: { slug: string; name: string } | null;
+  titleColor: HeroSurfaceColor;
+  buttonColor: HeroButtonColor;
+  cards: HeroCard[];
+}
+
+interface PublicStorefrontHero {
+  headline: string;
+  slides: PublicHeroSlide[];
+}
+
 interface StorefrontSettings {
   announcement: StorefrontAnnouncement;
+  hero: StorefrontHero;
 }
 
 interface Settings {
@@ -56,6 +98,13 @@ export type {
   InventorySettings,
   TaxSettings,
   StorefrontAnnouncement,
+  HeroSurfaceColor,
+  HeroButtonColor,
+  HeroCard,
+  HeroSlide,
+  StorefrontHero,
+  PublicHeroSlide,
+  PublicStorefrontHero,
   StorefrontSettings,
   Settings,
 };

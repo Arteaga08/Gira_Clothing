@@ -3,7 +3,7 @@ import { browserRequest } from "./browser";
 import { ADMIN_UPLOADS_PATH } from "./paths";
 import { expectData } from "./request";
 
-type UploadFolder = "prints" | "variants" | "products";
+type UploadFolder = "prints" | "variants" | "products" | "home";
 
 /** Generous: the API streams the file to Cloudinary before it answers. */
 const UPLOAD_TIMEOUT_MS = 30_000;

@@ -168,10 +168,28 @@ import type {
   InventorySettings,
   TaxSettings,
   StorefrontAnnouncement,
+  HeroSurfaceColor,
+  HeroButtonColor,
+  HeroCard,
+  HeroSlide,
+  StorefrontHero,
+  PublicHeroSlide,
+  PublicStorefrontHero,
   StorefrontSettings,
   Settings,
 } from "./types/settings.js";
-import { ANNOUNCEMENT_MAX_MESSAGES, ANNOUNCEMENT_MAX_LENGTH } from "./constants/storefront.js";
+import {
+  ANNOUNCEMENT_MAX_MESSAGES,
+  ANNOUNCEMENT_MAX_LENGTH,
+  HERO_MAX_SLIDES,
+  HERO_SLIDE_SECONDS,
+  HERO_HEADLINE_MAX_WORDS,
+  HERO_HEADLINE_MAX_LENGTH,
+  HERO_MAX_CARDS,
+  HERO_CARD_MAX_LENGTH,
+  HERO_SURFACE_COLORS,
+  HERO_BUTTON_COLORS,
+} from "./constants/storefront.js";
 import type {
   RevenueEntry,
   TopProduct,
@@ -314,6 +332,13 @@ export type {
   InventorySettings,
   TaxSettings,
   StorefrontAnnouncement,
+  HeroSurfaceColor,
+  HeroButtonColor,
+  HeroCard,
+  HeroSlide,
+  StorefrontHero,
+  PublicHeroSlide,
+  PublicStorefrontHero,
   StorefrontSettings,
   Settings,
   RevenueEntry,
@@ -335,7 +360,18 @@ export type {
   AuditChange,
 };
 export { AUDIT_ACTOR_FILTERS };
-export { ANNOUNCEMENT_MAX_MESSAGES, ANNOUNCEMENT_MAX_LENGTH };
+export {
+  ANNOUNCEMENT_MAX_MESSAGES,
+  ANNOUNCEMENT_MAX_LENGTH,
+  HERO_MAX_SLIDES,
+  HERO_SLIDE_SECONDS,
+  HERO_HEADLINE_MAX_WORDS,
+  HERO_HEADLINE_MAX_LENGTH,
+  HERO_MAX_CARDS,
+  HERO_CARD_MAX_LENGTH,
+  HERO_SURFACE_COLORS,
+  HERO_BUTTON_COLORS,
+};
 export type { StatsGranularity, PeriodPreset };
 export { STATS_GRANULARITIES, MAX_STATS_DAYS, PERIOD_PRESETS };
 export type { OrderStatusGroup };

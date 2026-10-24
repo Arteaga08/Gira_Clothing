@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import type { StorefrontAnnouncement } from "@gira/shared";
+import type { StorefrontAnnouncement, StorefrontHero } from "@gira/shared";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { sendResponse } from "../utils/sendResponse.js";
 import { buildContext } from "../utils/requestContext.js";
@@ -12,6 +12,8 @@ import {
   updateTaxSettings,
   updateAnnouncementSettings,
   getPublicAnnouncement,
+  updateHeroSettings,
+  getPublicHero,
   type ShippingSettings,
   type CurrencySettings,
   type ReservationSettings,
@@ -75,6 +77,16 @@ const publicAnnouncement = asyncHandler(async (_req: Request, res: Response) => 
   sendResponse(res, 200, "Anuncio obtenido correctamente.", { announcement });
 });
 
+const updateHero = asyncHandler(async (req: Request, res: Response) => {
+  const settings = await updateHeroSettings(req.body as StorefrontHero, buildContext(req));
+  sendResponse(res, 200, "Portada de la tienda actualizada correctamente.", { settings });
+});
+
+const publicHero = asyncHandler(async (_req: Request, res: Response) => {
+  const hero = await getPublicHero();
+  sendResponse(res, 200, "Portada obtenida correctamente.", { hero });
+});
+
 export {
   detail,
   updateShipping,
@@ -84,4 +96,6 @@ export {
   updateTax,
   updateAnnouncement,
   publicAnnouncement,
+  updateHero,
+  publicHero,
 };

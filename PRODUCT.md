@@ -70,4 +70,7 @@ Usuarios: clientas y clientes que navegan desde el celular, sin prisa, y compran
 - Navbar: variante B (editorial). Logo centrado, transparente arriba, relleno verde bosque al hacer
   scroll; sin pills ni sombras. Marquee de anuncios arriba, editable desde Ajustes.
 - Un solo botón primario (amarillo) por pantalla; el navbar no lleva ninguno.
+- Hero de la home: la foto es el hero (a pantalla completa, detrás del navbar), el titular y las cards
+  son etiquetas flotantes con pinta de botón que no lo son, y su único botón cambia de color con cada foto
+  (excepción documentada en DESIGN.md). Todo se edita en «Contenido de home».
 

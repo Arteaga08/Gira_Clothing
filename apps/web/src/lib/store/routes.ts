@@ -10,4 +10,7 @@ const STORE_ROUTES = {
   account: "/cuenta",
 } as const;
 
-export { STORE_ROUTES };
+/** Product page; it arrives with the catalog milestone (M14). */
+const productRoute = (slug: string): string => `/tienda/${slug}`;
+
+export { STORE_ROUTES, productRoute };
