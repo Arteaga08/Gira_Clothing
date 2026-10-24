@@ -108,10 +108,12 @@ const toPublicPrint = (doc: PrintLean): PublicPrint => {
   };
 };
 
+/** `featured=true`: the prints the team placed in the home, by slot; the rest of the list stays A-Z. */
 const listPublicPrints = async (
-  query: RawPublicQuery & { family?: string },
+  query: RawPublicQuery & { family?: string; featured?: boolean },
 ): Promise<{ items: PublicPrint[]; meta: ApiMeta }> => {
   const filters: Record<string, unknown> = { isActive: true };
+  if (query.featured === true) filters.homePosition = { $exists: true };
   if (query.family) {
     const family = await PrintFamily.findOne({ slug: query.family, isActive: true })
       .select("_id")
@@ -120,7 +122,9 @@ const listPublicPrints = async (
     filters.family = family._id;
   }
 
-  const { filter, sort, skip, limit, page } = parseListQuery(query, PRINT_LIST_CONFIG, filters);
+  const parsed = parseListQuery(query, PRINT_LIST_CONFIG, filters);
+  const { filter, skip, limit, page } = parsed;
+  const sort = query.featured === true ? { homePosition: 1 as const } : parsed.sort;
   const [docs, total] = await Promise.all([
     Print.find(filter).sort(sort).skip(skip).limit(limit).populate("family", "name slug").lean(),
     Print.countDocuments(filter),

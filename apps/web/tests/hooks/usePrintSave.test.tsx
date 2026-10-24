@@ -12,8 +12,8 @@ const api = vi.hoisted(() => ({
 vi.mock("@/lib/api/adminPrints", () => api);
 
 const IMAGE = { url: "https://cdn/x.jpg", publicId: "gira/x", width: 1, height: 1 };
-const VALUES = { name: " Rosas ", sku: "flr-001", familyId: "f1", image: IMAGE };
-const BASELINE = { name: "Rosas", familyId: "f1", imageUrl: IMAGE.url };
+const VALUES = { name: " Rosas ", sku: "flr-001", familyId: "f1", image: IMAGE, homePosition: "" };
+const BASELINE = { name: "Rosas", familyId: "f1", imageUrl: IMAGE.url, homePosition: null };
 
 beforeEach(() => {
   Object.values(api).forEach((fn) => fn.mockReset().mockResolvedValue({}));

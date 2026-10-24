@@ -13,6 +13,7 @@ const makePanelPrint = (overrides: Partial<PanelPrint> = {}): PanelPrint => ({
   family: { id: FAMILY_A_ID, name: "Florales" },
   imageUrl: "https://res.cloudinary.com/gira/rosas.jpg",
   isActive: true,
+  homePosition: null,
   variantCount: 6,
   activeVariantCount: 6,
   activeProducts: [{ id: MODEL_ID, name: "Cosmetiquera chica" }],

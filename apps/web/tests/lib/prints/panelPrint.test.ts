@@ -23,9 +23,28 @@ describe("toPanelPrint", () => {
       family: { id: "f1", name: "Florales" },
       imageUrl: "https://cdn/x.jpg",
       isActive: true,
+      homePosition: null,
       variantCount: 3,
       activeVariantCount: 2,
       activeProducts: [{ id: "m1", name: "Neceser" }],
     });
+  });
+
+  it("conserva la posición en la home cuando la estampa tiene una", () => {
+    const panel = toPanelPrint({
+      id: "p1",
+      name: "Rosas",
+      slug: "rosas",
+      sku: "FLR-001",
+      family: { id: "f1", name: "Florales", slug: "florales" },
+      image: { url: "https://cdn/x.jpg", publicId: "gira/x", width: 1, height: 1 },
+      isActive: true,
+      homePosition: 2,
+      variantCount: 0,
+      activeVariantCount: 0,
+      activeProducts: [],
+      updatedAt: "2026-10-20T00:00:00.000Z",
+    });
+    expect(panel.homePosition).toBe(2);
   });
 });

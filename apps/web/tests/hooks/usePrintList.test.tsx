@@ -16,6 +16,7 @@ const PRINT: PanelPrint = {
   family: { id: "f1", name: "Florales" },
   imageUrl: "https://cdn/x.jpg",
   isActive: true,
+  homePosition: null,
   variantCount: 0,
   activeVariantCount: 0,
   activeProducts: [],

@@ -1,4 +1,5 @@
 import { Schema, model, type HydratedDocument, type Model, type Types } from "mongoose";
+import { PRINT_HOME_POSITION_MAX } from "@gira/shared";
 import { imageSchema, type ImageAttrs } from "./schemas/image.js";
 
 /**
@@ -16,6 +17,8 @@ interface PrintAttrs {
   /** Macro photo — a print without it is unusable in the selector. */
   image: ImageAttrs;
   isActive: boolean;
+  /** Slot in the home's «Prints» section; unset = not shown there. Unique among the prints that have one. */
+  homePosition?: number;
 }
 
 type PrintModel = Model<PrintAttrs>;
@@ -29,6 +32,7 @@ const printSchema = new Schema<PrintAttrs, PrintModel>(
     family: { type: Schema.Types.ObjectId, ref: "PrintFamily", required: true },
     image: { type: imageSchema, required: true },
     isActive: { type: Boolean, default: true },
+    homePosition: { type: Number, min: 1, max: PRINT_HOME_POSITION_MAX },
   },
   { timestamps: true },
 );
@@ -37,6 +41,8 @@ const printSchema = new Schema<PrintAttrs, PrintModel>(
 printSchema.index({ family: 1, isActive: 1, name: 1 });
 // Listing without family filter.
 printSchema.index({ isActive: 1, name: 1 });
+// One print per home slot (backstop for printService's check); prints without a slot are not indexed.
+printSchema.index({ homePosition: 1 }, { unique: true, partialFilterExpression: { homePosition: { $exists: true } } });
 
 const Print = model<PrintAttrs, PrintModel>("Print", printSchema);
 

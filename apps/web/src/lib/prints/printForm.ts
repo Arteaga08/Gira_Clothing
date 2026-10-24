@@ -1,4 +1,5 @@
 import {
+  PRINT_HOME_POSITION_MAX,
   PRINT_NAME_MAX,
   PRINT_NAME_MIN,
   PRINT_SKU_MAX,
@@ -13,6 +14,8 @@ interface PrintFormValues {
   sku: string;
   familyId: string;
   image: ImageAttrs | null;
+  /** "" = not in the home; otherwise "1".."6", as the select holds it. */
+  homePosition: string;
 }
 
 /** What the server held when the panel opened: the reference an edit is diffed against. */
@@ -20,6 +23,7 @@ interface PrintBaseline {
   name: string;
   familyId: string;
   imageUrl: string;
+  homePosition: number | null;
 }
 
 type PrintFormErrors = Partial<Record<"name" | "sku" | "family" | "image", string | undefined>>;
@@ -29,6 +33,7 @@ interface CreatePrintBody {
   sku: string;
   family: string;
   image: ImageAttrs;
+  homePosition?: number;
 }
 
 /** The SKU is never part of an update: every variant SKU was built from it. */
@@ -36,6 +41,8 @@ interface UpdatePrintBody {
   name?: string;
   family?: string;
   image?: ImageAttrs;
+  /** null takes the print out of the home. */
+  homePosition?: number | null;
 }
 
 const NAME_ERROR = `El nombre debe tener entre ${PRINT_NAME_MIN} y ${PRINT_NAME_MAX} caracteres.`;
@@ -55,12 +62,40 @@ const validatePrintForm = (values: PrintFormValues, mode: "create" | "edit"): Pr
   return errors;
 };
 
+/** Options of the «Posición en la home» select: none, then 1..max. */
+const HOME_POSITION_OPTIONS = [
+  { value: "", label: "No aparece en la home" },
+  ...Array.from({ length: PRINT_HOME_POSITION_MAX }, (_, slot) => ({
+    value: String(slot + 1),
+    label: `Posición ${slot + 1}`,
+  })),
+];
+
+const toHomePosition = (value: string): number | null => (value === "" ? null : Number(value));
+
 /** Call only after `validatePrintForm` passed: the image is guaranteed there. */
-const toCreateBody = (values: PrintFormValues): CreatePrintBody => ({
-  name: values.name.trim(),
-  sku: values.sku.trim().toUpperCase(),
-  family: values.familyId,
-  image: values.image as ImageAttrs,
+const toCreateBody = (values: PrintFormValues): CreatePrintBody => {
+  const homePosition = toHomePosition(values.homePosition);
+  return {
+    name: values.name.trim(),
+    sku: values.sku.trim().toUpperCase(),
+    family: values.familyId,
+    image: values.image as ImageAttrs,
+    ...(homePosition !== null ? { homePosition } : {}),
+  };
+};
+
+/** The reference an edit is diffed against, from the print the panel holds. */
+const baselineFromPrint = (print: {
+  name: string;
+  family: { id: string };
+  imageUrl: string;
+  homePosition: number | null;
+}): PrintBaseline => ({
+  name: print.name,
+  familyId: print.family.id,
+  imageUrl: print.imageUrl,
+  homePosition: print.homePosition,
 });
 
 const toUpdateBody = (values: PrintFormValues, baseline: PrintBaseline): UpdatePrintBody => {
@@ -69,8 +104,10 @@ const toUpdateBody = (values: PrintFormValues, baseline: PrintBaseline): UpdateP
   if (name !== baseline.name) body.name = name;
   if (values.familyId !== baseline.familyId) body.family = values.familyId;
   if (values.image && values.image.url !== baseline.imageUrl) body.image = values.image;
+  const homePosition = toHomePosition(values.homePosition);
+  if (homePosition !== baseline.homePosition) body.homePosition = homePosition;
   return body;
 };
 
-export { validatePrintForm, toCreateBody, toUpdateBody };
+export { validatePrintForm, toCreateBody, toUpdateBody, baselineFromPrint, HOME_POSITION_OPTIONS };
 export type { PrintFormValues, PrintBaseline, PrintFormErrors, CreatePrintBody, UpdatePrintBody };
