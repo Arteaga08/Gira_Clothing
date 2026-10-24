@@ -6,8 +6,8 @@ import Joi from "joi";
  * here — the only text field accepted is a closed set of logical folders.
  */
 const uploadBodySchema = Joi.object({
-  folder: Joi.string().valid("prints", "variants", "products").required().messages({
-    "any.only": 'El campo "folder" debe ser "prints", "variants" o "products".',
+  folder: Joi.string().valid("prints", "variants", "products", "home").required().messages({
+    "any.only": 'El campo "folder" debe ser "prints", "variants", "products" o "home".',
     "any.required": 'El campo "folder" es obligatorio.',
   }),
 });

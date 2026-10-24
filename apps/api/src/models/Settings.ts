@@ -1,12 +1,25 @@
-import { Schema, model, type HydratedDocument, type Model } from "mongoose";
+import { Schema, model, type HydratedDocument, type Model, type Types } from "mongoose";
 import {
   ANNOUNCEMENT_MAX_LENGTH,
   ANNOUNCEMENT_MAX_MESSAGES,
   Currency,
   DEFAULT_TAX_RATE_BPS,
+  HERO_BUTTON_COLORS,
+  HERO_CARD_MAX_LENGTH,
+  HERO_HEADLINE_MAX_LENGTH,
+  HERO_MAX_CARDS,
+  HERO_MAX_SLIDES,
+  HERO_SURFACE_COLORS,
   PriceRounding,
 } from "@gira/shared";
-import type { ShippingOrigin, ShippingParcelSettings } from "@gira/shared";
+import type {
+  HeroButtonColor,
+  HeroCard,
+  HeroSurfaceColor,
+  ImageAttrs,
+  ShippingOrigin,
+  ShippingParcelSettings,
+} from "@gira/shared";
 
 /**
  * Business configuration singleton (ECOMMERCE_ARCHITECTURE_GUIDELINES,
@@ -55,10 +68,23 @@ interface TaxSettings {
   rateBps: number;
 }
 
+interface HeroSlideAttrs {
+  image: ImageAttrs;
+  /** null: the slide's button leads to the shop instead of a model. */
+  productId: Types.ObjectId | null;
+  titleColor: HeroSurfaceColor;
+  buttonColor: HeroButtonColor;
+  cards: HeroCard[];
+}
+
 interface StorefrontSettings {
   announcement: {
     enabled: boolean;
     messages: string[];
+  };
+  hero: {
+    headline: string;
+    slides: HeroSlideAttrs[];
   };
 }
 
@@ -74,6 +100,42 @@ interface SettingsAttrs {
 
 type SettingsModel = Model<SettingsAttrs>;
 type SettingsDocument = HydratedDocument<SettingsAttrs>;
+
+const heroImageSchema = new Schema<ImageAttrs>(
+  {
+    url: { type: String, required: true },
+    publicId: { type: String, required: true },
+    width: { type: Number, required: true, min: 1 },
+    height: { type: Number, required: true, min: 1 },
+  },
+  { _id: false },
+);
+
+const heroCardSchema = new Schema<HeroCard>(
+  {
+    text: { type: String, required: true, trim: true, minlength: 1, maxlength: HERO_CARD_MAX_LENGTH },
+    color: { type: String, enum: HERO_SURFACE_COLORS, required: true },
+  },
+  { _id: false },
+);
+
+const heroSlideSchema = new Schema<HeroSlideAttrs>(
+  {
+    image: { type: heroImageSchema, required: true },
+    productId: { type: Schema.Types.ObjectId, ref: "Product", default: null },
+    titleColor: { type: String, enum: HERO_SURFACE_COLORS, required: true },
+    buttonColor: { type: String, enum: HERO_BUTTON_COLORS, required: true },
+    cards: {
+      type: [heroCardSchema],
+      default: () => [],
+      validate: {
+        validator: (v: HeroCard[]) => v.length <= HERO_MAX_CARDS,
+        message: `Máximo ${HERO_MAX_CARDS} cards por foto.`,
+      },
+    },
+  },
+  { _id: false },
+);
 
 const settingsSchema = new Schema<SettingsAttrs, SettingsModel>(
   {
@@ -154,6 +216,17 @@ const settingsSchema = new Schema<SettingsAttrs, SettingsModel>(
           },
         },
       },
+      hero: {
+        headline: { type: String, trim: true, maxlength: HERO_HEADLINE_MAX_LENGTH, default: "" },
+        slides: {
+          type: [heroSlideSchema],
+          default: () => [],
+          validate: {
+            validator: (v: HeroSlideAttrs[]) => v.length <= HERO_MAX_SLIDES,
+            message: `Máximo ${HERO_MAX_SLIDES} fotos.`,
+          },
+        },
+      },
     },
   },
   { timestamps: true },
@@ -162,6 +235,7 @@ const settingsSchema = new Schema<SettingsAttrs, SettingsModel>(
 const Settings = model<SettingsAttrs, SettingsModel>("Settings", settingsSchema);
 
 export type {
+  HeroSlideAttrs,
   SettingsAttrs,
   SettingsDocument,
   ShippingSettings,

@@ -23,6 +23,7 @@ const ADMIN_SETTINGS_PATH = "/admin/settings";
 const ADMIN_AUDIT_LOGS_PATH = "/admin/audit-logs";
 const CART_PATH = "/cart";
 const STOREFRONT_ANNOUNCEMENT_PATH = "/storefront/announcement";
+const STOREFRONT_HERO_PATH = "/storefront/hero";
 
 export {
   STATS_OVERVIEW_PATH,
@@ -42,4 +43,5 @@ export {
   ADMIN_AUDIT_LOGS_PATH,
   CART_PATH,
   STOREFRONT_ANNOUNCEMENT_PATH,
+  STOREFRONT_HERO_PATH,
 };

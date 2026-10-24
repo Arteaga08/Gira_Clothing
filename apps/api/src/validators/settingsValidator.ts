@@ -3,11 +3,19 @@ import {
   ANNOUNCEMENT_MAX_LENGTH,
   ANNOUNCEMENT_MAX_MESSAGES,
   Currency,
+  HERO_BUTTON_COLORS,
+  HERO_CARD_MAX_LENGTH,
+  HERO_HEADLINE_MAX_LENGTH,
+  HERO_HEADLINE_MAX_WORDS,
+  HERO_MAX_CARDS,
+  HERO_MAX_SLIDES,
+  HERO_SURFACE_COLORS,
   MEXICAN_STATE_CODES,
   PHONE_PATTERN,
   POSTAL_CODE_PATTERN,
   PriceRounding,
 } from "@gira/shared";
+import { imageObjectSchema, objectId } from "./commonValidator.js";
 
 const money = Joi.number()
   .integer()
@@ -123,7 +131,59 @@ const updateAnnouncementSchema = Joi.object({
   )
   .messages({ "announcement.empty": "Agrega al menos un mensaje para mostrar la barra." });
 
+const heroCardSchema = Joi.object({
+  text: Joi.string().trim().min(1).max(HERO_CARD_MAX_LENGTH).required().messages({
+    "string.empty": "El texto de la card no puede estar vacío.",
+    "string.max": `El texto de la card admite hasta ${HERO_CARD_MAX_LENGTH} caracteres.`,
+    "any.required": "El texto de la card es obligatorio.",
+  }),
+  color: Joi.string()
+    .valid(...HERO_SURFACE_COLORS)
+    .required()
+    .messages({ "any.only": "El color de la card no es válido." }),
+});
+
+const heroSlideSchema = Joi.object({
+  image: imageObjectSchema.required(),
+  productId: objectId.allow(null).required().messages({
+    "any.required": "Indica el producto de la foto o déjalo vacío.",
+  }),
+  titleColor: Joi.string()
+    .valid(...HERO_SURFACE_COLORS)
+    .required()
+    .messages({ "any.only": "El color del titular no es válido." }),
+  buttonColor: Joi.string()
+    .valid(...HERO_BUTTON_COLORS)
+    .required()
+    .messages({ "any.only": "El color del botón no es válido." }),
+  cards: Joi.array().items(heroCardSchema).max(HERO_MAX_CARDS).required().messages({
+    "array.max": `Máximo ${HERO_MAX_CARDS} cards por foto.`,
+  }),
+});
+
+// Empty is allowed: the storefront then shows the brand name.
+const updateHeroSchema = Joi.object({
+  headline: Joi.string()
+    .trim()
+    .allow("")
+    .max(HERO_HEADLINE_MAX_LENGTH)
+    .required()
+    .custom((value: string, helpers) =>
+      value.split(/\s+/).filter(Boolean).length > HERO_HEADLINE_MAX_WORDS ? helpers.error("hero.words") : value,
+    )
+    .messages({
+      "string.max": `El titular admite hasta ${HERO_HEADLINE_MAX_LENGTH} caracteres.`,
+      "hero.words": `El titular admite hasta ${HERO_HEADLINE_MAX_WORDS} palabras.`,
+      "any.required": "El titular es obligatorio (puede ir vacío).",
+    }),
+  slides: Joi.array().items(heroSlideSchema).max(HERO_MAX_SLIDES).required().messages({
+    "array.max": `Máximo ${HERO_MAX_SLIDES} fotos.`,
+    "any.required": "Envía la lista de fotos.",
+  }),
+});
+
 export {
+  updateHeroSchema,
   updateShippingSchema,
   updateCurrencySchema,
   updateReservationSchema,

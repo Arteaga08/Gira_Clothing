@@ -1,6 +1,6 @@
-import type { StorefrontAnnouncement } from "@gira/shared";
+import type { PublicStorefrontHero, StorefrontAnnouncement } from "@gira/shared";
 import { request, expectData } from "./request";
-import { STOREFRONT_ANNOUNCEMENT_PATH } from "./paths";
+import { STOREFRONT_ANNOUNCEMENT_PATH, STOREFRONT_HERO_PATH } from "./paths";
 
 /** Edits in Ajustes reach the storefront within this many seconds. */
 const ANNOUNCEMENT_REVALIDATE_SECONDS = 60;
@@ -25,4 +25,26 @@ const getAnnouncement = async (): Promise<StorefrontAnnouncement> => {
   }
 };
 
-export { getAnnouncement };
+/** Edits in «Contenido de home» reach the storefront within this many seconds. */
+const HERO_REVALIDATE_SECONDS = 60;
+
+const NO_HERO: PublicStorefrontHero = { headline: "", slides: [] };
+
+/**
+ * Like the marquee, the hero must never break the home: any failure collapses
+ * to "no photos", and the page shows its brand-name fallback instead.
+ */
+const getHero = async (): Promise<PublicStorefrontHero> => {
+  try {
+    return expectData(
+      await request<{ hero: PublicStorefrontHero }>(STOREFRONT_HERO_PATH, {
+        next: { revalidate: HERO_REVALIDATE_SECONDS },
+        timeoutMs: 3_000,
+      }),
+    ).hero;
+  } catch {
+    return NO_HERO;
+  }
+};
+
+export { getAnnouncement, getHero };

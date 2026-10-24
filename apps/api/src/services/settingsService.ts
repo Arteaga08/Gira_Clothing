@@ -1,6 +1,9 @@
 import { AuditAction, AuditModule } from "@gira/shared";
+import { Types } from "mongoose";
 import type {
+  PublicStorefrontHero,
   StorefrontAnnouncement,
+  StorefrontHero,
   ShippingOrigin,
   ShippingParcelSettings,
   ShippingSettings as PublicShippingSettings,
@@ -16,6 +19,8 @@ import {
   type TaxSettings,
   type StorefrontSettings,
 } from "../models/Settings.js";
+import { Product } from "../models/Product.js";
+import { AppError } from "../utils/AppError.js";
 import { recordAudit } from "./auditService.js";
 import type { RequestContext } from "../utils/requestContext.js";
 
@@ -36,12 +41,29 @@ interface PublicSettings {
   reservation: ReservationSettings;
   inventory: InventorySettings;
   tax: TaxSettings;
-  storefront: { announcement: StorefrontAnnouncement };
+  storefront: { announcement: StorefrontAnnouncement; hero: StorefrontHero };
 }
 
 const toAnnouncementView = (doc: SettingsDocument): StorefrontAnnouncement => ({
   enabled: doc.storefront?.announcement?.enabled ?? false,
   messages: [...(doc.storefront?.announcement?.messages ?? [])],
+});
+
+const toHeroView = (doc: SettingsDocument): StorefrontHero => ({
+  headline: doc.storefront?.hero?.headline ?? "",
+  // Explicit mapping: spreading a Mongoose subdocument would leak its internals.
+  slides: (doc.storefront?.hero?.slides ?? []).map((slide) => ({
+    image: {
+      url: slide.image.url,
+      publicId: slide.image.publicId,
+      width: slide.image.width,
+      height: slide.image.height,
+    },
+    productId: slide.productId ? slide.productId.toString() : null,
+    titleColor: slide.titleColor,
+    buttonColor: slide.buttonColor,
+    cards: slide.cards.map((card) => ({ text: card.text, color: card.color })),
+  })),
 });
 
 const toShippingView = (shipping: ShippingSettings): PublicShippingSettings => ({
@@ -70,7 +92,7 @@ const toPublicSettings = (doc: SettingsDocument): PublicSettings => ({
   reservation: doc.reservation,
   inventory: doc.inventory,
   tax: { rateBps: doc.tax.rateBps },
-  storefront: { announcement: toAnnouncementView(doc) },
+  storefront: { announcement: toAnnouncementView(doc), hero: toHeroView(doc) },
 });
 
 const getSettings = async (): Promise<SettingsDocument> => {
@@ -287,6 +309,67 @@ const updateAnnouncementSettings = async (
   return toPublicSettings(settings);
 };
 
+const HERO_PRODUCT_INVALID = "Uno de los productos elegidos no existe o está retirado.";
+
+/**
+ * What the storefront may read of the hero: the photos, their colours and
+ * cards, and the slug and name of each model. A model that was retired since
+ * the hero was saved collapses to `product: null` (the button then leads to the
+ * shop) instead of leaving a dead link.
+ */
+const getPublicHero = async (): Promise<PublicStorefrontHero> => {
+  const hero = toHeroView(await getSettings());
+  const ids = [...new Set(hero.slides.flatMap((slide) => (slide.productId ? [slide.productId] : [])))];
+  const products = ids.length
+    ? await Product.find({ _id: { $in: ids }, isActive: true }).select("slug name").lean()
+    : [];
+  const byId = new Map(products.map((product) => [String(product._id), { slug: product.slug, name: product.name }]));
+
+  return {
+    headline: hero.headline,
+    slides: hero.slides.map((slide) => ({
+      image: { url: slide.image.url, width: slide.image.width, height: slide.image.height },
+      product: slide.productId ? (byId.get(slide.productId) ?? null) : null,
+      titleColor: slide.titleColor,
+      buttonColor: slide.buttonColor,
+      cards: slide.cards,
+    })),
+  };
+};
+
+const updateHeroSettings = async (input: StorefrontHero, ctx: RequestContext): Promise<PublicSettings> => {
+  const ids = [...new Set(input.slides.flatMap((slide) => (slide.productId ? [slide.productId] : [])))];
+  if (ids.length > 0 && (await Product.countDocuments({ _id: { $in: ids }, isActive: true })) !== ids.length) {
+    throw new AppError(HERO_PRODUCT_INVALID, 400);
+  }
+
+  const settings = await getSettings();
+  const before = { ...toHeroView(settings) };
+
+  settings.storefront.hero.headline = input.headline;
+  settings.storefront.hero.slides = input.slides.map((slide) => ({
+    image: { ...slide.image },
+    productId: slide.productId ? new Types.ObjectId(slide.productId) : null,
+    titleColor: slide.titleColor,
+    buttonColor: slide.buttonColor,
+    cards: slide.cards.map((card) => ({ ...card })),
+  }));
+
+  await settings.save();
+  await recordAudit({
+    actorId: ctx.actorId,
+    actorType: "user",
+    action: AuditAction.SETTINGS_HERO_UPDATED,
+    module: AuditModule.SETTINGS,
+    targetId: settings.id as string,
+    before,
+    after: { ...toHeroView(settings) },
+    ip: ctx.ip,
+  });
+
+  return toPublicSettings(settings);
+};
+
 export type {
   PublicSettings,
   ShippingSettings,
@@ -306,4 +389,6 @@ export {
   updateTaxSettings,
   updateAnnouncementSettings,
   getPublicAnnouncement,
+  updateHeroSettings,
+  getPublicHero,
 };

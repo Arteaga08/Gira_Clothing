@@ -107,6 +107,11 @@ conversation that built it.
 **The CTA-Exclusivity Rule.** Amarillo fills `--color-cta` and nothing else. A second yellow surface
 on the same screen is always a bug — it stops meaning "you can act here."
 
+**The Hero Exception.** The storefront hero's one button follows the visible photo: the team picks its
+fill per photo (amarillo, rosa, lila or menta, ink text on all) in «Contenido de home». It is still the
+only action of the hero, and it is never bone (no white buttons). The hero's title stickers and floating
+cards take bone, rosa, lila or menta from the same panel — never amarillo, which stays button-only.
+
 **The Rosa-at-Size Rule.** Rosa chicle measures 3.1:1 on hueso and 3.5:1 on verde bosque — both
 below the 4.5:1 a paragraph needs, both above the 3:1 a large/bold element or a UI component needs.
 So: rosa in a heading ≥18px/700, a bold price, or a chip fill — never in a sentence of body text.
