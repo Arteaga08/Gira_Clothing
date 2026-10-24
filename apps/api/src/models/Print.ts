@@ -1,5 +1,5 @@
 import { Schema, model, type HydratedDocument, type Model, type Types } from "mongoose";
-import { PRINT_HOME_POSITION_MAX } from "@gira/shared";
+import { PRINT_HOME_BLURB_MAX, PRINT_HOME_POSITION_MAX } from "@gira/shared";
 import { imageSchema, type ImageAttrs } from "./schemas/image.js";
 
 /**
@@ -18,7 +18,9 @@ interface PrintAttrs {
   image: ImageAttrs;
   isActive: boolean;
   /** Slot in the home's «Prints» section; unset = not shown there. Unique among the prints that have one. */
-  homePosition?: number;
+  homePosition?: number | undefined;
+  /** Line under the name in that section; unset = the family description stands in. */
+  homeBlurb?: string | undefined;
 }
 
 type PrintModel = Model<PrintAttrs>;
@@ -33,6 +35,7 @@ const printSchema = new Schema<PrintAttrs, PrintModel>(
     image: { type: imageSchema, required: true },
     isActive: { type: Boolean, default: true },
     homePosition: { type: Number, min: 1, max: PRINT_HOME_POSITION_MAX },
+    homeBlurb: { type: String, trim: true, maxlength: PRINT_HOME_BLURB_MAX },
   },
   { timestamps: true },
 );

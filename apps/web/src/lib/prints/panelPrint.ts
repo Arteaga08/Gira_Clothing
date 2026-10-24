@@ -14,6 +14,8 @@ interface PanelPrint {
   isActive: boolean;
   /** Slot in the home's «Prints» section; null = not shown there. */
   homePosition: number | null;
+  /** Line under the name in the home; "" = the family description stands in. */
+  homeBlurb: string;
   variantCount: number;
   activeVariantCount: number;
   /** At most 10; `activeVariantCount` is the true total. */
@@ -28,6 +30,7 @@ const toPanelPrint = (print: Wire<AdminPrint>): PanelPrint => ({
   imageUrl: print.image.url,
   isActive: print.isActive,
   homePosition: print.homePosition ?? null,
+  homeBlurb: print.homeBlurb ?? "",
   variantCount: print.variantCount,
   activeVariantCount: print.activeVariantCount,
   activeProducts: print.activeProducts.map((product) => ({ id: product.id, name: product.name })),

@@ -1,4 +1,5 @@
 import {
+  PRINT_HOME_BLURB_MAX,
   PRINT_HOME_POSITION_MAX,
   PRINT_NAME_MAX,
   PRINT_NAME_MIN,
@@ -14,8 +15,10 @@ interface PrintFormValues {
   sku: string;
   familyId: string;
   image: ImageAttrs | null;
-  /** "" = not in the home; otherwise "1".."6", as the select holds it. */
+  /** "" = not in the home; otherwise "1".."5", as the select holds it. */
   homePosition: string;
+  /** Line under the name in the home; "" = the family description stands in. */
+  homeBlurb: string;
 }
 
 /** What the server held when the panel opened: the reference an edit is diffed against. */
@@ -24,9 +27,10 @@ interface PrintBaseline {
   familyId: string;
   imageUrl: string;
   homePosition: number | null;
+  homeBlurb: string;
 }
 
-type PrintFormErrors = Partial<Record<"name" | "sku" | "family" | "image", string | undefined>>;
+type PrintFormErrors = Partial<Record<"name" | "sku" | "family" | "image" | "homeBlurb", string | undefined>>;
 
 interface CreatePrintBody {
   name: string;
@@ -34,6 +38,7 @@ interface CreatePrintBody {
   family: string;
   image: ImageAttrs;
   homePosition?: number;
+  homeBlurb?: string;
 }
 
 /** The SKU is never part of an update: every variant SKU was built from it. */
@@ -43,9 +48,12 @@ interface UpdatePrintBody {
   image?: ImageAttrs;
   /** null takes the print out of the home. */
   homePosition?: number | null;
+  /** "" clears it. */
+  homeBlurb?: string;
 }
 
 const NAME_ERROR = `El nombre debe tener entre ${PRINT_NAME_MIN} y ${PRINT_NAME_MAX} caracteres.`;
+const BLURB_ERROR = `El texto de la home no puede exceder ${PRINT_HOME_BLURB_MAX} caracteres.`;
 const SKU_ERROR = `El SKU debe tener de ${PRINT_SKU_MIN} a ${PRINT_SKU_MAX} caracteres: letras, números y guiones.`;
 
 const validatePrintForm = (values: PrintFormValues, mode: "create" | "edit"): PrintFormErrors => {
@@ -59,6 +67,7 @@ const validatePrintForm = (values: PrintFormValues, mode: "create" | "edit"): Pr
   if (!values.familyId) errors.family = "Elige una familia.";
   // An existing print already has its image; only a new one must bring it.
   if (mode === "create" && !values.image) errors.image = "Sube la imagen de la estampa.";
+  if (values.homeBlurb.trim().length > PRINT_HOME_BLURB_MAX) errors.homeBlurb = BLURB_ERROR;
   return errors;
 };
 
@@ -76,12 +85,14 @@ const toHomePosition = (value: string): number | null => (value === "" ? null : 
 /** Call only after `validatePrintForm` passed: the image is guaranteed there. */
 const toCreateBody = (values: PrintFormValues): CreatePrintBody => {
   const homePosition = toHomePosition(values.homePosition);
+  const homeBlurb = values.homeBlurb.trim();
   return {
     name: values.name.trim(),
     sku: values.sku.trim().toUpperCase(),
     family: values.familyId,
     image: values.image as ImageAttrs,
     ...(homePosition !== null ? { homePosition } : {}),
+    ...(homeBlurb ? { homeBlurb } : {}),
   };
 };
 
@@ -91,11 +102,13 @@ const baselineFromPrint = (print: {
   family: { id: string };
   imageUrl: string;
   homePosition: number | null;
+  homeBlurb: string;
 }): PrintBaseline => ({
   name: print.name,
   familyId: print.family.id,
   imageUrl: print.imageUrl,
   homePosition: print.homePosition,
+  homeBlurb: print.homeBlurb,
 });
 
 const toUpdateBody = (values: PrintFormValues, baseline: PrintBaseline): UpdatePrintBody => {
@@ -106,6 +119,8 @@ const toUpdateBody = (values: PrintFormValues, baseline: PrintBaseline): UpdateP
   if (values.image && values.image.url !== baseline.imageUrl) body.image = values.image;
   const homePosition = toHomePosition(values.homePosition);
   if (homePosition !== baseline.homePosition) body.homePosition = homePosition;
+  const homeBlurb = values.homeBlurb.trim();
+  if (homeBlurb !== baseline.homeBlurb) body.homeBlurb = homeBlurb;
   return body;
 };
 

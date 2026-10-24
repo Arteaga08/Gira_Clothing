@@ -9,10 +9,11 @@ interface PrintBackdropProps {
 /**
  * Every print's photo, stacked and mounted (remounting flickers). The new one
  * fades in over the old one, which holds until it is covered, so the section
- * never dips to its ink base. Decorative: the name says what it is.
+ * never dips to its ink base. Decorative: the name says what it is. Its own
+ * stacking context (z-0) keeps the photos under the copy.
  */
 const PrintBackdrop = ({ prints, activeIndex }: PrintBackdropProps) => (
-  <div aria-hidden="true" className="absolute inset-0">
+  <div aria-hidden="true" className="absolute inset-0 z-0">
     {prints.map((print, position) => (
       // eslint-disable-next-line @next/next/no-img-element -- Cloudinary URL from the API; no next/image loader is configured
       <img

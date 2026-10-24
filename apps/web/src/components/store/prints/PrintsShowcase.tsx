@@ -16,9 +16,11 @@ interface PrintsShowcaseProps {
 }
 
 /**
- * The selected print's photo fills the whole section; over it, its name in a
- * big label, the row of names (as in the reference: the selected one is fully
- * lit) and the link to the catalog filtered by that print.
+ * A still carousel, as in the reference: the selected print's photo fills the
+ * section, its name runs huge across it with its line underneath; then every
+ * print's name in one row (the selected one as a label) and the link to the
+ * catalog filtered by that print. Picking a name swaps the photo, the name and
+ * the line in place.
  */
 const PrintsShowcase = ({ prints }: PrintsShowcaseProps) => {
   const { ref, state } = useRevealOnScroll<HTMLElement>();
@@ -37,8 +39,8 @@ const PrintsShowcase = ({ prints }: PrintsShowcaseProps) => {
         Prints
       </h2>
       <PrintBackdrop prints={prints} activeIndex={index} />
-      <div className="relative flex min-h-[38rem] flex-col items-center justify-center gap-10 px-4 py-16 md:min-h-[min(92svh,54rem)] md:gap-14 md:py-24">
-        <div id={PANEL_ID} role="tabpanel" aria-labelledby={`print-tab-${active.slug}`} className="flex flex-col items-center gap-8">
+      <div className="relative z-10 flex min-h-[38rem] flex-col items-center justify-center gap-10 py-16 md:min-h-[min(92svh,54rem)] md:gap-14 md:px-12 md:py-24">
+        <div id={PANEL_ID} role="tabpanel" aria-labelledby={`print-tab-${active.slug}`} className="w-full px-4 md:px-0">
           <PrintHeadline prints={prints} activeIndex={index} />
         </div>
         <PrintTabs

@@ -41,6 +41,8 @@ interface Print {
   isActive: boolean;
   /** Slot in the home's «Prints» section (1..PRINT_HOME_POSITION_MAX); absent = not shown there. */
   homePosition?: number;
+  /** Line under the name in that section; the storefront falls back to the family description. */
+  homeBlurb?: string;
 }
 
 interface Measurements {

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { baselineFromPrint, toCreateBody, toUpdateBody, validatePrintForm, type PrintFormValues } from "@/lib/prints/printForm";
 
 const IMAGE = { url: "https://cdn/x.jpg", publicId: "gira/x", width: 10, height: 10 };
-const VALID: PrintFormValues = { name: " Rosas ", sku: "flr-001", familyId: "f1", image: IMAGE, homePosition: "" };
+const VALID: PrintFormValues = { name: " Rosas ", sku: "flr-001", familyId: "f1", image: IMAGE, homePosition: "", homeBlurb: "" };
 
 describe("validatePrintForm", () => {
   it("datos válidos no dan errores", () => {
@@ -10,7 +10,7 @@ describe("validatePrintForm", () => {
   });
 
   it("marca cada campo en español", () => {
-    expect(validatePrintForm({ name: "R", sku: "a b", familyId: "", image: null, homePosition: "" }, "create")).toEqual({
+    expect(validatePrintForm({ name: "R", sku: "a b", familyId: "", image: null, homePosition: "", homeBlurb: "" }, "create")).toEqual({
       name: "El nombre debe tener entre 2 y 80 caracteres.",
       sku: "El SKU debe tener de 2 a 24 caracteres: letras, números y guiones.",
       family: "Elige una familia.",
@@ -29,7 +29,7 @@ describe("bodies", () => {
   });
 
   it("editar solo manda lo que cambió y nunca el SKU", () => {
-    const base = { name: "Rosas", familyId: "f1", imageUrl: IMAGE.url, homePosition: null };
+    const base = { name: "Rosas", familyId: "f1", imageUrl: IMAGE.url, homePosition: null, homeBlurb: "" };
     expect(toUpdateBody({ ...VALID, name: "Rosas" }, base)).toEqual({});
     expect(toUpdateBody({ ...VALID, name: "Otro", familyId: "f2" }, base)).toEqual({ name: "Otro", family: "f2" });
     expect(toUpdateBody({ ...VALID, image: { ...IMAGE, url: "https://cdn/y.jpg" } }, base)).toEqual({
@@ -40,7 +40,7 @@ describe("bodies", () => {
 });
 
 describe("posición en la home", () => {
-  const base = { name: "Rosas", familyId: "f1", imageUrl: IMAGE.url, homePosition: null };
+  const base = { name: "Rosas", familyId: "f1", imageUrl: IMAGE.url, homePosition: null, homeBlurb: "" };
 
   it("crear solo la manda si se eligió una", () => {
     expect("homePosition" in toCreateBody(VALID)).toBe(false);
@@ -57,7 +57,28 @@ describe("posición en la home", () => {
 
   it("la línea base sale de la estampa del panel", () => {
     expect(
-      baselineFromPrint({ name: "Rosas", family: { id: "f1" }, imageUrl: IMAGE.url, homePosition: 4 }),
-    ).toEqual({ name: "Rosas", familyId: "f1", imageUrl: IMAGE.url, homePosition: 4 });
+      baselineFromPrint({ name: "Rosas", family: { id: "f1" }, imageUrl: IMAGE.url, homePosition: 4, homeBlurb: "Hola" }),
+    ).toEqual({ name: "Rosas", familyId: "f1", imageUrl: IMAGE.url, homePosition: 4, homeBlurb: "Hola" });
+  });
+});
+
+describe("texto en la home", () => {
+  const base = { name: "Rosas", familyId: "f1", imageUrl: IMAGE.url, homePosition: null, homeBlurb: "" };
+
+  it("crear lo manda recortado solo si hay texto", () => {
+    expect("homeBlurb" in toCreateBody(VALID)).toBe(false);
+    expect(toCreateBody({ ...VALID, homeBlurb: "  Flores a mano. " })).toMatchObject({ homeBlurb: "Flores a mano." });
+  });
+
+  it("editar manda el cambio, y \"\" para quitarlo", () => {
+    expect(toUpdateBody({ ...VALID, name: "Rosas", homeBlurb: "Nuevo" }, base)).toEqual({ homeBlurb: "Nuevo" });
+    expect(toUpdateBody({ ...VALID, name: "Rosas", homeBlurb: " " }, { ...base, homeBlurb: "Viejo" })).toEqual({ homeBlurb: "" });
+    expect(toUpdateBody({ ...VALID, name: "Rosas", homeBlurb: "Viejo " }, { ...base, homeBlurb: "Viejo" })).toEqual({});
+  });
+
+  it("marca un texto demasiado largo", () => {
+    expect(validatePrintForm({ ...VALID, homeBlurb: "x".repeat(141) }, "edit")).toEqual({
+      homeBlurb: "El texto de la home no puede exceder 140 caracteres.",
+    });
   });
 });

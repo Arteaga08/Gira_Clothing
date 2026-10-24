@@ -85,6 +85,8 @@ interface PublicPrint {
   sku: string;
   family: { id: string; name: string; slug: string };
   image: ImageAttrs;
+  /** Line for the home: the print's own text, or its family description. */
+  blurb?: string;
 }
 
 interface PrintLean {
@@ -94,10 +96,12 @@ interface PrintLean {
   sku: string;
   family: unknown;
   image: ImageAttrs;
+  homeBlurb?: string | undefined;
 }
 
 const toPublicPrint = (doc: PrintLean): PublicPrint => {
-  const family = doc.family as { _id: unknown; name: string; slug: string };
+  const family = doc.family as { _id: unknown; name: string; slug: string; description?: string };
+  const blurb = doc.homeBlurb || family.description;
   return {
     id: String(doc._id),
     name: doc.name,
@@ -105,6 +109,7 @@ const toPublicPrint = (doc: PrintLean): PublicPrint => {
     sku: doc.sku,
     family: { id: String(family._id), name: family.name, slug: family.slug },
     image: doc.image,
+    ...(blurb ? { blurb } : {}),
   };
 };
 
@@ -126,14 +131,14 @@ const listPublicPrints = async (
   const { filter, skip, limit, page } = parsed;
   const sort = query.featured === true ? { homePosition: 1 as const } : parsed.sort;
   const [docs, total] = await Promise.all([
-    Print.find(filter).sort(sort).skip(skip).limit(limit).populate("family", "name slug").lean(),
+    Print.find(filter).sort(sort).skip(skip).limit(limit).populate("family", "name slug description").lean(),
     Print.countDocuments(filter),
   ]);
   return { items: docs.map(toPublicPrint), meta: buildMeta(total, { page, limit }) };
 };
 
 const getPublicPrint = async (slug: string): Promise<PublicPrint> => {
-  const doc = await Print.findOne({ slug, isActive: true }).populate("family", "name slug").lean();
+  const doc = await Print.findOne({ slug, isActive: true }).populate("family", "name slug description").lean();
   if (!doc) throw new AppError("El estampado no existe.", 404);
   return toPublicPrint(doc);
 };

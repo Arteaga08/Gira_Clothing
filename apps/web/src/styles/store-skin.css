@@ -513,42 +513,78 @@
     transform 450ms var(--store-nav-ease) 150ms;
 }
 
-/* Names over the photo: hueso with an ink outline and a hard ink shadow, so they read on light and dark photos. */
+.prints-headline-name {
+  color: var(--color-text-inverse);
+  -webkit-text-stroke: 3px var(--color-ink);
+  paint-order: stroke fill;
+  text-shadow: 6px 6px 0 var(--color-ink);
+  overflow-wrap: anywhere;
+}
+
+/*
+ * Row of names. Phones: a sideways scroll that snaps each name to the centre
+ * (the side padding lets the first and last reach it). Wide screens: no
+ * scroll, the names spread across the section.
+ */
+.prints-tabs {
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  padding-inline: 40%;
+}
+
+.prints-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .prints-tabs {
+    overflow-x: visible;
+    scroll-snap-type: none;
+    padding-inline: 0;
+  }
+}
+
+/*
+ * Each name reads solid on any photo: hueso with an ink outline and a hard ink
+ * shadow. The selected one is covered by a hueso label (ink border, hard
+ * shadow, ink text); the label is a second layer that only changes opacity.
+ */
 .prints-tab {
   position: relative;
   flex: none;
+  scroll-snap-align: center;
   white-space: nowrap;
   line-height: 1;
+  padding: 0.3em 0.45em 0.2em;
   color: var(--color-text-inverse);
   -webkit-text-stroke: 2px var(--color-ink);
   paint-order: stroke fill;
   text-shadow: 3px 3px 0 var(--color-ink);
-  opacity: 0.6;
-  transition:
-    opacity 200ms var(--store-nav-ease),
-    transform 160ms var(--store-nav-ease);
+  transition: transform 160ms var(--store-nav-ease);
 }
 
 .prints-tab::after {
-  content: "";
+  content: attr(data-label);
   position: absolute;
-  inset-inline: 0;
-  bottom: -0.6rem;
-  height: 0.45rem;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: inherit;
   border: 2px solid var(--color-ink);
-  border-radius: var(--nb-radius-pill);
-  background: var(--color-text-inverse);
-  transform: scaleX(0);
-  transition: transform 200ms var(--store-nav-ease);
-}
-
-.prints-tab[aria-selected="true"] {
-  opacity: 1;
+  border-radius: var(--nb-radius);
+  background: var(--color-surface);
+  box-shadow: var(--nb-shadow);
+  color: var(--color-ink);
+  -webkit-text-stroke: 0;
+  text-shadow: none;
+  opacity: 0;
+  transition: opacity 200ms var(--store-nav-ease);
 }
 
 .prints-tab[aria-selected="true"]::after {
-  transform: scaleX(1);
-  transition-duration: 400ms;
+  opacity: 1;
 }
 
 .prints-tab:active {
@@ -557,12 +593,12 @@
 
 .prints-tab:focus-visible {
   outline: 2px solid var(--color-text-inverse);
-  outline-offset: 6px;
+  outline-offset: 4px;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .prints-tab:not([aria-selected="true"]):hover {
-    opacity: 0.85;
+    transform: translate(-2px, -2px);
   }
 }
 
@@ -578,11 +614,6 @@
   .prints-headline[data-active="true"] {
     transition-duration: 250ms;
     transition-timing-function: ease;
-  }
-
-  .prints-tab::after,
-  .prints-tab[aria-selected="true"]::after {
-    transition: none;
   }
 
   .prints-tab:active {
