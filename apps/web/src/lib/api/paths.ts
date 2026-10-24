@@ -26,6 +26,7 @@ const STOREFRONT_ANNOUNCEMENT_PATH = "/storefront/announcement";
 const STOREFRONT_HERO_PATH = "/storefront/hero";
 const CATALOG_PRODUCTS_PATH = "/catalog/products";
 const CATALOG_CATEGORIES_PATH = "/catalog/categories";
+const CATALOG_PRINTS_PATH = "/catalog/prints";
 
 export {
   STATS_OVERVIEW_PATH,
@@ -48,4 +49,5 @@ export {
   STOREFRONT_HERO_PATH,
   CATALOG_PRODUCTS_PATH,
   CATALOG_CATEGORIES_PATH,
+  CATALOG_PRINTS_PATH,
 };

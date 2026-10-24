@@ -16,4 +16,7 @@ const productRoute = (slug: string): string => `/tienda/${slug}`;
 /** Catalog filtered by category; the catalog arrives with M14 (the `category` filter matches the API's). */
 const categoryRoute = (slug: string): string => `/tienda?categoria=${encodeURIComponent(slug)}`;
 
-export { STORE_ROUTES, productRoute, categoryRoute };
+/** Catalog filtered by print; the catalog arrives with M14 (the `estampa` filter maps to the API's `print`). */
+const printRoute = (slug: string): string => `/tienda?estampa=${encodeURIComponent(slug)}`;
+
+export { STORE_ROUTES, productRoute, categoryRoute, printRoute };

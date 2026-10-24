@@ -39,6 +39,8 @@ interface Print {
   family: CatalogRef;
   image: ImageAttrs;
   isActive: boolean;
+  /** Slot in the home's «Prints» section (1..PRINT_HOME_POSITION_MAX); absent = not shown there. */
+  homePosition?: number;
 }
 
 interface Measurements {

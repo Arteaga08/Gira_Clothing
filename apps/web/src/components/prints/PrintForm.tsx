@@ -12,6 +12,8 @@ import type { UseImageUpload } from "@/hooks/useImageUpload";
 import { withCurrentCategory, type Option } from "@/lib/catalog/catalogOptions";
 import type { PanelPrint } from "@/lib/prints/panelPrint";
 import {
+  baselineFromPrint,
+  HOME_POSITION_OPTIONS,
   toUpdateBody,
   validatePrintForm,
   type PrintFormErrors,
@@ -43,12 +45,12 @@ const PrintForm = ({ mode, print, families, upload, uploading, saving, error, on
   const [sku, setSku] = useState(print?.sku ?? "");
   const [familyId, setFamilyId] = useState(print?.family.id ?? "");
   const [image, setImage] = useState<ImageAttrs | null>(null);
+  const [homePosition, setHomePosition] = useState(print?.homePosition ? String(print.homePosition) : "");
   const [errors, setErrors] = useState<PrintFormErrors>({});
 
   const editing = mode === "edit" && print !== undefined;
-  const values: PrintFormValues = { name, sku, familyId, image };
-  const unchanged =
-    editing && Object.keys(toUpdateBody(values, { name: print.name, familyId: print.family.id, imageUrl: print.imageUrl })).length === 0;
+  const values: PrintFormValues = { name, sku, familyId, image, homePosition };
+  const unchanged = editing && Object.keys(toUpdateBody(values, baselineFromPrint(print))).length === 0;
   const previewUrl = image?.url ?? print?.imageUrl;
   const familyOptions = editing ? withCurrentCategory(families, print.family.id, print.family.name) : families;
 
@@ -119,6 +121,13 @@ const PrintForm = ({ mode, print, families, upload, uploading, saving, error, on
           </p>
         ) : null}
       </div>
+      <SelectField
+        label="Posición en la home"
+        options={HOME_POSITION_OPTIONS}
+        value={homePosition}
+        helper="Las estampas con posición salen en la sección «Prints» de la tienda, en ese orden."
+        onChange={setHomePosition}
+      />
       {error ? (
         <Notice variant="danger" title={editing ? "No se pudo guardar la estampa" : "No se pudo crear la estampa"}>
           <p>{error}</p>

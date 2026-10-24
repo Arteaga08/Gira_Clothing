@@ -1,6 +1,6 @@
-import type { CategoryColor, PublicProductSummary, PublicStorefrontHero, StorefrontAnnouncement } from "@gira/shared";
+import { PRINT_HOME_POSITION_MAX, type CategoryColor, type PublicProductSummary, type PublicStorefrontHero, type StorefrontAnnouncement } from "@gira/shared";
 import { request, expectData } from "./request";
-import { CATALOG_CATEGORIES_PATH, CATALOG_PRODUCTS_PATH, STOREFRONT_ANNOUNCEMENT_PATH, STOREFRONT_HERO_PATH } from "./paths";
+import { CATALOG_CATEGORIES_PATH, CATALOG_PRINTS_PATH, CATALOG_PRODUCTS_PATH, STOREFRONT_ANNOUNCEMENT_PATH, STOREFRONT_HERO_PATH } from "./paths";
 
 /** Edits in Ajustes reach the storefront within this many seconds. */
 const ANNOUNCEMENT_REVALIDATE_SECONDS = 60;
@@ -99,5 +99,36 @@ const getCategories = async (): Promise<PublicCategorySummary[]> => {
   }
 };
 
-export type { PublicCategorySummary };
-export { getAnnouncement, getHero, getBestSellers, getCategories };
+/** Print row of `GET /catalog/prints`: the macro photo is mandatory in the model. */
+interface PublicPrintSummary {
+  id: string;
+  name: string;
+  slug: string;
+  sku: string;
+  family: { id: string; name: string; slug: string };
+  image: { url: string; width: number; height: number };
+}
+
+const FEATURED_PRINTS_REVALIDATE_SECONDS = 60;
+const FEATURED_PRINTS_QUERY = `?featured=true&limit=${PRINT_HOME_POSITION_MAX}`;
+
+/**
+ * Prints the team placed in the home (Estampas screen, «Posición en la home»),
+ * in slot order. Like the other home reads: any failure collapses to "none"
+ * and the section is not drawn.
+ */
+const getFeaturedPrints = async (): Promise<PublicPrintSummary[]> => {
+  try {
+    return expectData(
+      await request<{ prints: PublicPrintSummary[] }>(`${CATALOG_PRINTS_PATH}${FEATURED_PRINTS_QUERY}`, {
+        next: { revalidate: FEATURED_PRINTS_REVALIDATE_SECONDS },
+        timeoutMs: 3_000,
+      }),
+    ).prints;
+  } catch {
+    return [];
+  }
+};
+
+export type { PublicCategorySummary, PublicPrintSummary };
+export { getAnnouncement, getHero, getBestSellers, getCategories, getFeaturedPrints };

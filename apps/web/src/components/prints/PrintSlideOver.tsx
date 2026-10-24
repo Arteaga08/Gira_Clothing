@@ -12,7 +12,7 @@ import { getPrint } from "@/lib/api/adminPrints";
 import { isApiError } from "@/lib/api/ApiError";
 import type { Option } from "@/lib/catalog/catalogOptions";
 import type { PanelPrint } from "@/lib/prints/panelPrint";
-import type { PrintFormValues } from "@/lib/prints/printForm";
+import { baselineFromPrint, type PrintFormValues } from "@/lib/prints/printForm";
 import { PrintForm } from "./PrintForm";
 import { RetirePrintSection } from "./RetirePrintSection";
 
@@ -128,7 +128,7 @@ const PanelBody = ({ selected, prints, families, onClose, onChanged }: PanelBody
   }
 
   const submit = async (values: PrintFormValues) => {
-    const baseline = { name: print.name, familyId: print.family.id, imageUrl: print.imageUrl };
+    const baseline = baselineFromPrint(print);
     setSource("form");
     if (await save.update(print.id, values, baseline)) finish(`Estampa «${values.name.trim()}» guardada`);
   };

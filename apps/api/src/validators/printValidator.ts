@@ -1,5 +1,6 @@
 import Joi from "joi";
 import {
+  PRINT_HOME_POSITION_MAX,
   PRINT_NAME_MAX,
   PRINT_NAME_MIN,
   PRINT_SKU_MAX,
@@ -28,11 +29,19 @@ const sku = Joi.string()
     "string.empty": "El SKU es obligatorio.",
   });
 
+const homePosition = Joi.number().integer().min(1).max(PRINT_HOME_POSITION_MAX).messages({
+  "number.base": "La posición en la home debe ser un número.",
+  "number.integer": "La posición en la home debe ser un número entero.",
+  "number.min": `La posición en la home va de 1 a ${PRINT_HOME_POSITION_MAX}.`,
+  "number.max": `La posición en la home va de 1 a ${PRINT_HOME_POSITION_MAX}.`,
+});
+
 const createPrintSchema = Joi.object({
   name: name.required(),
   sku: sku.required(),
   family: objectId.required().messages({ "any.required": "La familia es obligatoria." }),
   image: imageObjectSchema.required(),
+  homePosition,
 });
 
 // The SKU never changes: every variant SKU was built from it.
@@ -42,6 +51,8 @@ const updatePrintSchema = Joi.object({
   family: objectId,
   image: imageObjectSchema,
   isActive: Joi.boolean(),
+  // null takes the print out of the home.
+  homePosition: homePosition.allow(null),
 })
   .min(1)
   .messages({ "object.min": "Envía al menos un campo para actualizar." });

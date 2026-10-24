@@ -20,6 +20,7 @@ interface CreatePrintInput {
   sku: string;
   family: string;
   image: ImageAttrs;
+  homePosition?: number;
 }
 
 interface UpdatePrintInput {
@@ -27,6 +28,8 @@ interface UpdatePrintInput {
   family?: string;
   image?: ImageAttrs;
   isActive?: boolean;
+  /** null takes the print out of the home. */
+  homePosition?: number | null;
 }
 
 const findActiveFamilyOrThrow = async (familyId: string) => {
@@ -35,11 +38,28 @@ const findActiveFamilyOrThrow = async (familyId: string) => {
   return family;
 };
 
+/**
+ * A home slot holds one print: 409 naming the print that has it. The unique
+ * partial index on `homePosition` backs this up against a race.
+ */
+const assertHomePositionFree = async (position: number, exceptId?: string): Promise<void> => {
+  const holder = await Print.findOne({ homePosition: position, ...(exceptId ? { _id: { $ne: exceptId } } : {}) })
+    .select("name")
+    .lean();
+  if (holder) {
+    throw new AppError(
+      `La posición ${position} de la home ya la tiene «${holder.name}». Quítasela primero o elige otra.`,
+      409,
+    );
+  }
+};
+
 const createPrint = async (
   input: CreatePrintInput,
   ctx: RequestContext,
 ): Promise<AdminPrint> => {
   const family = await findActiveFamilyOrThrow(input.family);
+  if (input.homePosition !== undefined) await assertHomePositionFree(input.homePosition);
 
   const slug = await resolveUniqueSlug(
     slugify(input.name),
@@ -53,6 +73,7 @@ const createPrint = async (
     sku: input.sku,
     family: family._id,
     image: input.image,
+    homePosition: input.homePosition,
   });
 
   await recordAudit({
@@ -106,6 +127,13 @@ const updatePrint = async (
   }
   if (input.image !== undefined) print.image = input.image;
   if (input.isActive !== undefined) print.isActive = input.isActive;
+  if (input.homePosition === null) print.homePosition = undefined;
+  else if (input.homePosition !== undefined && input.homePosition !== print.homePosition) {
+    await assertHomePositionFree(input.homePosition, id);
+    print.homePosition = input.homePosition;
+  }
+  // A retired print never keeps a home slot: it frees it for another.
+  if (!print.isActive) print.homePosition = undefined;
 
   await print.save();
 
@@ -140,6 +168,7 @@ const deactivatePrint = async (id: string, ctx: RequestContext): Promise<AdminPr
   await assertNoActiveVariants(id);
 
   print.isActive = false;
+  print.homePosition = undefined;
   await print.save();
 
   await recordAudit({

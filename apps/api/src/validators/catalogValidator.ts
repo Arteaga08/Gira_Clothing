@@ -5,7 +5,7 @@ import { slugValue } from "./commonValidator.js";
 // Public listings never accept isActive — visitors only ever see active documents.
 const publicListQuerySchema = listQueryBase;
 
-const publicPrintQuerySchema = listQueryBase.keys({ family: slugValue });
+const publicPrintQuerySchema = listQueryBase.keys({ family: slugValue, featured: Joi.boolean() });
 
 const publicProductQuerySchema = listQueryBase.keys({
   category: slugValue,

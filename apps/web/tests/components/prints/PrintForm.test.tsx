@@ -49,7 +49,19 @@ describe("PrintForm · crear", () => {
       sku: "FLR-9",
       familyId: FAMILY_B_ID,
       image: makeImage("nueva"),
+      homePosition: "",
     });
+  });
+
+  it("entrega la posición en la home elegida", async () => {
+    const props = setup();
+    await userEvent.type(screen.getByLabelText("Nombre"), "Rosas");
+    await userEvent.type(screen.getByLabelText("SKU"), "flr-9");
+    await chooseOption(screen.getByRole("combobox", { name: "Familia" }), "Geométricas");
+    await chooseOption(screen.getByRole("combobox", { name: "Posición en la home" }), "Posición 2");
+    await userEvent.upload(screen.getByLabelText(/Subir imagen/), new File(["x"], "r.png", { type: "image/png" }));
+    await userEvent.click(screen.getByRole("button", { name: "Crear estampa" }));
+    expect(props.onSubmit).toHaveBeenCalledWith(expect.objectContaining({ homePosition: "2" }));
   });
 
   it("muestra el error del API", () => {
@@ -82,7 +94,7 @@ describe("PrintForm · editar", () => {
     const props = setup({ mode: "edit", print });
     await userEvent.type(screen.getByLabelText("Nombre"), " 2");
     await userEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
-    expect(props.onSubmit).toHaveBeenCalledWith({ name: "Rosas de verano 2", sku: "FLR-001", familyId: FAMILY_A_ID, image: null });
+    expect(props.onSubmit).toHaveBeenCalledWith({ name: "Rosas de verano 2", sku: "FLR-001", familyId: FAMILY_A_ID, image: null, homePosition: "" });
   });
 
   it("reemplazar la imagen la sube a la carpeta de estampas", async () => {
