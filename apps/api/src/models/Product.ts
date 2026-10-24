@@ -1,4 +1,5 @@
 import { Schema, model, type HydratedDocument, type Model, type Types } from "mongoose";
+import { PRODUCT_CARD_TAGS_MAX, PRODUCT_CARD_TAG_MAX_LENGTH } from "@gira/shared";
 import { imageSchema, type ImageAttrs } from "./schemas/image.js";
 
 /**
@@ -28,6 +29,12 @@ interface ProductAttrs {
   materials: string[];
   /** One photo or diagram of the real size of the model. */
   sizeImage?: ImageAttrs;
+  /** Flagged by the team: shows in the storefront «Más vendidos». No automatic ranking. */
+  bestSeller: boolean;
+  /** Up to three words printed on the storefront card. */
+  cardTags: string[];
+  /** Print whose variant the card shows; unset: the first active variant with photos. */
+  cardPrint?: Types.ObjectId;
   isActive: boolean;
 }
 
@@ -65,6 +72,13 @@ const productSchema = new Schema<ProductAttrs, ProductModel>(
     measurements: { type: measurementsSchema, default: () => ({}) },
     materials: { type: [String], default: [] },
     sizeImage: { type: imageSchema },
+    bestSeller: { type: Boolean, default: false },
+    cardTags: {
+      type: [{ type: String, trim: true, maxlength: PRODUCT_CARD_TAG_MAX_LENGTH }],
+      default: [],
+      validate: { validator: (tags: string[]) => tags.length <= PRODUCT_CARD_TAGS_MAX, message: "La card admite hasta 3 palabras." },
+    },
+    cardPrint: { type: Schema.Types.ObjectId, ref: "Print" },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true },
@@ -74,6 +88,8 @@ const productSchema = new Schema<ProductAttrs, ProductModel>(
 productSchema.index({ category: 1, isActive: 1, name: 1 });
 // Listing without category filter.
 productSchema.index({ isActive: 1, name: 1 });
+// Storefront «Más vendidos»: flagged products, newest first.
+productSchema.index({ isActive: 1, bestSeller: 1, createdAt: -1 });
 
 const Product = model<ProductAttrs, ProductModel>("Product", productSchema);
 

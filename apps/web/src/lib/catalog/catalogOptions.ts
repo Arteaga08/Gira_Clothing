@@ -1,8 +1,13 @@
-import type { Print, PrintFamily, ProductCategory, Wire } from "@gira/shared";
+import type { CategoryColor, Print, PrintFamily, ProductCategory, Wire } from "@gira/shared";
 
 interface Option {
   value: string;
   label: string;
+}
+
+/** A category option also carries its colour, to say which one the model's card will take. */
+interface CategoryOption extends Option {
+  color?: CategoryColor;
 }
 
 /** A print as the picker paints it: no slug, no storage id. */
@@ -16,7 +21,7 @@ interface PickerPrint {
 }
 
 interface CatalogOptions {
-  categories: Option[];
+  categories: CategoryOption[];
   families: Option[];
   prints: PickerPrint[];
 }
@@ -33,8 +38,8 @@ const toPickerPrint = (print: Wire<Print>): PickerPrint => ({
   imageUrl: print.image.url,
 });
 
-const toCategoryOptions = (categories: readonly Wire<ProductCategory>[]): Option[] =>
-  categories.map((category) => ({ value: category.id, label: category.name })).sort(byLabel);
+const toCategoryOptions = (categories: readonly Wire<ProductCategory>[]): CategoryOption[] =>
+  categories.map((category) => ({ value: category.id, label: category.name, color: category.color })).sort(byLabel);
 
 const toFamilyOptions = (families: readonly Wire<PrintFamily>[]): Option[] =>
   families.map((family) => ({ value: family.id, label: family.name })).sort(byLabel);
@@ -50,10 +55,10 @@ const toCatalogOptions = (
 });
 
 /** A product whose category was retired still has to show it in the select, flagged as retired. */
-const withCurrentCategory = (options: Option[], categoryId: string, categoryName: string): Option[] =>
+const withCurrentCategory = (options: CategoryOption[], categoryId: string, categoryName: string): CategoryOption[] =>
   options.some((option) => option.value === categoryId)
     ? options
     : [...options, { value: categoryId, label: `${categoryName} (retirada)` }];
 
 export { toCatalogOptions, toCategoryOptions, toFamilyOptions, toPickerPrint, withCurrentCategory };
-export type { Option, PickerPrint, CatalogOptions };
+export type { Option, CategoryOption, PickerPrint, CatalogOptions };

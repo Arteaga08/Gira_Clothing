@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, type FormEvent } from "react";
+import { CategoryColorField } from "@/components/ui/CategoryColorField";
 import { Field } from "@/components/ui/Field";
 import { Notice } from "@/components/ui/Notice";
 import { T_LABEL } from "@/components/ui/typography";
@@ -67,6 +68,15 @@ const TaxonForm = ({ formId, config, mode, values, errors, error, onChange, onSu
           </span>
         </p>
       </div>
+      {values.color ? (
+        <CategoryColorField
+          name={`${formId}-color`}
+          legend="Color en la tienda"
+          value={values.color}
+          onChange={(color) => onChange({ ...values, color })}
+          helper="Las cards de sus productos en la tienda toman este color."
+        />
+      ) : null}
       {error ? (
         <Notice
           variant="danger"

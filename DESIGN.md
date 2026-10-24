@@ -121,6 +121,14 @@ page background is verde bosque now, not a light neutral. Every light surface (`
 `NB_CONTROL`, the sidebar rail) resets back to `--color-text-primary` itself — components never rely
 on inherited color across a surface boundary.
 
+### Category colours (storefront)
+Each product category carries one colour, chosen in its form, that its storefront cards take: a strong
+fill for the name band and a soft tint (`color-mix` with hueso) for the detail bands. Eight options:
+hueso, rosa, lila, menta and four more, literals in `tokens.css`: azul ikat (`#86a9ec`), mandarina
+(`#ffa552`), cereza (`#ee4b5e`), cielo (`#c2e1f6`). Text on them is always ink. Amarillo is never one.
+They identify; they never stand for a state (that is the status vocabulary below). Utilities:
+`bg-cat-<color>` / `bg-cat-<color>-soft`, mapped in `lib/store/categoryColors.ts`.
+
 ### Status colors
 Nine order-status hues and five shipment-status hues (`--status-*`, `--ship-*`) are their own flat
 pastel vocabulary, independent of the brand palette — a status is never conveyed by brand color.

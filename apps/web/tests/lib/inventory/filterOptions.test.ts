@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { modelsForCategory, toFilterOptions } from "@/lib/inventory/filterOptions";
 
-const category = (id: string, name: string) => ({ id, name, slug: name, isActive: true });
+const category = (id: string, name: string) => ({ id, name, slug: name, color: "bone" as const, isActive: true });
 const product = (id: string, name: string, categoryId: string) =>
   ({ id, name, slug: name, category: { id: categoryId, name: "x", slug: "x" }, isActive: true }) as never;
 const print = (id: string, name: string) => ({ id, name, slug: name, sku: name, isActive: true }) as never;

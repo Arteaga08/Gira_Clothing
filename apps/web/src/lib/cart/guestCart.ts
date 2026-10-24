@@ -4,6 +4,9 @@
  * navbar counter and whatever writes the cart (M14) cannot drift apart.
  */
 
+/** The API refuses more than this per line (cartValidator); the browser cart keeps to the same limit. */
+const CART_LINE_MAX_QTY = 20;
+
 const GUEST_CART_KEY = "gira.guestCart.v1";
 const CART_CHANGED_EVENT = "gira:cart-changed";
 
@@ -28,10 +31,44 @@ const countGuestCart = (): number => {
   }
 };
 
+const readGuestLines = (): GuestCartLine[] => {
+  const raw = window.localStorage.getItem(GUEST_CART_KEY);
+  if (!raw) return [];
+  const parsed: unknown = JSON.parse(raw);
+  if (!Array.isArray(parsed)) return [];
+  return parsed.filter(
+    (line): line is GuestCartLine =>
+      typeof (line as Partial<GuestCartLine> | null)?.variantId === "string" &&
+      Number.isInteger((line as GuestCartLine).qty) &&
+      (line as GuestCartLine).qty > 0,
+  );
+};
+
+/**
+ * Adds one unit of a variant to the visitor's cart. Resolves `false` when the
+ * browser refuses the write (blocked storage) or the line already holds the
+ * maximum, so the caller can say so instead of pretending.
+ */
+const addToGuestCart = (variantId: string): boolean => {
+  try {
+    const lines = readGuestLines();
+    const current = lines.find((line) => line.variantId === variantId);
+    if (current && current.qty >= CART_LINE_MAX_QTY) return false;
+    const next = current
+      ? lines.map((line) => (line.variantId === variantId ? { ...line, qty: line.qty + 1 } : line))
+      : [...lines, { variantId, qty: 1 }];
+    window.localStorage.setItem(GUEST_CART_KEY, JSON.stringify(next));
+    announceCartChange();
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 /** Call after any write to the cart so every counter on the page refreshes. */
 const announceCartChange = (): void => {
   window.dispatchEvent(new Event(CART_CHANGED_EVENT));
 };
 
 export type { GuestCartLine };
-export { GUEST_CART_KEY, CART_CHANGED_EVENT, countGuestCart, announceCartChange };
+export { GUEST_CART_KEY, CART_CHANGED_EVENT, CART_LINE_MAX_QTY, countGuestCart, addToGuestCart, announceCartChange };

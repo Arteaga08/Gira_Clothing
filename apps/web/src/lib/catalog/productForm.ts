@@ -1,5 +1,7 @@
 import {
   PRODUCT_BASE_PRICE_MAX,
+  PRODUCT_CARD_TAGS_MAX,
+  PRODUCT_CARD_TAG_MAX_LENGTH,
   PRODUCT_DESCRIPTION_MAX,
   PRODUCT_MATERIAL_MAX,
   PRODUCT_MATERIALS_MAX,
@@ -28,6 +30,12 @@ interface ModelFields {
   depth: string;
   /** Comma-separated. */
   materials: string;
+  /** «Más vendido»: shows in the storefront section of that name. */
+  bestSeller: boolean;
+  /** The words of the storefront card: always PRODUCT_CARD_TAGS_MAX inputs, empty ones are dropped on save. */
+  cardTags: string[];
+  /** Print whose variant the card shows; "" follows the first variant with photos. */
+  cardPrintId: string;
 }
 
 /** One print chosen for the model. `priceOverride` is pesos text; empty means "use the base price". */
@@ -60,6 +68,10 @@ interface ModelBody {
   weightGrams: number;
   measurements: Measurements;
   materials: string[];
+  bestSeller: boolean;
+  cardTags: string[];
+  /** `null` returns the card to the automatic variant. */
+  cardPrint: string | null;
 }
 
 type CreateProductBody = ModelBody & { sizeImage?: ImageAttrs };
@@ -94,6 +106,9 @@ const EMPTY_MODEL: ModelFields = {
   height: "",
   depth: "",
   materials: "",
+  bestSeller: false,
+  cardTags: Array.from({ length: PRODUCT_CARD_TAGS_MAX }, () => ""),
+  cardPrintId: "",
 };
 
 const emptyFormState = (): ProductFormState => ({ model: { ...EMPTY_MODEL }, sizeImage: null, selected: [] });
@@ -117,6 +132,9 @@ const stateFromBaseline = ({ product, variants }: ProductBaseline): ProductFormS
     height: measureText(product.measurements.heightCm),
     depth: measureText(product.measurements.depthCm),
     materials: product.materials.join(", "),
+    bestSeller: product.bestSeller,
+    cardTags: Array.from({ length: PRODUCT_CARD_TAGS_MAX }, (_, index) => product.cardTags[index] ?? ""),
+    cardPrintId: product.cardPrintId,
   },
   sizeImage: product.sizeImage ?? null,
   selected: variants.filter((variant) => variant.isActive).map(draftFromExisting),
@@ -177,6 +195,10 @@ const validateModel = (model: ModelFields): ModelErrors => {
     errors.materials = `Cada material puede tener hasta ${PRODUCT_MATERIAL_MAX} caracteres.`;
   }
 
+  if (model.cardTags.some((tag) => tag.trim().length > PRODUCT_CARD_TAG_MAX_LENGTH)) {
+    errors.cardTags = `Cada palabra puede tener hasta ${PRODUCT_CARD_TAG_MAX_LENGTH} caracteres.`;
+  }
+
   return errors;
 };
 
@@ -209,6 +231,9 @@ const toModelBody = (model: ModelFields): ModelBody => {
     weightGrams: Number(model.weight),
     measurements,
     materials: parseMaterials(model.materials),
+    bestSeller: model.bestSeller,
+    cardTags: model.cardTags.map((tag) => tag.trim()).filter(Boolean),
+    cardPrint: model.cardPrintId || null,
   };
 };
 
@@ -241,8 +266,10 @@ const addPrint = (state: ProductFormState, printId: string, existing: readonly E
   return { ...state, selected: [...state.selected, draft] };
 };
 
+/** A print that leaves the selection can no longer be the card's: the card goes back to automatic. */
 const removePrint = (state: ProductFormState, printId: string): ProductFormState => ({
   ...state,
+  model: state.model.cardPrintId === printId ? { ...state.model, cardPrintId: "" } : state.model,
   selected: state.selected.filter((draft) => draft.printId !== printId),
 });
 

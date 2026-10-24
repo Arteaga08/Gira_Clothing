@@ -1,5 +1,5 @@
 import Joi from "joi";
-import { PRODUCT_CATEGORY_NAME_MAX, PRODUCT_CATEGORY_NAME_MIN, PRODUCT_CATEGORY_DESCRIPTION_MAX } from "@gira/shared";
+import { CATEGORY_COLORS, PRODUCT_CATEGORY_NAME_MAX, PRODUCT_CATEGORY_NAME_MIN, PRODUCT_CATEGORY_DESCRIPTION_MAX } from "@gira/shared";
 import { listQueryBase } from "./listQueryValidator.js";
 
 const name = Joi.string().trim().min(PRODUCT_CATEGORY_NAME_MIN).max(PRODUCT_CATEGORY_NAME_MAX).messages({
@@ -11,14 +11,18 @@ const name = Joi.string().trim().min(PRODUCT_CATEGORY_NAME_MIN).max(PRODUCT_CATE
 
 const description = Joi.string().trim().max(PRODUCT_CATEGORY_DESCRIPTION_MAX).allow("");
 
+const color = Joi.string().valid(...CATEGORY_COLORS).messages({ "any.only": "Elige un color de la lista." });
+
 const createProductCategorySchema = Joi.object({
   name: name.required(),
   description,
+  color,
 });
 
 const updateProductCategorySchema = Joi.object({
   name,
   description,
+  color,
   isActive: Joi.boolean(),
 })
   .min(1)

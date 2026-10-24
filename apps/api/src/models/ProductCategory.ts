@@ -1,4 +1,5 @@
 import { Schema, model, type HydratedDocument, type Model } from "mongoose";
+import { CATEGORY_COLORS, CATEGORY_DEFAULT_COLOR, type CategoryColor } from "@gira/shared";
 
 /**
  * Product taxonomy (bolsas, cosmetiqueras, fundas de laptop...). Kept as a
@@ -11,6 +12,8 @@ interface ProductCategoryAttrs {
   name: string;
   slug: string;
   description?: string;
+  /** Colour its storefront cards take (the team picks it in the category form). */
+  color: CategoryColor;
   isActive: boolean;
 }
 
@@ -22,6 +25,7 @@ const productCategorySchema = new Schema<ProductCategoryAttrs, ProductCategoryMo
     name: { type: String, required: true, trim: true, maxlength: 80 },
     slug: { type: String, required: true, unique: true, lowercase: true, trim: true },
     description: { type: String, trim: true, maxlength: 500 },
+    color: { type: String, enum: CATEGORY_COLORS, default: CATEGORY_DEFAULT_COLOR },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true },

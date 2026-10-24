@@ -1,4 +1,4 @@
-import type { AdminPrintFamily, AdminProductCategory, Wire } from "@gira/shared";
+import type { AdminPrintFamily, AdminProductCategory, CategoryColor, Wire } from "@gira/shared";
 
 /**
  * A family or a category as the table and the modal hold it. The admin DTO also
@@ -10,6 +10,8 @@ interface PanelTaxon {
   id: string;
   name: string;
   description: string;
+  /** Categories only: the colour of their storefront cards. */
+  color: CategoryColor | null;
   isActive: boolean;
   childCount: number;
   activeChildCount: number;
@@ -22,6 +24,7 @@ const toPanelFamily = (family: Wire<AdminPrintFamily>): PanelTaxon => ({
   id: family.id,
   name: family.name,
   description: family.description ?? "",
+  color: null,
   isActive: family.isActive,
   childCount: family.printCount,
   activeChildCount: family.activePrintCount,
@@ -33,6 +36,7 @@ const toPanelCategory = (category: Wire<AdminProductCategory>): PanelTaxon => ({
   id: category.id,
   name: category.name,
   description: category.description ?? "",
+  color: category.color,
   isActive: category.isActive,
   childCount: category.productCount,
   activeChildCount: category.activeProductCount,

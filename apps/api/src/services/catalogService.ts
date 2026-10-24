@@ -1,4 +1,4 @@
-import type { ApiMeta } from "@gira/shared";
+import { CATEGORY_DEFAULT_COLOR, type ApiMeta, type CategoryColor, type PublicProductCard } from "@gira/shared";
 import type { Types } from "mongoose";
 import { PrintFamily } from "../models/PrintFamily.js";
 import { Print } from "../models/Print.js";
@@ -147,6 +147,7 @@ interface PublicCategory {
   name: string;
   slug: string;
   description?: string;
+  color: CategoryColor;
 }
 
 interface CategoryLean {
@@ -154,6 +155,7 @@ interface CategoryLean {
   name: string;
   slug: string;
   description?: string;
+  color?: CategoryColor;
 }
 
 const toPublicCategory = (doc: CategoryLean): PublicCategory => ({
@@ -161,6 +163,7 @@ const toPublicCategory = (doc: CategoryLean): PublicCategory => ({
   name: doc.name,
   slug: doc.slug,
   ...(doc.description ? { description: doc.description } : {}),
+  color: doc.color ?? CATEGORY_DEFAULT_COLOR,
 });
 
 const listPublicCategories = async (
@@ -188,10 +191,14 @@ interface PublicProductSummary {
   id: string;
   name: string;
   slug: string;
-  category: { id: string; name: string; slug: string };
+  category: { id: string; name: string; slug: string; color: CategoryColor };
   basePrice: number;
   measurements: Measurements;
   materials: string[];
+  bestSeller: boolean;
+  cardTags: string[];
+  /** Only on the listing, and only when the model has a purchasable variant. */
+  card?: PublicProductCard;
 }
 
 interface ProductLean {
@@ -203,25 +210,65 @@ interface ProductLean {
   basePrice: number;
   measurements: Measurements;
   materials: string[];
+  bestSeller?: boolean;
+  cardTags?: string[];
+  cardPrint?: unknown;
 }
 
-const toPublicProductSummary = (doc: ProductLean): PublicProductSummary => {
-  const category = doc.category as { _id: unknown; name: string; slug: string };
+const toPublicProductSummary = (doc: ProductLean, card?: PublicProductCard): PublicProductSummary => {
+  const category = doc.category as { _id: unknown; name: string; slug: string; color?: CategoryColor };
   return {
     id: String(doc._id),
     name: doc.name,
     slug: doc.slug,
-    category: { id: String(category._id), name: category.name, slug: category.slug },
+    category: {
+      id: String(category._id),
+      name: category.name,
+      slug: category.slug,
+      color: category.color ?? CATEGORY_DEFAULT_COLOR,
+    },
     basePrice: doc.basePrice,
     measurements: doc.measurements,
     materials: doc.materials,
+    bestSeller: doc.bestSeller ?? false,
+    cardTags: doc.cardTags ?? [],
+    ...(card ? { card } : {}),
   };
 };
+
+interface CardVariantLean {
+  _id: unknown;
+  product: unknown;
+  images: ImageAttrs[];
+  priceOverride?: number;
+  onHand: number;
+  reserved: number;
+  print: { _id: unknown; image: ImageAttrs; isActive: boolean };
+}
+
+/**
+ * The variant a card shows: the print the team chose, else the first active
+ * variant with photos, else the first active one (its print image stands in).
+ * A variant whose print was retired is never shown. Variants arrive oldest first.
+ */
+const pickCardVariant = (variants: CardVariantLean[], cardPrint: unknown): CardVariantLean | undefined => {
+  const usable = variants.filter((variant) => variant.print.isActive);
+  const chosen = cardPrint ? usable.find((variant) => String(variant.print._id) === String(cardPrint)) : undefined;
+  return chosen ?? usable.find((variant) => variant.images.length > 0) ?? usable[0];
+};
+
+const toPublicProductCard = (variant: CardVariantLean, basePrice: number): PublicProductCard => ({
+  variantId: String(variant._id),
+  images: (variant.images.length > 0 ? variant.images : [variant.print.image]).slice(0, 2),
+  price: variant.priceOverride ?? basePrice,
+  isAvailable: variant.onHand - variant.reserved > 0,
+});
 
 interface PublicProductQuery extends RawPublicQuery {
   category?: string;
   print?: string;
   family?: string;
+  bestSeller?: boolean;
 }
 
 /**
@@ -236,6 +283,7 @@ const listPublicProducts = async (
   query: PublicProductQuery,
 ): Promise<{ items: PublicProductSummary[]; meta: ApiMeta }> => {
   const filters: Record<string, unknown> = { isActive: true };
+  if (query.bestSeller === true) filters.bestSeller = true;
 
   if (query.category) {
     const category = await ProductCategory.findOne({ slug: query.category, isActive: true })
@@ -272,10 +320,26 @@ const listPublicProducts = async (
 
   const { filter, sort, skip, limit, page } = parseListQuery(query, PRODUCT_LIST_CONFIG, filters);
   const [docs, total] = await Promise.all([
-    Product.find(filter).sort(sort).skip(skip).limit(limit).populate("category", "name slug").lean(),
+    Product.find(filter).sort(sort).skip(skip).limit(limit).populate("category", "name slug color").lean(),
     Product.countDocuments(filter),
   ]);
-  return { items: docs.map(toPublicProductSummary), meta: buildMeta(total, { page, limit }) };
+
+  // One query for the whole page: the active variants of these products, oldest first.
+  const variants = (await Variant.find({ product: { $in: docs.map((doc) => doc._id) }, isActive: true })
+    .sort({ createdAt: 1, _id: 1 })
+    .populate("print", "image isActive")
+    .lean()) as unknown as CardVariantLean[];
+  const byProduct = new Map<string, CardVariantLean[]>();
+  for (const variant of variants) {
+    const key = String(variant.product);
+    byProduct.set(key, [...(byProduct.get(key) ?? []), variant]);
+  }
+
+  const items = docs.map((doc) => {
+    const picked = pickCardVariant(byProduct.get(String(doc._id)) ?? [], doc.cardPrint);
+    return toPublicProductSummary(doc, picked ? toPublicProductCard(picked, doc.basePrice) : undefined);
+  });
+  return { items, meta: buildMeta(total, { page, limit }) };
 };
 
 interface PublicVariantView {
@@ -304,7 +368,7 @@ interface VariantWithPrintLean {
 
 const getPublicProduct = async (slug: string): Promise<PublicProductDetail> => {
   const product = await Product.findOne({ slug, isActive: true })
-    .populate("category", "name slug")
+    .populate("category", "name slug color")
     .lean();
   if (!product) throw new AppError("El producto no existe.", 404);
 

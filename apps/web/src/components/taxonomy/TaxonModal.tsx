@@ -49,7 +49,11 @@ const Editor = ({ config, taxon, onClose, onChanged }: EditorProps) => {
   const { toast } = useToast();
   const save = useTaxonSave(config);
   const formId = `${FORM_ID}-${useId()}`;
-  const [values, setValues] = useState<TaxonFormValues>({ name: taxon?.name ?? "", description: taxon?.description ?? "" });
+  const [values, setValues] = useState<TaxonFormValues>({
+    name: taxon?.name ?? "",
+    description: taxon?.description ?? "",
+    color: taxon ? taxon.color : config.kind === "category" ? "bone" : null,
+  });
   const [errors, setErrors] = useState<TaxonFormErrors>({});
   // The hook holds one error; this says which action it belongs to so it shows in one place only.
   const [source, setSource] = useState<"form" | "retire">("form");
@@ -65,8 +69,11 @@ const Editor = ({ config, taxon, onClose, onChanged }: EditorProps) => {
   }, []);
 
   const editing = taxon !== undefined;
-  const baseline = taxon ?? { name: "", description: "" };
-  const dirty = values.name.trim() !== baseline.name || values.description.trim() !== baseline.description.trim();
+  const baseline = taxon ?? { name: "", description: "", color: values.color === null ? null : "bone" };
+  const dirty =
+    values.name.trim() !== baseline.name ||
+    values.description.trim() !== baseline.description.trim() ||
+    values.color !== baseline.color;
   const unchanged = editing && Object.keys(toUpdateBody(values, baseline)).length === 0;
 
   const finish = (title: string) => {

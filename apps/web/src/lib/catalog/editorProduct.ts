@@ -16,6 +16,10 @@ interface EditorProduct {
   measurements: Measurements;
   materials: string[];
   sizeImage?: ImageAttrs;
+  bestSeller: boolean;
+  cardTags: string[];
+  /** "" while the card follows the automatic variant. */
+  cardPrintId: string;
   isActive: boolean;
   activeVariantCount: number;
 }
@@ -48,6 +52,9 @@ const toEditorProduct = (product: Wire<AdminProduct>): EditorProduct => ({
   measurements: product.measurements,
   materials: product.materials,
   ...(product.sizeImage ? { sizeImage: product.sizeImage } : {}),
+  bestSeller: product.bestSeller,
+  cardTags: product.cardTags,
+  cardPrintId: product.cardPrintId ?? "",
   isActive: product.isActive,
   activeVariantCount: product.activeVariantCount,
 });

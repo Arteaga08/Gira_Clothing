@@ -24,6 +24,7 @@ const ADMIN_AUDIT_LOGS_PATH = "/admin/audit-logs";
 const CART_PATH = "/cart";
 const STOREFRONT_ANNOUNCEMENT_PATH = "/storefront/announcement";
 const STOREFRONT_HERO_PATH = "/storefront/hero";
+const CATALOG_PRODUCTS_PATH = "/catalog/products";
 
 export {
   STATS_OVERVIEW_PATH,
@@ -44,4 +45,5 @@ export {
   CART_PATH,
   STOREFRONT_ANNOUNCEMENT_PATH,
   STOREFRONT_HERO_PATH,
+  CATALOG_PRODUCTS_PATH,
 };
