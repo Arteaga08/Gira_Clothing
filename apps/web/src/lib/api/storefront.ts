@@ -1,6 +1,6 @@
-import { PRINT_HOME_POSITION_MAX, type CategoryColor, type PublicProductSummary, type PublicStorefrontHero, type StorefrontAnnouncement } from "@gira/shared";
+import { PRINT_HOME_POSITION_MAX, type CategoryColor, type PublicOfferBanner, type PublicProductSummary, type PublicStorefrontHero, type StorefrontAnnouncement } from "@gira/shared";
 import { request, expectData } from "./request";
-import { CATALOG_CATEGORIES_PATH, CATALOG_PRINTS_PATH, CATALOG_PRODUCTS_PATH, STOREFRONT_ANNOUNCEMENT_PATH, STOREFRONT_HERO_PATH } from "./paths";
+import { CATALOG_CATEGORIES_PATH, CATALOG_PRINTS_PATH, CATALOG_PRODUCTS_PATH, STOREFRONT_ANNOUNCEMENT_PATH, STOREFRONT_HERO_PATH, STOREFRONT_OFFER_BANNER_PATH } from "./paths";
 
 /** Edits in Ajustes reach the storefront within this many seconds. */
 const ANNOUNCEMENT_REVALIDATE_SECONDS = 60;
@@ -44,6 +44,26 @@ const getHero = async (): Promise<PublicStorefrontHero> => {
     ).hero;
   } catch {
     return NO_HERO;
+  }
+};
+
+/** Edits in «Contenido de home» reach the storefront within this many seconds. */
+const OFFER_BANNER_REVALIDATE_SECONDS = 60;
+
+/**
+ * The offer banner, or null when it is hidden. Like the hero, it must never
+ * break the home: any failure collapses to null and the section is skipped.
+ */
+const getOfferBanner = async (): Promise<PublicOfferBanner | null> => {
+  try {
+    return expectData(
+      await request<{ banner: PublicOfferBanner | null }>(STOREFRONT_OFFER_BANNER_PATH, {
+        next: { revalidate: OFFER_BANNER_REVALIDATE_SECONDS },
+        timeoutMs: 3_000,
+      }),
+    ).banner;
+  } catch {
+    return null;
   }
 };
 
@@ -154,4 +174,4 @@ const getFeaturedPrints = async (): Promise<PublicPrintSummary[]> => {
 };
 
 export type { PublicCategorySummary, PublicPrintSummary };
-export { getAnnouncement, getHero, getBestSellers, getNewArrivals, getCategories, getFeaturedPrints };
+export { getAnnouncement, getHero, getOfferBanner, getBestSellers, getNewArrivals, getCategories, getFeaturedPrints };

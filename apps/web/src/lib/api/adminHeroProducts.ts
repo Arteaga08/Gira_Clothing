@@ -4,8 +4,9 @@ import { ADMIN_PRODUCTS_PATH } from "./paths";
 import { expectData } from "./request";
 
 /**
- * Active models for the hero's «Producto» select. One page of the API's
- * maximum: the catalog is small and the photo may also lead to the shop.
+ * Active models for the «Producto» selects of the hero and the offer banner.
+ * One page of the API's maximum: the catalog is small and both may also lead
+ * elsewhere.
  */
 const fetchHeroProductOptions = async (): Promise<{ value: string; label: string }[]> => {
   const { products } = expectData(

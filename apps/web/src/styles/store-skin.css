@@ -900,3 +900,113 @@
     transform: none;
   }
 }
+
+/*
+ * Offer banner. The photo fills the section under an ink veil; its base is
+ * ink, and so is its olita cut (a photo cannot fill a cut). The phrase loops
+ * across it in Anton, hueso with an ink outline and a hard ink shadow (the
+ * Prints names' language), so it reads on any photo. The marquee clips its own
+ * overflow: clipping the section would also clip the cut above it.
+ */
+.offer-banner {
+  --cut-fill: var(--color-ink);
+  position: relative;
+  isolation: isolate;
+  background: var(--color-ink);
+  color: var(--color-text-inverse);
+}
+
+.offer-banner__photo {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.offer-banner__veil {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: color-mix(in srgb, var(--color-ink) 28%, transparent);
+}
+
+.offer-marquee {
+  overflow: hidden;
+}
+
+.offer-marquee__track {
+  display: flex;
+  width: max-content;
+  animation: store-marquee var(--offer-marquee-duration, 30s) linear infinite;
+}
+
+.offer-marquee:hover .offer-marquee__track {
+  animation-play-state: paused;
+}
+
+.offer-marquee__group {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-around;
+  min-width: 100vw;
+  gap: 2.5rem;
+  padding-right: 2.5rem;
+}
+
+.offer-marquee__item {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 2.5rem;
+  white-space: nowrap;
+}
+
+.offer-marquee__text {
+  font-family: var(--font-display);
+  font-size: clamp(2.75rem, 7vw, 6.5rem);
+  line-height: 1.05;
+  text-transform: uppercase;
+  color: var(--color-text-inverse);
+  -webkit-text-stroke: 3px var(--color-ink);
+  paint-order: stroke fill;
+  text-shadow: 5px 5px 0 var(--color-ink);
+}
+
+.offer-marquee__star {
+  width: clamp(1.5rem, 3vw, 2.75rem);
+  height: clamp(1.5rem, 3vw, 2.75rem);
+  flex-shrink: 0;
+  color: var(--color-text-inverse);
+  stroke: var(--color-ink);
+  stroke-width: 1.5px;
+  paint-order: stroke fill;
+}
+
+/* Reduced motion: no travel. One still copy of the phrase, wrapped and centred. */
+@media (prefers-reduced-motion: reduce) {
+  .offer-marquee__track {
+    animation: none;
+    width: 100%;
+  }
+
+  .offer-marquee__group {
+    min-width: 0;
+    flex-shrink: 1;
+    width: 100%;
+    padding-inline: 1rem;
+  }
+
+  .offer-marquee__group[aria-hidden="true"],
+  .offer-marquee__repeat,
+  .offer-marquee__star {
+    display: none;
+  }
+
+  .offer-marquee__item {
+    white-space: normal;
+    text-align: center;
+  }
+}

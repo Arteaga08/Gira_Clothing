@@ -178,6 +178,8 @@ import type {
   StorefrontHero,
   PublicHeroSlide,
   PublicStorefrontHero,
+  StorefrontOfferBanner,
+  PublicOfferBanner,
   StorefrontSettings,
   Settings,
 } from "./types/settings.js";
@@ -192,6 +194,9 @@ import {
   HERO_CARD_MAX_LENGTH,
   HERO_SURFACE_COLORS,
   HERO_BUTTON_COLORS,
+  OFFER_MESSAGE_MAX_LENGTH,
+  OFFER_BUTTON_MAX_LENGTH,
+  OFFER_ALT_MAX_LENGTH,
 } from "./constants/storefront.js";
 import type {
   RevenueEntry,
@@ -351,6 +356,8 @@ export type {
   StorefrontHero,
   PublicHeroSlide,
   PublicStorefrontHero,
+  StorefrontOfferBanner,
+  PublicOfferBanner,
   StorefrontSettings,
   Settings,
   RevenueEntry,
@@ -383,6 +390,9 @@ export {
   HERO_CARD_MAX_LENGTH,
   HERO_SURFACE_COLORS,
   HERO_BUTTON_COLORS,
+  OFFER_MESSAGE_MAX_LENGTH,
+  OFFER_BUTTON_MAX_LENGTH,
+  OFFER_ALT_MAX_LENGTH,
 };
 export type { StatsGranularity, PeriodPreset };
 export { STATS_GRANULARITIES, MAX_STATS_DAYS, PERIOD_PRESETS };

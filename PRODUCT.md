@@ -73,4 +73,6 @@ Usuarios: clientas y clientes que navegan desde el celular, sin prisa, y compran
 - Hero de la home: la foto es el hero (a pantalla completa, detrás del navbar), el titular y las cards
   son etiquetas flotantes con pinta de botón que no lo son, y su único botón cambia de color con cada foto
   (excepción documentada en DESIGN.md). Todo se edita en «Contenido de home».
+- Banner de ofertas (debajo de Novedades): foto a sangre, frase en bucle infinito y un botón lila.
+  Foto, descripción, frase, texto del botón, producto al que lleva y visibilidad se editan en «Contenido de home».
 

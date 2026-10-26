@@ -5,7 +5,7 @@ import { HomeContentPage } from "@/components/home-content/HomeContentPage";
 import { ToastProvider } from "@/components/ui/Toast";
 
 const { client, uploads, products } = vi.hoisted(() => ({
-  client: { get: vi.fn(), updateAnnouncement: vi.fn(), updateHero: vi.fn() },
+  client: { get: vi.fn(), updateAnnouncement: vi.fn(), updateHero: vi.fn(), updateOfferBanner: vi.fn() },
   uploads: { uploadImage: vi.fn() },
   products: { fetchHeroProductOptions: vi.fn() },
 }));
@@ -15,12 +15,15 @@ vi.mock("@/lib/api/adminHeroProducts", () => products);
 
 const IMAGE = { url: "https://res.cloudinary.com/gira/image/upload/a.jpg", publicId: "gira/home/a", width: 1600, height: 1000 };
 
+const EMPTY_BANNER = { enabled: false, image: null, alt: "", message: "", buttonLabel: "", productId: null };
+
 const makeSettings = (
   announcement = { enabled: false, messages: [] as string[] },
   hero: { slides: unknown[] } = { slides: [] },
+  offerBanner: Record<string, unknown> = EMPTY_BANNER,
 ) => ({
   id: "s1",
-  storefront: { announcement, hero },
+  storefront: { announcement, hero, offerBanner },
 });
 
 const renderPage = () =>
@@ -34,6 +37,7 @@ beforeEach(() => {
   client.get.mockReset().mockResolvedValue(makeSettings());
   client.updateAnnouncement.mockReset();
   client.updateHero.mockReset();
+  client.updateOfferBanner.mockReset();
   uploads.uploadImage.mockReset().mockResolvedValue(IMAGE);
   products.fetchHeroProductOptions.mockReset().mockResolvedValue([{ value: "p1", label: "Playera Flor" }]);
 });
@@ -111,6 +115,60 @@ describe("HomeContentPage", () => {
       await userEvent.click(screen.getByRole("button", { name: "Agregar card" }));
       await userEvent.click(screen.getByRole("button", { name: "Agregar card" }));
       expect(screen.getByRole("button", { name: "Agregar card" })).toBeDisabled();
+    });
+  });
+
+  describe("banner de ofertas", () => {
+    const openBanner = async () => {
+      renderPage();
+      const card = (await screen.findByText("Oculto")).closest("section") ?? document.body;
+      await userEvent.click(within(card as HTMLElement).getByRole("button", { name: "Editar" }));
+      return within(await screen.findByRole("dialog"));
+    };
+
+    it("no muestra un banner incompleto", async () => {
+      const dialog = await openBanner();
+      await userEvent.click(dialog.getByRole("switch", { name: "Mostrar el banner en la tienda" }));
+      await userEvent.type(dialog.getByLabelText("Frase que corre"), "Rebajas");
+      await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+      expect(
+        await screen.findByText("Para mostrar el banner completa la foto, su descripción, la frase y el botón."),
+      ).toBeInTheDocument();
+      expect(client.updateOfferBanner).not.toHaveBeenCalled();
+    });
+
+    it("el botón lleva a un producto elegido de la lista, como en la portada; no hay campo de enlace", async () => {
+      const dialog = await openBanner();
+      expect(dialog.getByText("Producto al que lleva")).toBeInTheDocument();
+      expect(dialog.getAllByText("Ir a la tienda (sin producto)").length).toBeGreaterThan(0);
+      expect(dialog.queryByLabelText("Enlace")).not.toBeInTheDocument();
+      expect(products.fetchHeroProductOptions).toHaveBeenCalled();
+    });
+
+    it("sube la foto y guarda el banner visible con los textos recortados", async () => {
+      client.updateOfferBanner.mockResolvedValue(makeSettings());
+      const dialog = await openBanner();
+      const input = (await screen.findByText("Subir foto")).closest("label")?.querySelector("input") as HTMLInputElement;
+      await userEvent.upload(input, new File(["x"], "banner.jpg", { type: "image/jpeg" }));
+      expect(await screen.findByText("Cambiar foto")).toBeInTheDocument();
+      expect(uploads.uploadImage).toHaveBeenCalledWith(expect.any(File), "home");
+
+      await userEvent.click(dialog.getByRole("switch", { name: "Mostrar el banner en la tienda" }));
+      await userEvent.type(dialog.getByLabelText("Descripción de la foto"), "Modelo con playeras");
+      await userEvent.type(dialog.getByLabelText("Frase que corre"), "  Rebajas de temporada ");
+      await userEvent.type(dialog.getByLabelText("Texto del botón"), "Comprar ahora");
+      await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+
+      await waitFor(() =>
+        expect(client.updateOfferBanner).toHaveBeenCalledWith({
+          enabled: true,
+          image: IMAGE,
+          alt: "Modelo con playeras",
+          message: "Rebajas de temporada",
+          buttonLabel: "Comprar ahora",
+          productId: null,
+        }),
+      );
     });
   });
 });

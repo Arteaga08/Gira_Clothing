@@ -76,9 +76,36 @@ interface PublicStorefrontHero {
   slides: PublicHeroSlide[];
 }
 
+/**
+ * Offer banner of the home, edited in «Contenido de home». Hidden, it may be
+ * left half filled; shown, every field is required.
+ */
+interface StorefrontOfferBanner {
+  enabled: boolean;
+  image: ImageAttrs | null;
+  /** Describes the photo for screen readers. */
+  alt: string;
+  /** The phrase that loops over the photo. */
+  message: string;
+  buttonLabel: string;
+  /** The model the button leads to. null: the button leads to the shop. */
+  productId: string | null;
+}
+
+/** What the public storefront may read of the banner: no ids, no publicId, no switch. */
+interface PublicOfferBanner {
+  image: Pick<ImageAttrs, "url" | "width" | "height">;
+  alt: string;
+  message: string;
+  buttonLabel: string;
+  /** null when no model was chosen, or it was retired since: the button leads to the shop. */
+  product: { slug: string; name: string } | null;
+}
+
 interface StorefrontSettings {
   announcement: StorefrontAnnouncement;
   hero: StorefrontHero;
+  offerBanner: StorefrontOfferBanner;
 }
 
 interface Settings {
@@ -105,6 +132,8 @@ export type {
   StorefrontHero,
   PublicHeroSlide,
   PublicStorefrontHero,
+  StorefrontOfferBanner,
+  PublicOfferBanner,
   StorefrontSettings,
   Settings,
 };
