@@ -19,6 +19,14 @@ const HERO_SURFACE_COLORS = ["bone", "pink", "lilac", "mint"] as const;
 /** Fills for the one action button. Never bone: no button is left white. */
 const HERO_BUTTON_COLORS = ["yellow", "pink", "lilac", "mint"] as const;
 
+/**
+ * Offer banner (home, below «Novedades»): one photo, a phrase that loops over
+ * it and one button, which leads to a chosen model or, without one, the shop.
+ */
+const OFFER_MESSAGE_MAX_LENGTH = 80;
+const OFFER_BUTTON_MAX_LENGTH = 20;
+const OFFER_ALT_MAX_LENGTH = 140;
+
 export {
   ANNOUNCEMENT_MAX_MESSAGES,
   ANNOUNCEMENT_MAX_LENGTH,
@@ -30,4 +38,7 @@ export {
   HERO_CARD_MAX_LENGTH,
   HERO_SURFACE_COLORS,
   HERO_BUTTON_COLORS,
+  OFFER_MESSAGE_MAX_LENGTH,
+  OFFER_BUTTON_MAX_LENGTH,
+  OFFER_ALT_MAX_LENGTH,
 };

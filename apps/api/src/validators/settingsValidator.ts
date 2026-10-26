@@ -11,6 +11,9 @@ import {
   HERO_MAX_SLIDES,
   HERO_SURFACE_COLORS,
   MEXICAN_STATE_CODES,
+  OFFER_ALT_MAX_LENGTH,
+  OFFER_BUTTON_MAX_LENGTH,
+  OFFER_MESSAGE_MAX_LENGTH,
   PHONE_PATTERN,
   POSTAL_CODE_PATTERN,
   PriceRounding,
@@ -184,8 +187,42 @@ const updateHeroSchema = Joi.object({
   }),
 });
 
+const OFFER_REQUIRED_TO_SHOW = ["image", "alt", "message", "buttonLabel"] as const;
+
+// Every text may be empty while the banner is hidden; shown, nothing may be
+// missing. No model: the button leads to the shop.
+const updateOfferBannerSchema = Joi.object({
+  enabled: Joi.boolean().strict().required().messages({
+    "any.required": "Indica si el banner se muestra.",
+    "boolean.base": "El estado del banner debe ser verdadero o falso.",
+  }),
+  image: imageObjectSchema.allow(null).required().messages({
+    "any.required": "Envía la foto del banner o déjala vacía.",
+  }),
+  alt: Joi.string().trim().allow("").max(OFFER_ALT_MAX_LENGTH).required().messages({
+    "string.max": `La descripción de la foto admite hasta ${OFFER_ALT_MAX_LENGTH} caracteres.`,
+    "any.required": "Envía la descripción de la foto.",
+  }),
+  message: Joi.string().trim().allow("").max(OFFER_MESSAGE_MAX_LENGTH).required().messages({
+    "string.max": `La frase admite hasta ${OFFER_MESSAGE_MAX_LENGTH} caracteres.`,
+    "any.required": "Envía la frase del banner.",
+  }),
+  buttonLabel: Joi.string().trim().allow("").max(OFFER_BUTTON_MAX_LENGTH).required().messages({
+    "string.max": `El texto del botón admite hasta ${OFFER_BUTTON_MAX_LENGTH} caracteres.`,
+    "any.required": "Envía el texto del botón.",
+  }),
+  productId: objectId.allow(null).required().messages({
+    "any.required": "Indica el producto del banner o déjalo vacío.",
+  }),
+})
+  .custom((value: Record<(typeof OFFER_REQUIRED_TO_SHOW)[number], unknown> & { enabled: boolean }, helpers) =>
+    value.enabled && OFFER_REQUIRED_TO_SHOW.some((field) => !value[field]) ? helpers.error("offer.incomplete") : value,
+  )
+  .messages({ "offer.incomplete": "Para mostrar el banner completa la foto, su descripción, la frase y el botón." });
+
 export {
   updateHeroSchema,
+  updateOfferBannerSchema,
   updateShippingSchema,
   updateCurrencySchema,
   updateReservationSchema,

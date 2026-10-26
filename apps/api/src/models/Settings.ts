@@ -10,6 +10,9 @@ import {
   HERO_MAX_CARDS,
   HERO_MAX_SLIDES,
   HERO_SURFACE_COLORS,
+  OFFER_ALT_MAX_LENGTH,
+  OFFER_BUTTON_MAX_LENGTH,
+  OFFER_MESSAGE_MAX_LENGTH,
   PriceRounding,
 } from "@gira/shared";
 import type {
@@ -85,6 +88,14 @@ interface StorefrontSettings {
   };
   hero: {
     slides: HeroSlideAttrs[];
+  };
+  offerBanner: {
+    enabled: boolean;
+    image: ImageAttrs | null;
+    alt: string;
+    message: string;
+    buttonLabel: string;
+    productId: Types.ObjectId | null;
   };
 }
 
@@ -226,6 +237,15 @@ const settingsSchema = new Schema<SettingsAttrs, SettingsModel>(
             message: `Máximo ${HERO_MAX_SLIDES} fotos.`,
           },
         },
+      },
+      // Hidden it may stay half filled; the validator requires every field to show it.
+      offerBanner: {
+        enabled: { type: Boolean, default: false },
+        image: { type: heroImageSchema, default: null },
+        alt: { type: String, trim: true, maxlength: OFFER_ALT_MAX_LENGTH, default: "" },
+        message: { type: String, trim: true, maxlength: OFFER_MESSAGE_MAX_LENGTH, default: "" },
+        buttonLabel: { type: String, trim: true, maxlength: OFFER_BUTTON_MAX_LENGTH, default: "" },
+        productId: { type: Schema.Types.ObjectId, ref: "Product", default: null },
       },
     },
   },

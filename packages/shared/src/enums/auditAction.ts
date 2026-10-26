@@ -95,6 +95,7 @@ enum AuditAction {
   /** Storefront announcement bar edited in Ajustes. */
   SETTINGS_ANNOUNCEMENT_UPDATED = "settings_announcement_updated",
   SETTINGS_HERO_UPDATED = "settings_hero_updated",
+  SETTINGS_OFFER_BANNER_UPDATED = "settings_offer_banner_updated",
   LABEL_REQUESTED = "label_requested",
   LABEL_CREATED = "label_created",
   LABEL_FAILED = "label_failed",

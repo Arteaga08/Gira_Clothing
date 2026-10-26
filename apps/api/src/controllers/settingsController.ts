@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import type { StorefrontAnnouncement, StorefrontHero } from "@gira/shared";
+import type { StorefrontAnnouncement, StorefrontHero, StorefrontOfferBanner } from "@gira/shared";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { sendResponse } from "../utils/sendResponse.js";
 import { buildContext } from "../utils/requestContext.js";
@@ -14,6 +14,8 @@ import {
   getPublicAnnouncement,
   updateHeroSettings,
   getPublicHero,
+  updateOfferBannerSettings,
+  getPublicOfferBanner,
   type ShippingSettings,
   type CurrencySettings,
   type ReservationSettings,
@@ -87,6 +89,16 @@ const publicHero = asyncHandler(async (_req: Request, res: Response) => {
   sendResponse(res, 200, "Portada obtenida correctamente.", { hero });
 });
 
+const updateOfferBanner = asyncHandler(async (req: Request, res: Response) => {
+  const settings = await updateOfferBannerSettings(req.body as StorefrontOfferBanner, buildContext(req));
+  sendResponse(res, 200, "Banner de ofertas actualizado correctamente.", { settings });
+});
+
+const publicOfferBanner = asyncHandler(async (_req: Request, res: Response) => {
+  const banner = await getPublicOfferBanner();
+  sendResponse(res, 200, "Banner de ofertas obtenido correctamente.", { banner });
+});
+
 export {
   detail,
   updateShipping,
@@ -98,4 +110,6 @@ export {
   publicAnnouncement,
   updateHero,
   publicHero,
+  updateOfferBanner,
+  publicOfferBanner,
 };

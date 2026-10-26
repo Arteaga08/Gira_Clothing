@@ -1,9 +1,11 @@
 import { AuditAction, AuditModule } from "@gira/shared";
 import { Types } from "mongoose";
 import type {
+  PublicOfferBanner,
   PublicStorefrontHero,
   StorefrontAnnouncement,
   StorefrontHero,
+  StorefrontOfferBanner,
   ShippingOrigin,
   ShippingParcelSettings,
   ShippingSettings as PublicShippingSettings,
@@ -41,7 +43,7 @@ interface PublicSettings {
   reservation: ReservationSettings;
   inventory: InventorySettings;
   tax: TaxSettings;
-  storefront: { announcement: StorefrontAnnouncement; hero: StorefrontHero };
+  storefront: { announcement: StorefrontAnnouncement; hero: StorefrontHero; offerBanner: StorefrontOfferBanner };
 }
 
 const toAnnouncementView = (doc: SettingsDocument): StorefrontAnnouncement => ({
@@ -65,6 +67,26 @@ const toHeroView = (doc: SettingsDocument): StorefrontHero => ({
     cards: slide.cards.map((card) => ({ text: card.text, color: card.color })),
   })),
 });
+
+const toOfferBannerView = (doc: SettingsDocument): StorefrontOfferBanner => {
+  const banner = doc.storefront?.offerBanner;
+  return {
+    enabled: banner?.enabled ?? false,
+    // Explicit mapping: spreading a Mongoose subdocument would leak its internals.
+    image: banner?.image
+      ? {
+          url: banner.image.url,
+          publicId: banner.image.publicId,
+          width: banner.image.width,
+          height: banner.image.height,
+        }
+      : null,
+    alt: banner?.alt ?? "",
+    message: banner?.message ?? "",
+    buttonLabel: banner?.buttonLabel ?? "",
+    productId: banner?.productId ? banner.productId.toString() : null,
+  };
+};
 
 const toShippingView = (shipping: ShippingSettings): PublicShippingSettings => ({
   // Explicit mapping: spreading a Mongoose subdocument would leak its internals.
@@ -92,7 +114,11 @@ const toPublicSettings = (doc: SettingsDocument): PublicSettings => ({
   reservation: doc.reservation,
   inventory: doc.inventory,
   tax: { rateBps: doc.tax.rateBps },
-  storefront: { announcement: toAnnouncementView(doc), hero: toHeroView(doc) },
+  storefront: {
+    announcement: toAnnouncementView(doc),
+    hero: toHeroView(doc),
+    offerBanner: toOfferBannerView(doc),
+  },
 });
 
 const getSettings = async (): Promise<SettingsDocument> => {
@@ -310,6 +336,7 @@ const updateAnnouncementSettings = async (
 };
 
 const HERO_PRODUCT_INVALID = "Uno de los productos elegidos no existe o está retirado.";
+const OFFER_PRODUCT_INVALID = "El producto elegido no existe o está retirado.";
 
 /**
  * What the storefront may read of the hero: the photos, their colours and
@@ -370,6 +397,62 @@ const updateHeroSettings = async (input: StorefrontHero, ctx: RequestContext): P
   return toPublicSettings(settings);
 };
 
+/**
+ * What the storefront may read of the offer banner. Hidden, or saved half
+ * filled, it collapses to null and the home skips it. A model retired since
+ * the banner was saved collapses to `product: null` (the button then leads to
+ * the shop), like the hero's.
+ */
+const getPublicOfferBanner = async (): Promise<PublicOfferBanner | null> => {
+  const { enabled, image, alt, message, buttonLabel, productId } = toOfferBannerView(await getSettings());
+  if (!enabled || !image || !alt || !message || !buttonLabel) return null;
+  const product = productId
+    ? await Product.findOne({ _id: productId, isActive: true }).select("slug name").lean()
+    : null;
+  return {
+    image: { url: image.url, width: image.width, height: image.height },
+    alt,
+    message,
+    buttonLabel,
+    product: product ? { slug: product.slug, name: product.name } : null,
+  };
+};
+
+const updateOfferBannerSettings = async (
+  input: StorefrontOfferBanner,
+  ctx: RequestContext,
+): Promise<PublicSettings> => {
+  if (input.productId && !(await Product.exists({ _id: input.productId, isActive: true }))) {
+    throw new AppError(OFFER_PRODUCT_INVALID, 400);
+  }
+
+  const settings = await getSettings();
+  const before = { ...toOfferBannerView(settings) };
+
+  settings.storefront.offerBanner = {
+    enabled: input.enabled,
+    image: input.image ? { ...input.image } : null,
+    alt: input.alt,
+    message: input.message,
+    buttonLabel: input.buttonLabel,
+    productId: input.productId ? new Types.ObjectId(input.productId) : null,
+  };
+
+  await settings.save();
+  await recordAudit({
+    actorId: ctx.actorId,
+    actorType: "user",
+    action: AuditAction.SETTINGS_OFFER_BANNER_UPDATED,
+    module: AuditModule.SETTINGS,
+    targetId: settings.id as string,
+    before,
+    after: { ...toOfferBannerView(settings) },
+    ip: ctx.ip,
+  });
+
+  return toPublicSettings(settings);
+};
+
 export type {
   PublicSettings,
   ShippingSettings,
@@ -391,4 +474,6 @@ export {
   getPublicAnnouncement,
   updateHeroSettings,
   getPublicHero,
+  updateOfferBannerSettings,
+  getPublicOfferBanner,
 };

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { publicAnnouncement, publicHero } from "../../controllers/settingsController.js";
+import { publicAnnouncement, publicHero, publicOfferBanner } from "../../controllers/settingsController.js";
 
 /**
  * Public storefront reads that are not catalog data. Each endpoint exposes a
@@ -9,5 +9,6 @@ const storefrontRouter = Router();
 
 storefrontRouter.get("/announcement", publicAnnouncement);
 storefrontRouter.get("/hero", publicHero);
+storefrontRouter.get("/offer-banner", publicOfferBanner);
 
 export { storefrontRouter };

@@ -10,15 +10,17 @@ import { AnnouncementModal } from "./AnnouncementModal";
 import { AnnouncementPanel } from "./AnnouncementPanel";
 import { HeroModal } from "./HeroModal";
 import { HeroPanel } from "./HeroPanel";
+import { OfferBannerModal } from "./OfferBannerModal";
+import { OfferBannerPanel } from "./OfferBannerPanel";
 
 /**
  * Contenido de home: what the team edits to change the storefront's home.
- * The announcement bar and the hero; each home section that becomes editable
+ * The announcement bar, the hero and the offer banner; each home section that becomes editable
  * (spec §4) adds its own panel here.
  */
 const HomeContentPage = () => {
   const { state, refresh, replace } = useSettings();
-  const [editing, setEditing] = useState<"announcement" | "hero" | null>(null);
+  const [editing, setEditing] = useState<"announcement" | "hero" | "offerBanner" | null>(null);
 
   if (state.status === "error") {
     return (
@@ -46,6 +48,7 @@ const HomeContentPage = () => {
         <div className="grid items-start gap-5 lg:grid-cols-2">
           <AnnouncementPanel announcement={state.settings.storefront.announcement} onEdit={() => setEditing("announcement")} />
           <HeroPanel hero={state.settings.storefront.hero} onEdit={() => setEditing("hero")} />
+          <OfferBannerPanel banner={state.settings.storefront.offerBanner} onEdit={() => setEditing("offerBanner")} />
         </div>
       )}
       {state.status === "ready" && editing === "announcement" ? (
@@ -57,6 +60,13 @@ const HomeContentPage = () => {
       ) : null}
       {state.status === "ready" && editing === "hero" ? (
         <HeroModal hero={state.settings.storefront.hero} onClose={() => setEditing(null)} onSaved={replace} />
+      ) : null}
+      {state.status === "ready" && editing === "offerBanner" ? (
+        <OfferBannerModal
+          banner={state.settings.storefront.offerBanner}
+          onClose={() => setEditing(null)}
+          onSaved={replace}
+        />
       ) : null}
     </div>
   );
