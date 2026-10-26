@@ -208,6 +208,7 @@ interface PublicProductSummary {
   measurements: Measurements;
   materials: string[];
   bestSeller: boolean;
+  newArrival: boolean;
   cardTags: string[];
   /** Only on the listing, and only when the model has a purchasable variant. */
   card?: PublicProductCard;
@@ -223,6 +224,7 @@ interface ProductLean {
   measurements: Measurements;
   materials: string[];
   bestSeller?: boolean;
+  newArrival?: boolean;
   cardTags?: string[];
   cardPrint?: unknown;
 }
@@ -243,6 +245,7 @@ const toPublicProductSummary = (doc: ProductLean, card?: PublicProductCard): Pub
     measurements: doc.measurements,
     materials: doc.materials,
     bestSeller: doc.bestSeller ?? false,
+    newArrival: doc.newArrival ?? false,
     cardTags: doc.cardTags ?? [],
     ...(card ? { card } : {}),
   };
@@ -281,6 +284,7 @@ interface PublicProductQuery extends RawPublicQuery {
   print?: string;
   family?: string;
   bestSeller?: boolean;
+  newArrival?: boolean;
 }
 
 /**
@@ -296,6 +300,7 @@ const listPublicProducts = async (
 ): Promise<{ items: PublicProductSummary[]; meta: ApiMeta }> => {
   const filters: Record<string, unknown> = { isActive: true };
   if (query.bestSeller === true) filters.bestSeller = true;
+  if (query.newArrival === true) filters.newArrival = true;
 
   if (query.category) {
     const category = await ProductCategory.findOne({ slug: query.category, isActive: true })

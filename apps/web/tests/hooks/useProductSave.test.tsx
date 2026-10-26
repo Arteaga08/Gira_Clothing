@@ -40,6 +40,7 @@ const MODEL: ModelFields = {
   depth: "",
   materials: "",
   bestSeller: false,
+  newArrival: false,
   cardTags: ["", "", ""],
   cardPrintId: "",
 };

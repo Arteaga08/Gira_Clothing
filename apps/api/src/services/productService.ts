@@ -25,6 +25,7 @@ interface CreateProductInput {
   materials?: string[];
   sizeImage?: ImageAttrs;
   bestSeller?: boolean;
+  newArrival?: boolean;
   cardTags?: string[];
   cardPrint?: string | null;
 }
@@ -39,6 +40,7 @@ interface UpdateProductInput {
   materials?: string[];
   sizeImage?: ImageAttrs | null;
   bestSeller?: boolean;
+  newArrival?: boolean;
   cardTags?: string[];
   cardPrint?: string | null;
   isActive?: boolean;
@@ -131,6 +133,7 @@ const createProduct = async (
     materials: input.materials ?? [],
     sizeImage: input.sizeImage,
     bestSeller: input.bestSeller ?? false,
+    newArrival: input.newArrival ?? false,
     cardTags: input.cardTags ?? [],
     ...(input.cardPrint ? { cardPrint: input.cardPrint } : {}),
   });
@@ -194,6 +197,7 @@ const updateProduct = async (
   if (input.sizeImage === null) product.set("sizeImage", undefined);
   else if (input.sizeImage !== undefined) product.sizeImage = input.sizeImage;
   if (input.bestSeller !== undefined) product.bestSeller = input.bestSeller;
+  if (input.newArrival !== undefined) product.newArrival = input.newArrival;
   if (input.cardTags !== undefined) product.cardTags = input.cardTags;
   if (input.cardPrint === null) product.set("cardPrint", undefined);
   else if (input.cardPrint !== undefined) {

@@ -12,6 +12,7 @@ const publicProductQuerySchema = listQueryBase.keys({
   print: slugValue,
   family: slugValue,
   bestSeller: Joi.boolean(),
+  newArrival: Joi.boolean(),
 });
 
 export { publicListQuerySchema, publicPrintQuerySchema, publicProductQuerySchema };

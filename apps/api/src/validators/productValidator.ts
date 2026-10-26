@@ -68,6 +68,7 @@ const createProductSchema = Joi.object({
   materials,
   sizeImage: imageObjectSchema,
   bestSeller: Joi.boolean(),
+  newArrival: Joi.boolean(),
   cardTags,
   cardPrint: objectId.allow(null),
 });
@@ -82,6 +83,7 @@ const updateProductSchema = Joi.object({
   materials,
   sizeImage: imageObjectSchema.allow(null),
   bestSeller: Joi.boolean(),
+  newArrival: Joi.boolean(),
   cardTags,
   cardPrint: objectId.allow(null),
   isActive: Joi.boolean(),

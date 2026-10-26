@@ -31,6 +31,8 @@ interface ProductAttrs {
   sizeImage?: ImageAttrs;
   /** Flagged by the team: shows in the storefront «Más vendidos». No automatic ranking. */
   bestSeller: boolean;
+  /** Flagged by the team: shows in the storefront «Novedades», newest first. */
+  newArrival: boolean;
   /** Up to three words printed on the storefront card. */
   cardTags: string[];
   /** Print whose variant the card shows; unset: the first active variant with photos. */
@@ -73,6 +75,7 @@ const productSchema = new Schema<ProductAttrs, ProductModel>(
     materials: { type: [String], default: [] },
     sizeImage: { type: imageSchema },
     bestSeller: { type: Boolean, default: false },
+    newArrival: { type: Boolean, default: false },
     cardTags: {
       type: [{ type: String, trim: true, maxlength: PRODUCT_CARD_TAG_MAX_LENGTH }],
       default: [],
@@ -90,6 +93,8 @@ productSchema.index({ category: 1, isActive: 1, name: 1 });
 productSchema.index({ isActive: 1, name: 1 });
 // Storefront «Más vendidos»: flagged products, newest first.
 productSchema.index({ isActive: 1, bestSeller: 1, createdAt: -1 });
+// Storefront «Novedades»: same shape.
+productSchema.index({ isActive: 1, newArrival: 1, createdAt: -1 });
 
 const Product = model<ProductAttrs, ProductModel>("Product", productSchema);
 

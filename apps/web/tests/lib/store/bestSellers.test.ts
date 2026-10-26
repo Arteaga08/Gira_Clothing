@@ -11,6 +11,7 @@ const product = (id: string, withCard: boolean) => ({
   measurements: {},
   materials: [],
   bestSeller: true,
+  newArrival: false,
   cardTags: [],
   ...(withCard ? { card: { variantId: "v", images: [], price: 1000, isAvailable: true } } : {}),
 });
