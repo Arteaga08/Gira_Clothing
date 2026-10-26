@@ -32,6 +32,8 @@ interface ModelFields {
   materials: string;
   /** «Más vendido»: shows in the storefront section of that name. */
   bestSeller: boolean;
+  /** «Novedad»: shows in the storefront section «Novedades». */
+  newArrival: boolean;
   /** The words of the storefront card: always PRODUCT_CARD_TAGS_MAX inputs, empty ones are dropped on save. */
   cardTags: string[];
   /** Print whose variant the card shows; "" follows the first variant with photos. */
@@ -69,6 +71,7 @@ interface ModelBody {
   measurements: Measurements;
   materials: string[];
   bestSeller: boolean;
+  newArrival: boolean;
   cardTags: string[];
   /** `null` returns the card to the automatic variant. */
   cardPrint: string | null;
@@ -107,6 +110,7 @@ const EMPTY_MODEL: ModelFields = {
   depth: "",
   materials: "",
   bestSeller: false,
+  newArrival: false,
   cardTags: Array.from({ length: PRODUCT_CARD_TAGS_MAX }, () => ""),
   cardPrintId: "",
 };
@@ -133,6 +137,7 @@ const stateFromBaseline = ({ product, variants }: ProductBaseline): ProductFormS
     depth: measureText(product.measurements.depthCm),
     materials: product.materials.join(", "),
     bestSeller: product.bestSeller,
+    newArrival: product.newArrival,
     cardTags: Array.from({ length: PRODUCT_CARD_TAGS_MAX }, (_, index) => product.cardTags[index] ?? ""),
     cardPrintId: product.cardPrintId,
   },
@@ -232,6 +237,7 @@ const toModelBody = (model: ModelFields): ModelBody => {
     measurements,
     materials: parseMaterials(model.materials),
     bestSeller: model.bestSeller,
+    newArrival: model.newArrival,
     cardTags: model.cardTags.map((tag) => tag.trim()).filter(Boolean),
     cardPrint: model.cardPrintId || null,
   };

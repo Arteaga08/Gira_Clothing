@@ -45,6 +45,7 @@ interface AdminProductRow {
   materials?: string[];
   sizeImage?: ImageAttrs;
   bestSeller?: boolean;
+  newArrival?: boolean;
   cardTags?: string[];
   cardPrint?: Types.ObjectId;
   isActive: boolean;
@@ -72,6 +73,7 @@ const toAdminProduct = (row: AdminProductRow): AdminProduct => {
     materials: row.materials ?? [],
     ...(row.sizeImage ? { sizeImage: row.sizeImage } : {}),
     bestSeller: row.bestSeller ?? false,
+    newArrival: row.newArrival ?? false,
     cardTags: row.cardTags ?? [],
     ...(row.cardPrint ? { cardPrintId: String(row.cardPrint) } : {}),
     isActive: row.isActive,

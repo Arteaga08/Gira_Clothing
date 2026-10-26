@@ -17,6 +17,7 @@ interface EditorProduct {
   materials: string[];
   sizeImage?: ImageAttrs;
   bestSeller: boolean;
+  newArrival: boolean;
   cardTags: string[];
   /** "" while the card follows the automatic variant. */
   cardPrintId: string;
@@ -53,6 +54,7 @@ const toEditorProduct = (product: Wire<AdminProduct>): EditorProduct => ({
   materials: product.materials,
   ...(product.sizeImage ? { sizeImage: product.sizeImage } : {}),
   bestSeller: product.bestSeller,
+  newArrival: product.newArrival,
   cardTags: product.cardTags,
   cardPrintId: product.cardPrintId ?? "",
   isActive: product.isActive,

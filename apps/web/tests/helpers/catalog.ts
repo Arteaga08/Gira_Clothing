@@ -30,6 +30,7 @@ const makeRawProduct = (overrides: Partial<Wire<AdminProduct>> = {}): Wire<Admin
   measurements: { widthCm: 18, heightCm: 11, depthCm: 6 },
   materials: ["Lona de algodón", "forro impermeable"],
   bestSeller: false,
+  newArrival: false,
   cardTags: [],
   isActive: true,
   variantCount: 3,

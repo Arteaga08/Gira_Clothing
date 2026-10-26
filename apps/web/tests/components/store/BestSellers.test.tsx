@@ -21,6 +21,7 @@ const product = (overrides: Partial<PublicProductSummary> = {}): PublicProductSu
   measurements: {},
   materials: [],
   bestSeller: true,
+  newArrival: false,
   cardTags: ["Fresca", "Suave"],
   card: { variantId: "6ad9245c612875b3a4962bb5", images: [IMAGE("uno"), IMAGE("dos")], price: 47900, isAvailable: true },
   ...overrides,

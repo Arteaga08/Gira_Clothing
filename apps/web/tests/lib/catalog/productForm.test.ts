@@ -39,6 +39,7 @@ const VALID: ModelFields = {
   depth: "6",
   materials: "Lona de algodón, forro impermeable",
   bestSeller: false,
+  newArrival: false,
   cardTags: ["", "", ""],
   cardPrintId: "",
 };
@@ -109,6 +110,7 @@ describe("toCreateBody", () => {
       measurements: { widthCm: 18, heightCm: 11, depthCm: 6 },
       materials: ["Lona de algodón", "forro impermeable"],
       bestSeller: false,
+      newArrival: false,
       cardTags: [],
       cardPrint: null,
     });

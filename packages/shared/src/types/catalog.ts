@@ -66,6 +66,8 @@ interface Product {
   sizeImage?: ImageAttrs;
   /** Flagged by the team in the CRUD: shows in «Más vendidos». No automatic ranking. */
   bestSeller: boolean;
+  /** Flagged by the team in the CRUD: shows in «Novedades», newest first. */
+  newArrival: boolean;
   /** Up to three words printed on the storefront card. */
   cardTags: string[];
   /** Print whose variant (and photos) the card shows; null/absent: the first active variant with photos. */
@@ -116,6 +118,7 @@ interface PublicProductSummary {
   measurements: Measurements;
   materials: string[];
   bestSeller: boolean;
+  newArrival: boolean;
   cardTags: string[];
   /** Absent when the model has no purchasable variant yet. */
   card?: PublicProductCard;

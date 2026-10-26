@@ -33,6 +33,12 @@ describe("StoreCardSection", () => {
     expect(onChange).toHaveBeenCalledWith({ bestSeller: true });
   });
 
+  it("el interruptor marca el modelo como novedad", async () => {
+    const onChange = setup();
+    await userEvent.click(screen.getByRole("switch", { name: /Novedad/ }));
+    expect(onChange).toHaveBeenCalledWith({ newArrival: true });
+  });
+
   it("escribir una palabra cambia solo esa posición", async () => {
     const onChange = setup({ cardTags: ["Fresca", "", ""] });
     await userEvent.type(screen.getByLabelText("Palabra 2"), "S");

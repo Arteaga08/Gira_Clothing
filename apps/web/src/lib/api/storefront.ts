@@ -72,6 +72,27 @@ const getBestSellers = async (): Promise<PublicProductSummary[]> => {
   }
 };
 
+/** Products flagged «Novedad» show within this many seconds of the flag. */
+const NEW_ARRIVALS_REVALIDATE_SECONDS = 60;
+/** «Novedades» draws one large tile and up to four small ones. */
+const NEW_ARRIVALS_LIMIT = 5;
+const NEW_ARRIVALS_QUERY = `?newArrival=true&sort=-createdAt&limit=${NEW_ARRIVALS_LIMIT}`;
+
+/** Products flagged «Novedad», newest first; like the other home reads, any failure means "none". */
+const getNewArrivals = async (): Promise<PublicProductSummary[]> => {
+  try {
+    const { products } = expectData(
+      await request<{ products: PublicProductSummary[] }>(`${CATALOG_PRODUCTS_PATH}${NEW_ARRIVALS_QUERY}`, {
+        next: { revalidate: NEW_ARRIVALS_REVALIDATE_SECONDS },
+        timeoutMs: 3_000,
+      }),
+    );
+    return products.filter((product) => product.card !== undefined);
+  } catch {
+    return [];
+  }
+};
+
 /** Category row of `GET /catalog/categories`. */
 interface PublicCategorySummary {
   id: string;
@@ -133,4 +154,4 @@ const getFeaturedPrints = async (): Promise<PublicPrintSummary[]> => {
 };
 
 export type { PublicCategorySummary, PublicPrintSummary };
-export { getAnnouncement, getHero, getBestSellers, getCategories, getFeaturedPrints };
+export { getAnnouncement, getHero, getBestSellers, getNewArrivals, getCategories, getFeaturedPrints };
