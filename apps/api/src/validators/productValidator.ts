@@ -29,6 +29,12 @@ const basePrice = Joi.number().integer().min(0).max(PRODUCT_BASE_PRICE_MAX).mess
   "any.required": "El precio base es obligatorio.",
 });
 
+const salePrice = Joi.number().integer().min(0).max(PRODUCT_BASE_PRICE_MAX).messages({
+  "number.base": "El precio de rebaja debe ser un número.",
+  "number.integer": "El precio de rebaja debe ser un entero en centavos MXN.",
+  "number.min": "El precio de rebaja no puede ser negativo.",
+});
+
 const weightGrams = Joi.number().integer().min(PRODUCT_WEIGHT_MIN).max(PRODUCT_WEIGHT_MAX).messages({
   "number.base": "El peso debe ser un número en gramos.",
   "number.integer": "El peso debe ser un entero en gramos.",
@@ -63,6 +69,7 @@ const createProductSchema = Joi.object({
   category: objectId.required().messages({ "any.required": "La categoría es obligatoria." }),
   description: Joi.string().trim().max(PRODUCT_DESCRIPTION_MAX).allow(""),
   basePrice: basePrice.required(),
+  salePrice,
   weightGrams: weightGrams.required(),
   measurements,
   materials,
@@ -78,6 +85,7 @@ const updateProductSchema = Joi.object({
   category: objectId,
   description: Joi.string().trim().max(PRODUCT_DESCRIPTION_MAX).allow(""),
   basePrice,
+  salePrice: salePrice.allow(null),
   weightGrams,
   measurements,
   materials,

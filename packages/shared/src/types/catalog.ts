@@ -58,6 +58,8 @@ interface Product {
   category: CatalogRef;
   description?: string;
   basePrice: number;
+  /** Sale price in MXN centavos, always below `basePrice`. Absent: the model is not on sale. */
+  salePrice?: number;
   /** Packed weight of one unit, grams (drives the shipping parcel). */
   weightGrams: number;
   measurements?: Measurements;
@@ -94,7 +96,10 @@ interface PublicVariant {
   id: string;
   sku: string;
   images: ImageAttrs[];
-  priceOverride?: number;
+  /** MXN centavos the unit costs now: the print's own price, else the sale price, else the base price. */
+  price: number;
+  /** MXN centavos to strike through; present only while the unit is on sale. */
+  compareAtPrice?: number;
   isAvailable: boolean;
 }
 
@@ -103,8 +108,10 @@ interface PublicProductCard {
   variantId: string;
   /** [main, hover?]; empty when the variant has no photo (the print image is used). */
   images: ImageAttrs[];
-  /** MXN centavos: `priceOverride ?? basePrice`. */
+  /** MXN centavos the card charges (same rule as the cart and the order). */
   price: number;
+  /** MXN centavos to strike through; present only while the unit is on sale. */
+  compareAtPrice?: number;
   isAvailable: boolean;
 }
 
@@ -114,7 +121,6 @@ interface PublicProductSummary {
   name: string;
   slug: string;
   category: CatalogRef & { color: CategoryColor };
-  basePrice: number;
   measurements: Measurements;
   materials: string[];
   bestSeller: boolean;

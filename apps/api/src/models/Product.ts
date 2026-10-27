@@ -23,6 +23,8 @@ interface ProductAttrs {
   description?: string;
   /** Base price in MXN centavos (integer). Money in floats drifts, and M3 snapshots this value. */
   basePrice: number;
+  /** Sale price in MXN centavos; always below `basePrice` (enforced in productService). Unset: not on sale. */
+  salePrice?: number;
   /** Packed weight of ONE unit, grams. Drives the shipping parcel; every size weighs about the same. */
   weightGrams: number;
   measurements: Measurements;
@@ -63,6 +65,11 @@ const productSchema = new Schema<ProductAttrs, ProductModel>(
       required: true,
       min: 0,
       validate: { validator: Number.isInteger, message: "El precio base debe ser un entero." },
+    },
+    salePrice: {
+      type: Number,
+      min: 0,
+      validate: { validator: Number.isInteger, message: "El precio de rebaja debe ser un entero." },
     },
     weightGrams: {
       type: Number,

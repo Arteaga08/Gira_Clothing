@@ -300,3 +300,91 @@ describe("Admin · Product · peso para envío", () => {
     }
   });
 });
+
+describe("Admin · Product · precio de rebaja", () => {
+  const patch = (cookie: string, id: string, body: Record<string, unknown>) =>
+    request(app).patch(`${BASE}/${id}`).set("Origin", ORIGIN).set("Cookie", cookie).send(body);
+
+  it("crea con salePrice menor al base y lo devuelve en el DTO del panel", async () => {
+    const cookie = await loginAsAdmin(app);
+    const categoryId = await createCategory(cookie);
+    const res = await createProduct(cookie, categoryId, { salePrice: 39900 });
+    expect(res.status).toBe(201);
+
+    const list = await request(app).get(BASE).set("Cookie", cookie);
+    const row = (list.body.data.products as Array<{ id: string; salePrice?: number }>).find(
+      (p) => p.id === res.body.data.product.id,
+    );
+    expect(row?.salePrice).toBe(39900);
+  });
+
+  it("sin rebaja el DTO no trae salePrice", async () => {
+    const cookie = await loginAsAdmin(app);
+    const categoryId = await createCategory(cookie);
+    await createProduct(cookie, categoryId);
+    const list = await request(app).get(BASE).set("Cookie", cookie);
+    expect(list.body.data.products[0]).not.toHaveProperty("salePrice");
+  });
+
+  it("rechaza al crear un salePrice igual o mayor al base", async () => {
+    const cookie = await loginAsAdmin(app);
+    const categoryId = await createCategory(cookie);
+    for (const salePrice of [45000, 50000]) {
+      const res = await createProduct(cookie, categoryId, { name: `P ${salePrice}`, salePrice });
+      expect(res.status).toBe(400);
+    }
+  });
+
+  it("rechaza salePrice negativo o no entero", async () => {
+    const cookie = await loginAsAdmin(app);
+    const categoryId = await createCategory(cookie);
+    for (const salePrice of [-1, 100.5]) {
+      const res = await createProduct(cookie, categoryId, { name: `P ${salePrice}`, salePrice });
+      expect(res.status).toBe(400);
+    }
+  });
+
+  it("PATCH pone y quita la rebaja (null)", async () => {
+    const cookie = await loginAsAdmin(app);
+    const categoryId = await createCategory(cookie);
+    const id = (await createProduct(cookie, categoryId)).body.data.product.id as string;
+
+    expect((await patch(cookie, id, { salePrice: 30000 })).status).toBe(200);
+    let list = await request(app).get(BASE).set("Cookie", cookie);
+    expect(list.body.data.products[0].salePrice).toBe(30000);
+
+    expect((await patch(cookie, id, { salePrice: null })).status).toBe(200);
+    list = await request(app).get(BASE).set("Cookie", cookie);
+    expect(list.body.data.products[0]).not.toHaveProperty("salePrice");
+  });
+
+  it("PATCH rechaza una rebaja que no baja del precio base guardado", async () => {
+    const cookie = await loginAsAdmin(app);
+    const categoryId = await createCategory(cookie);
+    const id = (await createProduct(cookie, categoryId)).body.data.product.id as string;
+    const res = await patch(cookie, id, { salePrice: 45000 });
+    expect(res.status).toBe(400);
+  });
+
+  it("PATCH rechaza bajar el precio base por debajo de la rebaja vigente", async () => {
+    const cookie = await loginAsAdmin(app);
+    const categoryId = await createCategory(cookie);
+    const id = (await createProduct(cookie, categoryId, { salePrice: 39900 })).body.data.product.id as string;
+    expect((await patch(cookie, id, { basePrice: 39900 })).status).toBe(400);
+    expect((await patch(cookie, id, { basePrice: 30000 })).status).toBe(400);
+  });
+
+  it("PATCH permite bajar base y rebaja juntos si la rebaja sigue por debajo", async () => {
+    const cookie = await loginAsAdmin(app);
+    const categoryId = await createCategory(cookie);
+    const id = (await createProduct(cookie, categoryId, { salePrice: 39900 })).body.data.product.id as string;
+    expect((await patch(cookie, id, { basePrice: 30000, salePrice: 20000 })).status).toBe(200);
+  });
+
+  it("PATCH permite bajar el base si a la vez quita la rebaja", async () => {
+    const cookie = await loginAsAdmin(app);
+    const categoryId = await createCategory(cookie);
+    const id = (await createProduct(cookie, categoryId, { salePrice: 39900 })).body.data.product.id as string;
+    expect((await patch(cookie, id, { basePrice: 30000, salePrice: null })).status).toBe(200);
+  });
+});

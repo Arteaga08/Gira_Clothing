@@ -4,6 +4,7 @@ import { Variant } from "../models/Variant.js";
 import { AppError } from "../utils/AppError.js";
 import { getSettings } from "./settingsService.js";
 import { resolveOrderLines } from "./pricingService.js";
+import { resolveUnitPrice } from "../utils/unitPrice.js";
 import type { ImageAttrs } from "../models/schemas/image.js";
 
 /**
@@ -20,6 +21,7 @@ interface ProductRef {
   _id: Types.ObjectId;
   name: string;
   basePrice: number;
+  salePrice?: number;
 }
 
 interface PrintRef {
@@ -58,7 +60,7 @@ const buildCartView = async (lines: CartLine[]): Promise<CartView> => {
 
   const ids = lines.map((l) => l.variant);
   const variants = await Variant.find({ _id: { $in: ids } })
-    .populate("product", "name basePrice")
+    .populate("product", "name basePrice salePrice")
     .populate("print", "name")
     .lean();
   const byId = new Map(variants.map((v) => [String(v._id), v]));
@@ -79,7 +81,7 @@ const buildCartView = async (lines: CartLine[]): Promise<CartView> => {
       printName: print.name,
       ...(variant.images[0] ? { image: variant.images[0] } : {}),
       qty: line.qty,
-      unitPriceMxn: variant.priceOverride ?? product.basePrice,
+      unitPriceMxn: resolveUnitPrice(product, variant.priceOverride).priceMxn,
       isAvailable: available >= line.qty,
     });
   }
