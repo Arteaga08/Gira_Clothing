@@ -1,4 +1,4 @@
-import { PRINT_HOME_POSITION_MAX, type ApiMeta, type CategoryColor, type PublicEvents, type PublicOfferBanner, type PublicProductSummary, type PublicStorefrontHero, type StorefrontAnnouncement } from "@gira/shared";
+import { PRINT_HOME_POSITION_MAX, type ApiMeta, type CategoryColor, type PublicEvents, type PublicOfferBanner, type PublicProductDetail, type PublicProductSummary, type PublicStorefrontHero, type StorefrontAnnouncement } from "@gira/shared";
 import { buildCatalogApiQuery, CATALOG_PAGE_SIZE, type CatalogQuery } from "@/lib/store/catalogQuery";
 import { ApiError } from "./ApiError";
 import { request, expectData } from "./request";
@@ -144,6 +144,29 @@ const getCatalogPage = async (query: CatalogQuery): Promise<CatalogPageResult> =
   }
 };
 
+/** Edits to a product reach its page within this many seconds. */
+const PRODUCT_REVALIDATE_SECONDS = 60;
+
+/**
+ * One product by slug, or null when it does not exist (or was retired), so the
+ * page can answer 404. Any other failure throws: the page must not pretend a
+ * product is missing because the API is down.
+ */
+const getProduct = async (slug: string): Promise<PublicProductDetail | null> => {
+  try {
+    const { product } = expectData(
+      await request<{ product: PublicProductDetail }>(`${CATALOG_PRODUCTS_PATH}/${encodeURIComponent(slug)}`, {
+        next: { revalidate: PRODUCT_REVALIDATE_SECONDS },
+        timeoutMs: 5_000,
+      }),
+    );
+    return product;
+  } catch (error) {
+    if (error instanceof ApiError && error.kind === "http" && error.status === 404) return null;
+    throw error;
+  }
+};
+
 /** Products flagged «Novedad» show within this many seconds of the flag. */
 const NEW_ARRIVALS_REVALIDATE_SECONDS = 60;
 /** «Novedades» draws one large tile and up to four small ones. */
@@ -226,4 +249,4 @@ const getFeaturedPrints = async (): Promise<PublicPrintSummary[]> => {
 };
 
 export type { CatalogPageResult, PublicCategorySummary, PublicPrintSummary };
-export { getAnnouncement, getHero, getOfferBanner, getEvents, getBestSellers, getNewArrivals, getCatalogPage, getCategories, getFeaturedPrints };
+export { getAnnouncement, getHero, getOfferBanner, getEvents, getBestSellers, getNewArrivals, getCatalogPage, getCategories, getFeaturedPrints, getProduct };

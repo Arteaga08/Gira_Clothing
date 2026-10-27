@@ -47,6 +47,19 @@ describe("addToGuestCart", () => {
     expect(heard).not.toHaveBeenCalled();
   });
 
+  it("suma varias unidades de una vez y avisa una sola vez por llamada", () => {
+    expect(addToGuestCart("v1", 3)).toBe(true);
+    expect(addToGuestCart("v1", 2)).toBe(true);
+    expect(stored()).toEqual([{ variantId: "v1", qty: 5 }]);
+  });
+
+  it("rechaza una cantidad que rebasaría el máximo por línea sin escribir nada", () => {
+    window.localStorage.setItem(GUEST_CART_KEY, JSON.stringify([{ variantId: "v1", qty: CART_LINE_MAX_QTY - 1 }]));
+    expect(addToGuestCart("v1", 2)).toBe(false);
+    expect(stored()[0]?.qty).toBe(CART_LINE_MAX_QTY - 1);
+    expect(addToGuestCart("v2", CART_LINE_MAX_QTY + 1)).toBe(false);
+  });
+
   it("un carrito corrupto se reemplaza sin tronar", () => {
     window.localStorage.setItem(GUEST_CART_KEY, "{no es json");
     expect(addToGuestCart("v1")).toBe(false);

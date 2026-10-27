@@ -21,17 +21,17 @@ const fetchCartCount = async (signal?: AbortSignal): Promise<number> => {
 };
 
 /**
- * Adds one unit to the signed-in customer's cart. The API sets an absolute
+ * Adds `qty` units (one by default) to the signed-in customer's cart. The API sets an absolute
  * quantity (a retried add must not double it), so the current one is read
  * first. Resolves `false` at the per-line maximum; an unavailable variant or
  * any other refusal rejects with the API's own Spanish message.
  */
-const addToAccountCart = async (variantId: string): Promise<boolean> => {
+const addToAccountCart = async (variantId: string, qty = 1): Promise<boolean> => {
   const id = assertVariantId(variantId);
   const { cart } = expectData(await browserRequest<CartLinesPayload>(CART_PATH));
   const current = cart.lines.find((line) => line.variantId === id)?.qty ?? 0;
-  if (current >= CART_LINE_MAX_QTY) return false;
-  expectData(await browserRequest(`${CART_PATH}/lines/${id}`, { method: "PUT", body: { qty: current + 1 } }));
+  if (current + qty > CART_LINE_MAX_QTY) return false;
+  expectData(await browserRequest(`${CART_PATH}/lines/${id}`, { method: "PUT", body: { qty: current + qty } }));
   return true;
 };
 

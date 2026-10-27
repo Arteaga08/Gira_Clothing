@@ -18,11 +18,11 @@ interface UseCartAdd {
 }
 
 /**
- * Adds one unit of a variant. A visitor writes the browser cart, a signed-in
+ * Adds `qty` units (one by default) of a variant. A visitor writes the browser cart, a signed-in
  * customer the account cart; both announce the change so the navbar counter
  * moves. Never throws: every outcome is a status the button can say.
  */
-const useCartAdd = (variantId: string, authenticated: boolean): UseCartAdd => {
+const useCartAdd = (variantId: string, authenticated: boolean, qty = 1): UseCartAdd => {
   const [status, setStatus] = useState<CartAddStatus>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const timer = useRef<number | undefined>(undefined);
@@ -42,7 +42,7 @@ const useCartAdd = (variantId: string, authenticated: boolean): UseCartAdd => {
     busy.current = true;
     setStatus("adding");
     try {
-      const done = authenticated ? await addToAccountCart(variantId) : addToGuestCart(variantId);
+      const done = authenticated ? await addToAccountCart(variantId, qty) : addToGuestCart(variantId, qty);
       if (done) {
         announceCartChange();
         settle("added");
@@ -52,7 +52,7 @@ const useCartAdd = (variantId: string, authenticated: boolean): UseCartAdd => {
     } finally {
       busy.current = false;
     }
-  }, [authenticated, settle, variantId]);
+  }, [authenticated, qty, settle, variantId]);
 
   return { status, message, add };
 };

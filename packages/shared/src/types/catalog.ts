@@ -124,6 +124,19 @@ interface PublicProductSummary {
   card?: PublicProductCard;
 }
 
+/** Storefront view of a variant on the product page: the variant plus the print it carries. */
+interface PublicProductVariant extends PublicVariant {
+  print: { id: string; name: string; slug: string; sku: string; image: ImageAttrs };
+}
+
+/** Product of `GET /catalog/products/:slug`: the summary plus what only the product page shows. */
+interface PublicProductDetail extends PublicProductSummary {
+  description?: string;
+  /** Photo or diagram of the model's real size. */
+  sizeImage?: ImageAttrs;
+  variants: PublicProductVariant[];
+}
+
 /** Admin inventory row: one Variant (Product × Print) with its names resolved. */
 interface AdminVariant {
   id: string;
@@ -221,6 +234,8 @@ export type {
   CategoryColor,
   PublicProductCard,
   PublicProductSummary,
+  PublicProductVariant,
+  PublicProductDetail,
   CatalogRef,
   AdminProduct,
   AdminProductPrint,

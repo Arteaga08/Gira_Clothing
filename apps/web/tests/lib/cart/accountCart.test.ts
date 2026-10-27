@@ -30,6 +30,18 @@ describe("addToAccountCart", () => {
     expect(call(1)[1].body).toBe(JSON.stringify({ qty: 1 }));
   });
 
+  it("suma varias unidades sobre la cantidad actual", async () => {
+    fetchMock.mockResolvedValueOnce(cartWith(2)).mockResolvedValueOnce(cartWith(5));
+    expect(await addToAccountCart(VARIANT, 3)).toBe(true);
+    expect(call(1)[1].body).toBe(JSON.stringify({ qty: 5 }));
+  });
+
+  it("rechaza una cantidad que rebasaría el máximo sin escribir", async () => {
+    fetchMock.mockResolvedValueOnce(cartWith(19));
+    expect(await addToAccountCart(VARIANT, 2)).toBe(false);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("en el máximo por línea resuelve false y no escribe", async () => {
     fetchMock.mockResolvedValueOnce(cartWith(20));
     expect(await addToAccountCart(VARIANT)).toBe(false);

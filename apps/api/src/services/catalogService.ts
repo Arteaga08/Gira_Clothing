@@ -1,4 +1,4 @@
-import { CATEGORY_DEFAULT_COLOR, type ApiMeta, type CategoryColor, type PublicProductCard } from "@gira/shared";
+import { CATEGORY_DEFAULT_COLOR, type ApiMeta, type CategoryColor, type PublicProductCard, type PublicProductDetail, type PublicProductVariant } from "@gira/shared";
 import type { Types } from "mongoose";
 import { PrintFamily } from "../models/PrintFamily.js";
 import { Print } from "../models/Print.js";
@@ -227,6 +227,7 @@ interface ProductLean {
   newArrival?: boolean;
   cardTags?: string[];
   cardPrint?: unknown;
+  sizeImage?: ImageAttrs;
 }
 
 const toPublicProductSummary = (doc: ProductLean, card?: PublicProductCard): PublicProductSummary => {
@@ -359,20 +360,6 @@ const listPublicProducts = async (
   return { items, meta: buildMeta(total, { page, limit }) };
 };
 
-interface PublicVariantView {
-  id: string;
-  sku: string;
-  images: ImageAttrs[];
-  priceOverride?: number;
-  isAvailable: boolean;
-  print: { id: string; name: string; slug: string; sku: string; image: ImageAttrs };
-}
-
-interface PublicProductDetail extends PublicProductSummary {
-  description?: string;
-  variants: PublicVariantView[];
-}
-
 interface VariantWithPrintLean {
   _id: unknown;
   sku: string;
@@ -395,7 +382,7 @@ const getPublicProduct = async (slug: string): Promise<PublicProductDetail> => {
 
   // A variant can stay active while its print gets retired independently —
   // exclude those from the public detail even though the variant itself is active.
-  const variants: PublicVariantView[] = variantDocs
+  const variants: PublicProductVariant[] = variantDocs
     .filter((v) => v.print.isActive)
     .map((v) => ({
       id: String(v._id),
@@ -412,7 +399,12 @@ const getPublicProduct = async (slug: string): Promise<PublicProductDetail> => {
       },
     }));
 
-  return { ...toPublicProductSummary(product), variants };
+  return {
+    ...toPublicProductSummary(product),
+    ...(product.description ? { description: product.description } : {}),
+    ...(product.sizeImage ? { sizeImage: product.sizeImage } : {}),
+    variants,
+  };
 };
 
 export type {
@@ -420,8 +412,6 @@ export type {
   PublicPrint,
   PublicCategory,
   PublicProductSummary,
-  PublicProductDetail,
-  PublicVariantView,
 };
 export {
   listPublicFamilies,

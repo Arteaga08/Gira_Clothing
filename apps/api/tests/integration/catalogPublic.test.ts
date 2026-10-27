@@ -5,6 +5,7 @@ import { loginAsAdmin, ORIGIN } from "../helpers/auth.js";
 import { setOnHand } from "../../src/services/inventoryService.js";
 import type { RequestContext } from "../../src/utils/requestContext.js";
 import { Print } from "../../src/models/Print.js";
+import { Product } from "../../src/models/Product.js";
 
 const app = buildApp();
 
@@ -233,6 +234,32 @@ describe("Catálogo público · detalle de producto", () => {
     expect(publicVariant).not.toHaveProperty("available");
     expect(publicVariant).not.toHaveProperty("onHand");
     expect(publicVariant).not.toHaveProperty("reserved");
+  });
+
+  it("incluye descripción y foto de dimensiones cuando el producto las tiene", async () => {
+    const cookie = await loginAsAdmin(app);
+    const family = await createFamily(cookie, "Familia Detalle Ficha");
+    const print = await createPrint(cookie, family.id, "Print Detalle Ficha", "SKU-DETALLE-FICHA");
+    const category = await createCategory(cookie, "Categoría Detalle Ficha");
+    const product = await createProduct(cookie, category.id, "Producto Detalle Ficha");
+    await createVariant(cookie, product.id, print.id);
+    await Product.updateOne({ _id: product.id }, { $set: { description: "Corte amplio.", sizeImage: validImage } });
+
+    const res = await request(app).get(`${CATALOG_PRODUCTS}/${product.slug}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data.product.description).toBe("Corte amplio.");
+    expect(res.body.data.product.sizeImage.url).toBe(validImage.url);
+  });
+
+  it("omite descripción y foto de dimensiones cuando el producto no las tiene", async () => {
+    const cookie = await loginAsAdmin(app);
+    const category = await createCategory(cookie, "Categoría Detalle Vacío");
+    const product = await createProduct(cookie, category.id, "Producto Detalle Vacío");
+
+    const res = await request(app).get(`${CATALOG_PRODUCTS}/${product.slug}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data.product).not.toHaveProperty("description");
+    expect(res.body.data.product).not.toHaveProperty("sizeImage");
   });
 
   it("excluye variantes cuyo estampado fue desactivado", async () => {

@@ -45,18 +45,18 @@ const readGuestLines = (): GuestCartLine[] => {
 };
 
 /**
- * Adds one unit of a variant to the visitor's cart. Resolves `false` when the
- * browser refuses the write (blocked storage) or the line already holds the
- * maximum, so the caller can say so instead of pretending.
+ * Adds `qty` units (one by default) of a variant to the visitor's cart. Resolves
+ * `false` when the browser refuses the write (blocked storage) or the line would
+ * pass the maximum, so the caller can say so instead of pretending.
  */
-const addToGuestCart = (variantId: string): boolean => {
+const addToGuestCart = (variantId: string, qty = 1): boolean => {
   try {
     const lines = readGuestLines();
     const current = lines.find((line) => line.variantId === variantId);
-    if (current && current.qty >= CART_LINE_MAX_QTY) return false;
+    if ((current?.qty ?? 0) + qty > CART_LINE_MAX_QTY) return false;
     const next = current
-      ? lines.map((line) => (line.variantId === variantId ? { ...line, qty: line.qty + 1 } : line))
-      : [...lines, { variantId, qty: 1 }];
+      ? lines.map((line) => (line.variantId === variantId ? { ...line, qty: line.qty + qty } : line))
+      : [...lines, { variantId, qty }];
     window.localStorage.setItem(GUEST_CART_KEY, JSON.stringify(next));
     announceCartChange();
     return true;

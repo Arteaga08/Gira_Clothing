@@ -77,7 +77,7 @@ describe("AddToCartButton", () => {
     accountCart.addToAccountCart.mockResolvedValue(true);
     render(<AddToCartButton variantId={VARIANT} productName="Gorra" isAvailable authenticated />);
     await userEvent.click(screen.getByRole("button", { name: "Agregar Gorra al carrito" }));
-    expect(accountCart.addToAccountCart).toHaveBeenCalledWith(VARIANT);
+    expect(accountCart.addToAccountCart).toHaveBeenCalledWith(VARIANT, 1);
     expect(await screen.findByText("Agregado")).toBeInTheDocument();
     expect(window.localStorage.getItem(GUEST_CART_KEY)).toBeNull();
   });

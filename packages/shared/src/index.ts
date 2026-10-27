@@ -135,6 +135,8 @@ import type {
   CategoryColor,
   PublicProductCard,
   PublicProductSummary,
+  PublicProductVariant,
+  PublicProductDetail,
 } from "./types/catalog.js";
 import type { PublicUser, AdminUser } from "./types/user.js";
 import type {
@@ -339,6 +341,8 @@ export type {
   CategoryColor,
   PublicProductCard,
   PublicProductSummary,
+  PublicProductVariant,
+  PublicProductDetail,
   PublicUser,
   AdminUser,
   ShippingOrigin,
