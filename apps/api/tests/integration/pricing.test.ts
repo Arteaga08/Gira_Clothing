@@ -1,9 +1,10 @@
 import { describe, it, expect } from "vitest";
 import request from "supertest";
-import { Currency, PriceRounding } from "@gira/shared";
+import { Currency, PriceRounding, CouponDiscountType } from "@gira/shared";
 import { buildApp } from "../../src/app.js";
 import { Variant } from "../../src/models/Variant.js";
 import { Product } from "../../src/models/Product.js";
+import { Coupon } from "../../src/models/Coupon.js";
 import { Print } from "../../src/models/Print.js";
 import { updateCurrencySettings, updateTaxSettings } from "../../src/services/settingsService.js";
 import { resolveOrderLines, quoteTotals } from "../../src/services/pricingService.js";
@@ -37,7 +38,7 @@ interface SeedResult {
 const seedVariant = async (
   cookie: string,
   suffix: string,
-  opts: { basePrice?: number; priceOverride?: number } = {},
+  opts: { basePrice?: number; salePrice?: number; priceOverride?: number } = {},
 ): Promise<SeedResult> => {
   const familyRes = await request(app)
     .post(FAMILIES_BASE)
@@ -64,7 +65,10 @@ const seedVariant = async (
     .post(PRODUCTS_BASE)
     .set("Origin", ORIGIN)
     .set("Cookie", cookie)
-    .send({ name: `Producto ${suffix}`, category: categoryId, basePrice: opts.basePrice ?? 20000, weightGrams: 400 });
+    .send({ name: `Producto ${suffix}`, category: categoryId, basePrice: opts.basePrice ?? 20000,
+      ...(opts.salePrice !== undefined ? { salePrice: opts.salePrice } : {}),
+      weightGrams: 400,
+    });
   const productId = productRes.body.data.product.id as string;
 
   const variantPayload: Record<string, unknown> = {
@@ -282,5 +286,110 @@ describe("pricingService · quoteTotals · IVA incluido", () => {
 
     const net = Math.round((quote.total * 10000) / 11600);
     expect(quote.tax).toBe(quote.total - net);
+  });
+});
+
+describe("pricingService · rebaja", () => {
+  it("resolveOrderLines cobra el precio rebajado y marca la línea onSale", async () => {
+    const cookie = await loginAsAdmin(app);
+    const { variantId } = await seedVariant(cookie, "R1", { basePrice: 50000, salePrice: 39900 });
+    const [line] = await resolveOrderLines([{ variantId, qty: 2 }]);
+    expect(line?.unitPriceMxn).toBe(39900);
+    expect(line?.onSale).toBe(true);
+  });
+
+  it("el precio especial de la estampa gana a la rebaja y la línea no cuenta como rebajada", async () => {
+    const cookie = await loginAsAdmin(app);
+    const { variantId } = await seedVariant(cookie, "R2", {
+      basePrice: 50000,
+      salePrice: 39900,
+      priceOverride: 45000,
+    });
+    const [line] = await resolveOrderLines([{ variantId, qty: 1 }]);
+    expect(line?.unitPriceMxn).toBe(45000);
+    expect(line?.onSale).toBe(false);
+  });
+
+  it("el subtotal y el total usan el precio rebajado (USD convertido por unidad)", async () => {
+    const cookie = await loginAsAdmin(app);
+    await updateCurrencySettings({ mxnPerUsdCents: 1800, rounding: PriceRounding.NONE }, CTX);
+    const { variantId } = await seedVariant(cookie, "R3", { basePrice: 50000, salePrice: 36000 });
+    const lines = await resolveOrderLines([{ variantId, qty: 2 }]);
+    const quote = await quoteTotals(lines, { currency: Currency.USD, shippingMxn: 0 });
+    expect(quote.subtotalMxn).toBe(72000);
+    expect(quote.subtotal).toBe(2000 * 2);
+  });
+});
+
+describe("pricingService · cupón sobre artículos en rebaja", () => {
+  const percent = (percentOff: number, extra: Record<string, unknown> = {}) =>
+    Coupon.create({
+      code: "CUPON",
+      name: "Cupón",
+      discountType: CouponDiscountType.PERCENT,
+      percentOff,
+      ...extra,
+    });
+
+  it("el porcentaje solo descuenta las líneas que no están en rebaja", async () => {
+    const cookie = await loginAsAdmin(app);
+    const regular = await seedVariant(cookie, "C1", { basePrice: 10000 });
+    const sale = await seedVariant(cookie, "C2", { basePrice: 10000, salePrice: 8000 });
+    const lines = await resolveOrderLines([
+      { variantId: regular.variantId, qty: 1 },
+      { variantId: sale.variantId, qty: 1 },
+    ]);
+    const quote = await quoteTotals(lines, { currency: Currency.MXN, shippingMxn: 0, coupon: await percent(10) });
+    expect(quote.subtotal).toBe(18000);
+    expect(quote.discount).toBe(1000); // 10 % de 10 000, no de 18 000
+    expect(quote.total).toBe(17000);
+  });
+
+  it("el monto fijo se topa al subtotal elegible, no al total", async () => {
+    const cookie = await loginAsAdmin(app);
+    const regular = await seedVariant(cookie, "C3", { basePrice: 3000 });
+    const sale = await seedVariant(cookie, "C4", { basePrice: 10000, salePrice: 8000 });
+    const lines = await resolveOrderLines([
+      { variantId: regular.variantId, qty: 1 },
+      { variantId: sale.variantId, qty: 1 },
+    ]);
+    const coupon = await Coupon.create({
+      code: "FIJO",
+      name: "Fijo",
+      discountType: CouponDiscountType.FIXED,
+      amountOffMxn: 5000,
+    });
+    const quote = await quoteTotals(lines, { currency: Currency.MXN, shippingMxn: 0, coupon });
+    expect(quote.discount).toBe(3000);
+  });
+
+  it("la línea con precio especial (no rebajada) sí recibe el cupón", async () => {
+    const cookie = await loginAsAdmin(app);
+    const v = await seedVariant(cookie, "C5", { basePrice: 10000, salePrice: 8000, priceOverride: 9000 });
+    const lines = await resolveOrderLines([{ variantId: v.variantId, qty: 1 }]);
+    const quote = await quoteTotals(lines, { currency: Currency.MXN, shippingMxn: 0, coupon: await percent(10) });
+    expect(quote.discount).toBe(900);
+  });
+
+  it("el mínimo de compra se mide sobre el subtotal completo, rebajas incluidas", async () => {
+    const cookie = await loginAsAdmin(app);
+    const regular = await seedVariant(cookie, "C6", { basePrice: 5000 });
+    const sale = await seedVariant(cookie, "C7", { basePrice: 10000, salePrice: 8000 });
+    const lines = await resolveOrderLines([
+      { variantId: regular.variantId, qty: 1 },
+      { variantId: sale.variantId, qty: 1 },
+    ]);
+    const coupon = await percent(10, { minSubtotalMxn: 12000 });
+    const quote = await quoteTotals(lines, { currency: Currency.MXN, shippingMxn: 0, coupon });
+    expect(quote.discount).toBe(500);
+  });
+
+  it("carrito solo con rebajas y un cupón responde 400 y no aplica nada", async () => {
+    const cookie = await loginAsAdmin(app);
+    const sale = await seedVariant(cookie, "C8", { basePrice: 10000, salePrice: 8000 });
+    const lines = await resolveOrderLines([{ variantId: sale.variantId, qty: 1 }]);
+    await expect(
+      quoteTotals(lines, { currency: Currency.MXN, shippingMxn: 0, coupon: await percent(10) }),
+    ).rejects.toMatchObject({ statusCode: 400, message: "Este cupón no aplica a artículos en rebaja." });
   });
 });

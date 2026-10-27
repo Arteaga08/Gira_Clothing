@@ -7,6 +7,7 @@ import { Coupon } from "../../src/models/Coupon.js";
 import { CouponRedemption } from "../../src/models/CouponRedemption.js";
 import { Order } from "../../src/models/Order.js";
 import { Variant } from "../../src/models/Variant.js";
+import { Product } from "../../src/models/Product.js";
 import { releaseReservation, commitReservation } from "../../src/services/reservationService.js";
 import { splitTax } from "../../src/utils/orderTax.js";
 import { convertFromMxn } from "../../src/utils/money.js";
@@ -102,6 +103,37 @@ describe("checkout con cupón", () => {
     );
     expect(order.discount).toBe(expected);
     expect(order.total).toBe(order.subtotal - order.discount + order.shippingCost);
+  });
+
+  it("sin cupón, la orden congela el precio rebajado en la línea y el total", async () => {
+    const variantId = await seedVariant("S1");
+    const variant = (await Variant.findById(variantId))!;
+    await Product.updateOne({ _id: variant.product }, { $set: { salePrice: 7_500 } });
+
+    const created = await checkout(variantId, { userId: await newUser(), qty: 2 });
+    const order = (await Order.findOne({ publicId: created.order.publicId }))!;
+
+    expect(order.lines[0]).toMatchObject({ unitPriceMxn: 7_500, unitPrice: 7_500, lineTotal: 15_000 });
+    expect(order.subtotal).toBe(15_000);
+
+    // A later price change never rewrites the frozen order.
+    await Product.updateOne({ _id: variant.product }, { $unset: { salePrice: 1 } });
+    expect((await Order.findOne({ publicId: created.order.publicId }))!.subtotal).toBe(15_000);
+  });
+
+  it("cupón sobre un carrito solo de rebajas: 400, sin reservar, sin canjear", async () => {
+    const variantId = await seedVariant("S2");
+    const variant = (await Variant.findById(variantId))!;
+    await Product.updateOne({ _id: variant.product }, { $set: { salePrice: 7_500 } });
+    const coupon = await makeCoupon();
+
+    await expect(
+      checkout(variantId, { userId: await newUser(), couponCode: "CHECKOUT10" }),
+    ).rejects.toMatchObject({ statusCode: 400, message: "Este cupón no aplica a artículos en rebaja." });
+
+    expect(await Order.countDocuments()).toBe(0);
+    expect((await Variant.findById(variantId))!.reserved).toBe(0);
+    expect((await Coupon.findById(coupon._id))!.redeemedCount).toBe(0);
   });
 
   it("invitado con cupón: 401 y no reserva ni crea nada", async () => {

@@ -294,6 +294,42 @@ describe("Cart · precio vivo", () => {
   });
 });
 
+describe("Cart · rebaja", () => {
+  it("el carrito de la cuenta cobra el precio rebajado y respeta la qty agregada", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { variantId, productId } = await seedVariant(adminCookie, "SALE1", { basePrice: 5000 });
+    await Product.updateOne({ _id: productId }, { $set: { salePrice: 3900 } });
+    const customerCookie = await loginAsCustomer(app);
+
+    const put = await request(app)
+      .put(`${CART_BASE}/lines/${variantId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", customerCookie)
+      .send({ qty: 3 });
+    expect(put.status).toBe(200);
+
+    const res = await request(app).get(CART_BASE).set("Cookie", customerCookie);
+    expect(res.body.data.cart.lines[0]).toMatchObject({ qty: 3, unitPriceMxn: 3900 });
+  });
+
+  it("quitar la rebaja devuelve el precio base en el siguiente GET", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { variantId, productId } = await seedVariant(adminCookie, "SALE2", { basePrice: 5000 });
+    await Product.updateOne({ _id: productId }, { $set: { salePrice: 3900 } });
+    const customerCookie = await loginAsCustomer(app);
+    await request(app)
+      .put(`${CART_BASE}/lines/${variantId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", customerCookie)
+      .send({ qty: 1 });
+
+    await Product.updateOne({ _id: productId }, { $unset: { salePrice: 1 } });
+
+    const res = await request(app).get(CART_BASE).set("Cookie", customerCookie);
+    expect(res.body.data.cart.lines[0].unitPriceMxn).toBe(5000);
+  });
+});
+
 describe("Cart · disponibilidad", () => {
   it("una línea sin stock aparece con isAvailable:false, sin romper la respuesta", async () => {
     const adminCookie = await loginAsAdmin(app);

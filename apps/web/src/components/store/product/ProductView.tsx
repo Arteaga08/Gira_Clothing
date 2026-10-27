@@ -32,7 +32,7 @@ const ProductView = ({ product, authenticated }: ProductViewProps) => {
   const [qty, setQty] = useState(1);
   const tone = CATEGORY_TONE[product.category.color];
   const variant = product.variants[selected];
-  const unitPrice = variant?.priceOverride ?? product.basePrice;
+  const unitPrice = variant?.price ?? 0;
   const photos = variant ? (variant.images.length > 0 ? variant.images : [variant.print.image]) : [];
 
   return (
@@ -42,7 +42,7 @@ const ProductView = ({ product, authenticated }: ProductViewProps) => {
         tone.soft,
       )}
     >
-      <ProductIntro product={product} variant={variant} unitPrice={unitPrice} />
+      <ProductIntro product={product} variant={variant} />
       <div className={cn("order-first border-b-2 border-ink md:col-span-2 lg:order-none lg:col-span-1 lg:border-x-2 lg:border-b-0", tone.strong)}>
         <ProductStage key={variant?.id ?? "none"} images={photos} alt={variant ? `${product.name}, estampa ${variant.print.name}` : product.name} />
       </div>

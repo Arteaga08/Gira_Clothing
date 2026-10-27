@@ -182,6 +182,22 @@ describe("ProductEditor · editar", () => {
     expect(variants.updateVariant).not.toHaveBeenCalled();
   });
 
+  it("la sección Tienda guarda el precio de rebaja en centavos", async () => {
+    products.updateProduct.mockResolvedValue(undefined);
+    renderEditor(PRODUCT_ID);
+    await userEvent.type(await screen.findByLabelText("Precio de rebaja (opcional)"), "159.90");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
+    await waitFor(() => expect(products.updateProduct).toHaveBeenCalledWith(PRODUCT_ID, { salePrice: 15990 }));
+  });
+
+  it("una rebaja que no baja del precio base marca el campo y no llama al API", async () => {
+    renderEditor(PRODUCT_ID);
+    await userEvent.type(await screen.findByLabelText("Precio de rebaja (opcional)"), "189");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
+    expect(await screen.findByText(/La rebaja debe ser menor al precio base/)).toBeInTheDocument();
+    expect(products.updateProduct).not.toHaveBeenCalled();
+  });
+
   it("una estampa con apartados no se puede quitar", async () => {
     variants.listProductVariants.mockResolvedValue([{ ...EXISTING_A, reserved: 2 }]);
     renderEditor(PRODUCT_ID);

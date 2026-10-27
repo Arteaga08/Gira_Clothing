@@ -6,6 +6,7 @@ import { AppError } from "../utils/AppError.js";
 import { convertFromMxn } from "../utils/money.js";
 import { splitTax } from "../utils/orderTax.js";
 import { computeCouponDiscount } from "../utils/couponDiscount.js";
+import { resolveUnitPrice } from "../utils/unitPrice.js";
 import { assertMeetsMinimum } from "./couponRulesService.js";
 import type { CouponDocument } from "../models/Coupon.js";
 import { getSettings } from "./settingsService.js";
@@ -40,6 +41,8 @@ interface ResolvedLine {
   image?: ImageAttrs;
   qty: number;
   unitPriceMxn: number;
+  /** Sold below the model's base price (sale price). Coupons never discount these lines. */
+  onSale: boolean;
   /** Packed weight of one unit; 0 = the product has no weight configured yet. */
   weightGrams: number;
 }
@@ -77,6 +80,7 @@ interface ProductRef {
   _id: Types.ObjectId;
   name: string;
   basePrice: number;
+  salePrice?: number;
   weightGrams?: number;
   isActive: boolean;
 }
@@ -102,7 +106,7 @@ const resolveOrderLines = async (requested: RequestedLine[]): Promise<ResolvedLi
   }
 
   const variants = await Variant.find({ _id: { $in: ids } })
-    .populate("product", "name basePrice weightGrams isActive")
+    .populate("product", "name basePrice salePrice weightGrams isActive")
     .populate("print", "name isActive")
     .lean();
 
@@ -118,6 +122,8 @@ const resolveOrderLines = async (requested: RequestedLine[]): Promise<ResolvedLi
       throw new AppError(UNAVAILABLE, 409);
     }
 
+    const { priceMxn, onSale } = resolveUnitPrice(product, variant.priceOverride);
+
     return {
       variant: variant._id,
       product: product._id,
@@ -126,7 +132,8 @@ const resolveOrderLines = async (requested: RequestedLine[]): Promise<ResolvedLi
       printName: print.name,
       ...(variant.images[0] ? { image: variant.images[0] } : {}),
       qty: line.qty,
-      unitPriceMxn: variant.priceOverride ?? product.basePrice,
+      unitPriceMxn: priceMxn,
+      onSale,
       weightGrams: product.weightGrams ?? 0,
     };
   });
@@ -175,8 +182,13 @@ const quoteTotals = async (lines: ResolvedLine[], input: QuoteInput): Promise<Qu
   const shippingCost = convertFromMxn(input.shippingMxn, input.currency, mxnPerUsdCents, rounding);
 
   if (input.coupon) assertMeetsMinimum(input.coupon, subtotalMxn);
+  // Items on sale are excluded from the coupon base; the minimum above still counts them.
+  const eligibleSubtotal = quotedLines.reduce((sum, l) => (l.onSale ? sum : sum + l.lineTotal), 0);
+  if (input.coupon && subtotal > 0 && eligibleSubtotal === 0) {
+    throw new AppError("Este cupón no aplica a artículos en rebaja.", 400);
+  }
   const discount = input.coupon
-    ? computeCouponDiscount(input.coupon, subtotal, input.currency, { mxnPerUsdCents, rounding })
+    ? computeCouponDiscount(input.coupon, eligibleSubtotal, input.currency, { mxnPerUsdCents, rounding })
     : 0;
   const total = Math.max(0, subtotal - discount + shippingCost);
   const taxRateBps = settings.tax.rateBps;

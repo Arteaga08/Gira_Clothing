@@ -3,8 +3,8 @@ import { STORE_ROUTES } from "./routes";
 /** Sort options of the catalog. `param` goes in the URL (`orden`), `api` is what `GET /catalog/products` takes. */
 const CATALOG_SORTS = [
   { value: "novedades", label: "Novedades", api: "-createdAt" },
-  { value: "precio-asc", label: "Precio: menor a mayor", api: "basePrice" },
-  { value: "precio-desc", label: "Precio: mayor a menor", api: "-basePrice" },
+  { value: "precio-asc", label: "Precio: menor a mayor", api: "price" },
+  { value: "precio-desc", label: "Precio: mayor a menor", api: "-price" },
   { value: "az", label: "A a Z", api: "name" },
   { value: "za", label: "Z a A", api: "-name" },
 ] as const;

@@ -40,6 +40,7 @@ interface AdminProductRow {
   slug: string;
   description?: string;
   basePrice: number;
+  salePrice?: number;
   weightGrams: number;
   measurements?: Measurements;
   materials?: string[];
@@ -68,6 +69,7 @@ const toAdminProduct = (row: AdminProductRow): AdminProduct => {
     category: { id: String(row.categoryDoc._id), name: row.categoryDoc.name, slug: row.categoryDoc.slug },
     ...(row.description ? { description: row.description } : {}),
     basePrice: row.basePrice,
+    ...(row.salePrice !== undefined ? { salePrice: row.salePrice } : {}),
     weightGrams: row.weightGrams,
     measurements: row.measurements ?? {},
     materials: row.materials ?? [],

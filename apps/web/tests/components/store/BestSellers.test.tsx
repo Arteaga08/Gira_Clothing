@@ -17,7 +17,6 @@ const product = (overrides: Partial<PublicProductSummary> = {}): PublicProductSu
   name: "Playera oversize",
   slug: "playera-oversize",
   category: { id: "c1", name: "Playeras", slug: "playeras", color: "lilac" },
-  basePrice: 42900,
   measurements: {},
   materials: [],
   bestSeller: true,
@@ -41,6 +40,25 @@ describe("BestSellerCard", () => {
     expect(screen.getByText("Fresca, Suave")).toBeInTheDocument();
     expect(screen.getByText("$479.00")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Ver Playera oversize" })).toHaveAttribute("href", "/tienda/playera-oversize");
+  });
+
+  it("sin rebaja no hay precio tachado", () => {
+    const { container } = render(<BestSellerCard product={product()} authenticated={false} index={0} />);
+    expect(container.querySelector("s")).toBeNull();
+  });
+
+  it("en rebaja pinta el precio rebajado y el anterior tachado, con «Antes» para lectores de pantalla", () => {
+    const { container } = render(
+      <BestSellerCard
+        product={product({ card: { variantId: "v", images: [IMAGE("uno")], price: 39900, compareAtPrice: 50000, isAvailable: true } })}
+        authenticated={false}
+        index={0}
+      />,
+    );
+    expect(screen.getByText("$399.00")).toBeInTheDocument();
+    const struck = container.querySelector("s");
+    expect(struck).toHaveTextContent("Antes $500.00");
+    expect(struck?.querySelector(".sr-only")).toHaveTextContent("Antes");
   });
 
   it("pinta la segunda foto (la del hover) solo cuando existe", () => {

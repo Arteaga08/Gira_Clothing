@@ -12,7 +12,6 @@ const product = (id: string, overrides: Partial<PublicProductSummary> = {}): Pub
   name: `Prenda ${id}`,
   slug: `prenda-${id}`,
   category: { id: "c1", name: "Sudaderas", slug: "sudaderas", color: "tangerine" },
-  basePrice: 79900,
   measurements: {},
   materials: [],
   bestSeller: false,

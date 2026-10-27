@@ -20,6 +20,7 @@ interface CreateProductInput {
   category: string;
   description?: string;
   basePrice: number;
+  salePrice?: number;
   weightGrams: number;
   measurements?: Measurements;
   materials?: string[];
@@ -35,6 +36,8 @@ interface UpdateProductInput {
   category?: string;
   description?: string;
   basePrice?: number;
+  /** null removes the sale. */
+  salePrice?: number | null;
   weightGrams?: number;
   measurements?: Measurements;
   materials?: string[];
@@ -94,6 +97,13 @@ const toPublicProduct = (doc: ProductLean): PublicProduct => {
   };
 };
 
+/** A sale must go below the base price, or it would be a price rise dressed as a discount. */
+const assertSaleBelowBase = (basePrice: number, salePrice: number | undefined): void => {
+  if (salePrice !== undefined && salePrice >= basePrice) {
+    throw new AppError("El precio de rebaja debe ser menor al precio base.", 400);
+  }
+};
+
 const findActiveCategoryOrThrow = async (categoryId: string) => {
   const category = await ProductCategory.findOne({ _id: categoryId, isActive: true }).lean();
   if (!category) throw new AppError("La categoría no existe.", 400);
@@ -113,6 +123,7 @@ const createProduct = async (
   input: CreateProductInput,
   ctx: RequestContext,
 ): Promise<PublicProduct> => {
+  assertSaleBelowBase(input.basePrice, input.salePrice);
   const category = await findActiveCategoryOrThrow(input.category);
   if (input.cardPrint) await assertCardPrintExists(input.cardPrint);
 
@@ -128,6 +139,7 @@ const createProduct = async (
     category: category._id,
     description: input.description,
     basePrice: input.basePrice,
+    ...(input.salePrice !== undefined ? { salePrice: input.salePrice } : {}),
     weightGrams: input.weightGrams,
     measurements: input.measurements ?? {},
     materials: input.materials ?? [],
@@ -191,6 +203,9 @@ const updateProduct = async (
   }
   if (input.description !== undefined) product.description = input.description;
   if (input.basePrice !== undefined) product.basePrice = input.basePrice;
+  if (input.salePrice === null) product.set("salePrice", undefined);
+  else if (input.salePrice !== undefined) product.salePrice = input.salePrice;
+  assertSaleBelowBase(product.basePrice, product.salePrice);
   if (input.weightGrams !== undefined) product.weightGrams = input.weightGrams;
   if (input.measurements !== undefined) product.measurements = input.measurements;
   if (input.materials !== undefined) product.materials = input.materials;

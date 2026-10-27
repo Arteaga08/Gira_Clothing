@@ -22,7 +22,7 @@ interface StoreCardSectionProps {
 const AUTOMATIC = "";
 
 /**
- * How the model shows in the storefront: the «Más vendido» and «Novedad» flags, the words
+ * How the model shows in the storefront: the «Más vendido» and «Novedad» flags, its sale price, the words
  * printed on its card and which print's photos it shows. Its colour is not set
  * here: it is the category's, and this only says which one it will be.
  */
@@ -43,6 +43,17 @@ const StoreCardSection = ({ model, errors, selectedPrints, categoryName, categor
         checked={model.newArrival}
         onChange={(newArrival) => onChange({ newArrival })}
         label="Novedad: aparece en la sección «Novedades» (las 5 más recientes)"
+      />
+
+      <Field
+        label="Precio de rebaja (opcional)"
+        inputMode="decimal"
+        placeholder="159.00"
+        helper="Déjalo vacío para cobrar el precio base. Las estampas con precio especial no se rebajan."
+        value={model.salePrice}
+        error={errors.salePrice}
+        className="font-mono"
+        onChange={(event) => onChange({ salePrice: event.target.value })}
       />
 
       <div className="flex flex-col gap-2">

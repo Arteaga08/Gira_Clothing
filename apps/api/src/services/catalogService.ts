@@ -8,6 +8,7 @@ import { Variant } from "../models/Variant.js";
 import { AppError } from "../utils/AppError.js";
 import { parseListQuery, buildMeta, type ListQueryConfig } from "../utils/parseListQuery.js";
 import type { ImageAttrs } from "../models/schemas/image.js";
+import { resolveUnitPrice, type PricedProduct } from "../utils/unitPrice.js";
 
 /**
  * Public, read-only catalog queries. Every query is scoped to isActive:true —
@@ -194,7 +195,7 @@ const listPublicCategories = async (
 // --- Products (cross-filtered by print / family) ------------------------
 
 const PRODUCT_LIST_CONFIG: ListQueryConfig = {
-  sortable: ["name", "basePrice", "createdAt"],
+  sortable: ["name", "createdAt"],
   searchable: ["name"],
   defaultSort: "name",
 };
@@ -204,7 +205,6 @@ interface PublicProductSummary {
   name: string;
   slug: string;
   category: { id: string; name: string; slug: string; color: CategoryColor };
-  basePrice: number;
   measurements: Measurements;
   materials: string[];
   bestSeller: boolean;
@@ -221,6 +221,7 @@ interface ProductLean {
   category: unknown;
   description?: string;
   basePrice: number;
+  salePrice?: number;
   measurements: Measurements;
   materials: string[];
   bestSeller?: boolean;
@@ -242,7 +243,6 @@ const toPublicProductSummary = (doc: ProductLean, card?: PublicProductCard): Pub
       slug: category.slug,
       color: category.color ?? CATEGORY_DEFAULT_COLOR,
     },
-    basePrice: doc.basePrice,
     measurements: doc.measurements,
     materials: doc.materials,
     bestSeller: doc.bestSeller ?? false,
@@ -273,12 +273,26 @@ const pickCardVariant = (variants: CardVariantLean[], cardPrint: unknown): CardV
   return chosen ?? usable.find((variant) => variant.images.length > 0) ?? usable[0];
 };
 
-const toPublicProductCard = (variant: CardVariantLean, basePrice: number): PublicProductCard => ({
+/** `compareAtPrice` is only set while the unit is on sale, so the web never has to decide when to strike. */
+const toPublicPrice = (
+  product: PricedProduct,
+  priceOverride: number | undefined,
+): { price: number; compareAtPrice?: number } => {
+  const { priceMxn, compareAtMxn } = resolveUnitPrice(product, priceOverride);
+  return { price: priceMxn, ...(compareAtMxn !== undefined ? { compareAtPrice: compareAtMxn } : {}) };
+};
+
+const toPublicProductCard = (variant: CardVariantLean, product: PricedProduct): PublicProductCard => ({
   variantId: String(variant._id),
   images: (variant.images.length > 0 ? variant.images : [variant.print.image]).slice(0, 2),
-  price: variant.priceOverride ?? basePrice,
+  ...toPublicPrice(product, variant.priceOverride),
   isAvailable: variant.onHand - variant.reserved > 0,
 });
+
+const PRICE_SORTS = new Map<string, "asc" | "desc">([
+  ["price", "asc"],
+  ["-price", "desc"],
+]);
 
 interface PublicProductQuery extends RawPublicQuery {
   category?: string;
@@ -336,13 +350,18 @@ const listPublicProducts = async (
     filters._id = { $in: productIds };
   }
 
-  const { filter, sort, skip, limit, page } = parseListQuery(query, PRODUCT_LIST_CONFIG, filters);
+  const priceSort = PRICE_SORTS.get(typeof query.sort === "string" ? query.sort.trim() : "");
+  // The price is not a stored field, so a price sort is handled below, not by Mongo.
+  const parsed = parseListQuery(priceSort ? { ...query, sort: undefined } : query, PRODUCT_LIST_CONFIG, filters);
+  const { filter, sort, skip, limit, page } = parsed;
+
+  const finder = Product.find(filter).populate("category", "name slug color");
   const [docs, total] = await Promise.all([
-    Product.find(filter).sort(sort).skip(skip).limit(limit).populate("category", "name slug color").lean(),
+    (priceSort ? finder.sort({ name: 1, _id: 1 }) : finder.sort(sort).skip(skip).limit(limit)).lean(),
     Product.countDocuments(filter),
   ]);
 
-  // One query for the whole page: the active variants of these products, oldest first.
+  // One query for the whole set: the active variants of these products, oldest first.
   const variants = (await Variant.find({ product: { $in: docs.map((doc) => doc._id) }, isActive: true })
     .sort({ createdAt: 1, _id: 1 })
     .populate("print", "image isActive")
@@ -353,11 +372,22 @@ const listPublicProducts = async (
     byProduct.set(key, [...(byProduct.get(key) ?? []), variant]);
   }
 
-  const items = docs.map((doc) => {
+  const rows = docs.map((doc) => {
     const picked = pickCardVariant(byProduct.get(String(doc._id)) ?? [], doc.cardPrint);
-    return toPublicProductSummary(doc, picked ? toPublicProductCard(picked, doc.basePrice) : undefined);
+    const card = picked ? toPublicProductCard(picked, doc) : undefined;
+    return { item: toPublicProductSummary(doc, card), price: card?.price ?? resolveUnitPrice(doc).priceMxn };
   });
-  return { items, meta: buildMeta(total, { page, limit }) };
+
+  if (!priceSort) return { items: rows.map((row) => row.item), meta: buildMeta(total, { page, limit }) };
+
+  // Sorted by what the card charges. Rows already come by name, and Array.sort is stable, so ties stay by name.
+  // Loads the whole filtered set: fine for a catalog of dozens of models; past a few thousand, move this
+  // into an aggregation with the effective price computed in a $addFields stage.
+  rows.sort((a, b) => (priceSort === "asc" ? a.price - b.price : b.price - a.price));
+  return {
+    items: rows.slice(skip, skip + limit).map((row) => row.item),
+    meta: buildMeta(total, { page, limit }),
+  };
 };
 
 interface VariantWithPrintLean {
@@ -388,7 +418,7 @@ const getPublicProduct = async (slug: string): Promise<PublicProductDetail> => {
       id: String(v._id),
       sku: v.sku,
       images: v.images,
-      ...(v.priceOverride !== undefined ? { priceOverride: v.priceOverride } : {}),
+      ...toPublicPrice(product, v.priceOverride),
       isAvailable: v.onHand - v.reserved > 0,
       print: {
         id: String(v.print._id),
