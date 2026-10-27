@@ -12,6 +12,8 @@ interface EditorProduct {
   description: string;
   /** MXN centavos. */
   basePrice: number;
+  /** MXN centavos; absent when the model is not on sale. */
+  salePrice?: number;
   weightGrams: number;
   measurements: Measurements;
   materials: string[];
@@ -49,6 +51,7 @@ const toEditorProduct = (product: Wire<AdminProduct>): EditorProduct => ({
   categoryName: product.category.name,
   description: product.description ?? "",
   basePrice: product.basePrice,
+  ...(product.salePrice !== undefined ? { salePrice: product.salePrice } : {}),
   weightGrams: product.weightGrams,
   measurements: product.measurements,
   materials: product.materials,

@@ -34,6 +34,7 @@ const MODEL: ModelFields = {
   categoryId: CATEGORY_ID,
   description: "",
   price: "189.00",
+  salePrice: "",
   weight: "140",
   width: "",
   height: "",

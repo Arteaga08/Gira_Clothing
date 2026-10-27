@@ -1,7 +1,7 @@
 import type { PublicProductDetail, PublicProductVariant } from "@gira/shared";
 import { cardImageUrl } from "@/components/store/best-sellers/cardImage";
 import { T_LABEL } from "@/components/ui/typography";
-import { formatPesos } from "@/lib/catalog/money";
+import { PriceTag } from "@/components/store/PriceTag";
 import { CATEGORY_TONE } from "@/lib/store/categoryColors";
 import { categoryRoute } from "@/lib/store/routes";
 import { cn } from "@/lib/cn";
@@ -10,7 +10,6 @@ interface ProductIntroProps {
   product: PublicProductDetail;
   /** The chosen variant; absent when the model has none yet. */
   variant: PublicProductVariant | undefined;
-  unitPrice: number;
 }
 
 /**
@@ -18,7 +17,7 @@ interface ProductIntroProps {
  * the price, the description, the chosen print in macro on the category's
  * strong colour, and a two-cell strip with the print and its availability.
  */
-const ProductIntro = ({ product, variant, unitPrice }: ProductIntroProps) => {
+const ProductIntro = ({ product, variant }: ProductIntroProps) => {
   const tone = CATEGORY_TONE[product.category.color];
 
   return (
@@ -31,7 +30,7 @@ const ProductIntro = ({ product, variant, unitPrice }: ProductIntroProps) => {
           {product.category.name}
         </a>
         <h1 className="break-words font-display text-[clamp(3.5rem,6.2vw,6rem)] uppercase leading-[1.06]">{product.name}</h1>
-        <p className="font-mono text-3xl font-bold text-accent">{formatPesos(unitPrice)}</p>
+        {variant ? <PriceTag price={variant.price} compareAtPrice={variant.compareAtPrice} className="text-3xl text-accent" /> : null}
       </div>
       {product.description ? (
         <p className="border-t-2 border-ink px-5 py-4 text-[1.0625rem] leading-relaxed text-text-secondary md:px-8 md:py-5">{product.description}</p>

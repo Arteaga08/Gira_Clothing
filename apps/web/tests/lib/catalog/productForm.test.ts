@@ -33,6 +33,7 @@ const VALID: ModelFields = {
   categoryId: CATEGORY_ID,
   description: "",
   price: "189.00",
+  salePrice: "",
   weight: "140",
   width: "18",
   height: "11",
@@ -84,6 +85,46 @@ describe("validateModel", () => {
   it("máximo 10 materiales de hasta 60 caracteres", () => {
     expect(validateModel({ ...VALID, materials: Array.from({ length: 11 }, (_, i) => `m${i}`).join(",") }).materials).toMatch(/10/);
     expect(validateModel({ ...VALID, materials: "y".repeat(61) }).materials).toMatch(/60/);
+  });
+});
+
+describe("precio de rebaja", () => {
+  it("es opcional: vacío no da error", () => {
+    expect(validateModel({ ...VALID, salePrice: "" }).salePrice).toBeUndefined();
+  });
+
+  it("debe ser menor al precio base: igual o mayor da error", () => {
+    expect(validateModel({ ...VALID, salePrice: "150" }).salePrice).toBeUndefined();
+    expect(validateModel({ ...VALID, salePrice: "188.99" }).salePrice).toBeUndefined();
+    expect(validateModel({ ...VALID, salePrice: "189" }).salePrice).toMatch(/menor al precio base/);
+    expect(validateModel({ ...VALID, salePrice: "250" }).salePrice).toMatch(/menor al precio base/);
+  });
+
+  it("texto que no es dinero da error", () => {
+    expect(validateModel({ ...VALID, salePrice: "abc" }).salePrice).toMatch(/en pesos/);
+  });
+
+  it("con precio base inválido no compara (ya hay error en el precio)", () => {
+    const errors = validateModel({ ...VALID, price: "abc", salePrice: "100" });
+    expect(errors.price).toBeDefined();
+    expect(errors.salePrice).toBeUndefined();
+  });
+
+  it("al crear manda salePrice en centavos y sin rebaja no manda la llave", () => {
+    expect(toCreateBody({ ...emptyFormState(), model: { ...VALID, salePrice: "159.90" } }).salePrice).toBe(15990);
+    expect(toCreateBody({ ...emptyFormState(), model: VALID })).not.toHaveProperty("salePrice");
+  });
+
+  it("al editar: poner, cambiar y quitar la rebaja (null)", () => {
+    const base = baseline();
+    const state = stateFromBaseline(base);
+    expect(toUpdateBody({ ...state, model: { ...state.model, salePrice: "100" } }, base)).toEqual({ salePrice: 10000 });
+
+    const onSale = { ...base, product: { ...base.product, salePrice: 10000 } };
+    const loaded = stateFromBaseline(onSale);
+    expect(loaded.model.salePrice).toBe("100.00");
+    expect(toUpdateBody(loaded, onSale)).toBeNull();
+    expect(toUpdateBody({ ...loaded, model: { ...loaded.model, salePrice: "" } }, onSale)).toEqual({ salePrice: null });
   });
 });
 

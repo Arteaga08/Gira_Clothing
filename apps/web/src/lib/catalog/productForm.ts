@@ -23,6 +23,8 @@ interface ModelFields {
   description: string;
   /** Pesos, e.g. "189.00". */
   price: string;
+  /** Sale price in pesos; "" = not on sale. Must be below `price`. */
+  salePrice: string;
   /** Grams. */
   weight: string;
   width: string;
@@ -67,6 +69,8 @@ interface ModelBody {
   description: string;
   /** MXN centavos. */
   basePrice: number;
+  /** MXN centavos; `null` removes the sale. */
+  salePrice: number | null;
   weightGrams: number;
   measurements: Measurements;
   materials: string[];
@@ -77,7 +81,8 @@ interface ModelBody {
   cardPrint: string | null;
 }
 
-type CreateProductBody = ModelBody & { sizeImage?: ImageAttrs };
+/** The create endpoint has no sale to remove, so `salePrice` is left out instead of sent as null. */
+type CreateProductBody = Omit<ModelBody, "salePrice"> & { salePrice?: number; sizeImage?: ImageAttrs };
 type UpdateProductBody = Partial<ModelBody> & { sizeImage?: ImageAttrs | null };
 
 interface VariantPatch {
@@ -104,6 +109,7 @@ const EMPTY_MODEL: ModelFields = {
   categoryId: "",
   description: "",
   price: "",
+  salePrice: "",
   weight: "",
   width: "",
   height: "",
@@ -131,6 +137,7 @@ const stateFromBaseline = ({ product, variants }: ProductBaseline): ProductFormS
     categoryId: product.categoryId,
     description: product.description,
     price: centsToPesosText(product.basePrice),
+    salePrice: product.salePrice === undefined ? "" : centsToPesosText(product.salePrice),
     weight: String(product.weightGrams),
     width: measureText(product.measurements.widthCm),
     height: measureText(product.measurements.heightCm),
@@ -174,6 +181,15 @@ const validateModel = (model: ModelFields): ModelErrors => {
   if (price === null) errors.price = "Escribe el precio en pesos, por ejemplo 189.00.";
   else if (price > PRODUCT_BASE_PRICE_MAX) {
     errors.price = `El precio no puede pasar de $${centsToPesosText(PRODUCT_BASE_PRICE_MAX)}.`;
+  }
+
+  const salePriceText = model.salePrice.trim();
+  if (salePriceText) {
+    const sale = parsePesos(salePriceText);
+    if (sale === null) errors.salePrice = "Escribe el precio de rebaja en pesos, por ejemplo 159.00.";
+    else if (price !== null && sale >= price) {
+      errors.salePrice = `La rebaja debe ser menor al precio base ($${centsToPesosText(price)}).`;
+    }
   }
 
   const weight = model.weight.trim();
@@ -233,6 +249,7 @@ const toModelBody = (model: ModelFields): ModelBody => {
     category: model.categoryId,
     description: model.description.trim(),
     basePrice: parsePesos(model.price) ?? 0,
+    salePrice: model.salePrice.trim() ? parsePesos(model.salePrice) : null,
     weightGrams: Number(model.weight),
     measurements,
     materials: parseMaterials(model.materials),
@@ -243,10 +260,14 @@ const toModelBody = (model: ModelFields): ModelBody => {
   };
 };
 
-const toCreateBody = (state: ProductFormState): CreateProductBody => ({
-  ...toModelBody(state.model),
-  ...(state.sizeImage ? { sizeImage: state.sizeImage } : {}),
-});
+const toCreateBody = (state: ProductFormState): CreateProductBody => {
+  const { salePrice, ...body } = toModelBody(state.model);
+  return {
+    ...body,
+    ...(salePrice !== null ? { salePrice } : {}),
+    ...(state.sizeImage ? { sizeImage: state.sizeImage } : {}),
+  };
+};
 
 /** Only what changed, or `null` when nothing did (no request, no `updatedAt` bump). */
 const toUpdateBody = (state: ProductFormState, baseline: ProductBaseline): UpdateProductBody | null => {

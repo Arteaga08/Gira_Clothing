@@ -43,7 +43,7 @@ describe("buildCatalogApiQuery", () => {
     expect(params.get("category")).toBe("playeras");
     expect(params.get("print")).toBe("ikat");
     expect(params.get("newArrival")).toBe("true");
-    expect(params.get("sort")).toBe("basePrice");
+    expect(params.get("sort")).toBe("price");
     expect(params.get("page")).toBe("2");
     expect(params.get("limit")).toBe(String(CATALOG_PAGE_SIZE));
   });
@@ -51,7 +51,7 @@ describe("buildCatalogApiQuery", () => {
   it("cada orden mapea a su campo y dirección", () => {
     const sortOf = (orden: string) => new URLSearchParams(buildCatalogApiQuery(parseCatalogQuery({ orden }))).get("sort");
     expect(sortOf("novedades")).toBe("-createdAt");
-    expect(sortOf("precio-desc")).toBe("-basePrice");
+    expect(sortOf("precio-desc")).toBe("-price");
     expect(sortOf("az")).toBe("name");
     expect(sortOf("za")).toBe("-name");
   });

@@ -14,6 +14,7 @@ const variant = (id: string, printName: string, overrides: Partial<PublicProduct
   id,
   sku: `SKU-${id}`,
   images: [IMAGE(`${id}-1`), IMAGE(`${id}-2`)],
+  price: 49900,
   isAvailable: true,
   print: { id: `pr-${id}`, name: printName, slug: printName.toLowerCase(), sku: `P-${id}`, image: IMAGE(`print-${id}`) },
   ...overrides,
@@ -24,7 +25,6 @@ const product = (overrides: Partial<PublicProductDetail> = {}): PublicProductDet
   name: "Playera boxy",
   slug: "playera-boxy",
   category: { id: "c1", name: "Playeras", slug: "playeras", color: "lilac" },
-  basePrice: 49900,
   measurements: {},
   materials: [],
   bestSeller: false,
@@ -33,7 +33,7 @@ const product = (overrides: Partial<PublicProductDetail> = {}): PublicProductDet
   description: "Corte amplio.",
   variants: [
     variant("a1", "Sol"),
-    variant("b2", "Luna", { priceOverride: 54900 }),
+    variant("b2", "Luna", { price: 54900 }),
     variant("c3", "Cereza", { isAvailable: false }),
   ],
   ...overrides,
@@ -55,7 +55,7 @@ describe("ProductView", () => {
     expect(screen.getByRole("radio", { name: "Luna" })).toBeChecked();
   });
 
-  it("al elegir otra estampa cambia el precio (priceOverride) y la cantidad vuelve a 1", async () => {
+  it("al elegir otra estampa cambia el precio y la cantidad vuelve a 1", async () => {
     render(<ProductView product={product()} authenticated={false} />);
     await userEvent.click(screen.getByRole("button", { name: "Agregar una" }));
     expect(screen.getByText("2 piezas")).toBeInTheDocument();
@@ -63,6 +63,23 @@ describe("ProductView", () => {
     expect(screen.getByRole("radio", { name: "Luna" })).toBeChecked();
     expect(screen.getByText("1 pieza")).toBeInTheDocument();
     expect(screen.getAllByText("$549.00").length).toBeGreaterThan(0);
+  });
+
+  it("estampa en rebaja: muestra el precio rebajado, el anterior tachado y el total de la cantidad", async () => {
+    const onSale = product({ variants: [variant("a1", "Sol", { price: 39900, compareAtPrice: 49900 })] });
+    const { container } = render(<ProductView product={onSale} authenticated={false} />);
+    expect(container.querySelector("s")).toHaveTextContent("Antes $499.00");
+    expect(screen.getAllByText("$399.00").length).toBeGreaterThan(0);
+    await userEvent.click(screen.getByRole("button", { name: "Agregar una" }));
+    expect(screen.getByText("$798.00")).toBeInTheDocument();
+  });
+
+  it("una estampa sin rebaja no tacha nada aunque otra sí esté rebajada", async () => {
+    const mixed = product({ variants: [variant("a1", "Sol", { price: 39900, compareAtPrice: 49900 }), variant("b2", "Luna", { price: 54900 })] });
+    const { container } = render(<ProductView product={mixed} authenticated={false} />);
+    expect(container.querySelector("s")).not.toBeNull();
+    await userEvent.click(screen.getByRole("radio", { name: "Luna" }));
+    expect(container.querySelector("s")).toBeNull();
   });
 
   it("las flechas mueven la selección entre estampas y dan la vuelta", async () => {

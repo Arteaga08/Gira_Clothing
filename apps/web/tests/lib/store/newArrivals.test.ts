@@ -7,7 +7,6 @@ const product = (id: string, withCard: boolean) => ({
   name: id,
   slug: id,
   category: { id: "c", name: "Sudaderas", slug: "sudaderas", color: "tangerine" },
-  basePrice: 1000,
   measurements: {},
   materials: [],
   bestSeller: false,

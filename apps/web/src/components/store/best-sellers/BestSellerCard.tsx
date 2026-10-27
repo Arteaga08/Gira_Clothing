@@ -1,5 +1,5 @@
 import type { PublicProductSummary } from "@gira/shared";
-import { formatPesos } from "@/lib/catalog/money";
+import { PriceTag } from "@/components/store/PriceTag";
 import { productRoute } from "@/lib/store/routes";
 import { CATEGORY_TONE } from "@/lib/store/categoryColors";
 import { cn } from "@/lib/cn";
@@ -49,7 +49,7 @@ const BestSellerCard = ({ product, authenticated, index }: BestSellerCardProps) 
         ) : null}
       </a>
       <div className={cn("flex items-center justify-between gap-2 border-t-2 border-ink px-4 py-3", tone.soft)}>
-        <span className="font-mono text-lg font-bold">{formatPesos(card.price)}</span>
+        <PriceTag price={card.price} compareAtPrice={card.compareAtPrice} className="text-lg" />
         <AddToCartButton variantId={card.variantId} productName={product.name} isAvailable={card.isAvailable} authenticated={authenticated} />
       </div>
     </article>
