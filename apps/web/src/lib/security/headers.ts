@@ -58,5 +58,17 @@ const buildSecurityHeaders = (options: SecurityHeadersOptions): Header[] => [
     : []),
 ];
 
+/**
+ * Pages whose URL carries a one-use token (emailed links). They must not leak it
+ * through `Referer` (not even to our own API, which `strict-origin-when-cross-origin`
+ * would still allow the path of) and must never be cached.
+ */
+const TOKEN_PAGE_PATHS = ["/verificar-correo", "/restablecer-contrasena"] as const;
+
+const buildTokenPageHeaders = (): Header[] => [
+  { key: "Referrer-Policy", value: "no-referrer" },
+  { key: "Cache-Control", value: "no-store" },
+];
+
 export type { SecurityHeadersOptions, Header };
-export { buildCsp, buildSecurityHeaders };
+export { buildCsp, buildSecurityHeaders, buildTokenPageHeaders, TOKEN_PAGE_PATHS };

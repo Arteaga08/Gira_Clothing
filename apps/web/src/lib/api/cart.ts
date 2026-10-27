@@ -35,4 +35,14 @@ const addToAccountCart = async (variantId: string, qty = 1): Promise<boolean> =>
   return true;
 };
 
-export { fetchCartCount, addToAccountCart };
+/** The signed-in customer's cart lines, for merging the browser cart into it after login. */
+const fetchAccountCartLines = async (): Promise<{ variantId: string; qty: number }[]> =>
+  expectData(await browserRequest<CartLinesPayload>(CART_PATH)).cart.lines;
+
+/** Sets the absolute quantity of a line (the API's contract: a retried call must not double it). */
+const setAccountCartQty = async (variantId: string, qty: number): Promise<void> => {
+  const id = assertVariantId(variantId);
+  expectData(await browserRequest(`${CART_PATH}/lines/${id}`, { method: "PUT", body: { qty } }));
+};
+
+export { fetchCartCount, addToAccountCart, fetchAccountCartLines, setAccountCartQty };

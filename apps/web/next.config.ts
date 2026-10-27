@@ -1,5 +1,5 @@
 import type { NextConfig } from "next";
-import { buildSecurityHeaders } from "./src/lib/security/headers";
+import { buildSecurityHeaders, buildTokenPageHeaders, TOKEN_PAGE_PATHS } from "./src/lib/security/headers";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
         source: "/:path*",
         headers: buildSecurityHeaders({ apiUrl, isProd: process.env.NODE_ENV === "production" }),
       },
+      // Declared after the catch-all: for the same header key the last matching rule wins.
+      ...TOKEN_PAGE_PATHS.map((source) => ({ source, headers: buildTokenPageHeaders() })),
     ];
   },
 };

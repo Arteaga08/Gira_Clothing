@@ -1151,3 +1151,170 @@
     transition: none;
   }
 }
+
+/* ── Access pages (M15a): the «pase de gira» ticket ──────────────────────────
+   Form on the left, a stub on the right cut by a perforation with two notches.
+   The stub carries the first hero photo (or a flat colour with an arch when
+   there is none), a sticker and a barcode; on a phone it drops below as a strip. */
+.store-ticket {
+  --ticket-stub-width: 300px;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--ticket-stub-width);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 2px solid var(--color-ink);
+  border-radius: var(--nb-radius);
+  box-shadow: var(--nb-shadow-lg);
+}
+
+.store-ticket::before,
+.store-ticket::after {
+  content: "";
+  position: absolute;
+  right: var(--ticket-stub-width);
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  background: var(--color-wallpaper);
+  border: 2px solid var(--color-ink);
+  border-radius: 50%;
+  transform: translateX(50%);
+  pointer-events: none;
+}
+
+.store-ticket::before {
+  top: -16px;
+  clip-path: inset(50% 0 0 0);
+}
+
+.store-ticket::after {
+  bottom: -16px;
+  clip-path: inset(0 0 50% 0);
+}
+
+.store-ticket-main {
+  padding: 2.5rem 3rem;
+}
+
+.store-ticket-stub {
+  --stub-bg: var(--color-accent);
+  --stub-art: var(--color-tile-alt);
+  position: relative;
+  min-height: 20rem;
+  overflow: hidden;
+  background: var(--stub-bg);
+  border-left: 2px dashed var(--color-ink);
+  border-radius: 0 10px 10px 0;
+}
+
+.store-ticket-stub[data-tone="lilac"] {
+  --stub-bg: var(--color-tile-alt);
+  --stub-art: var(--color-brand-subtle);
+}
+
+.store-ticket-stub[data-tone="mint"] {
+  --stub-bg: var(--color-brand-subtle);
+  --stub-art: var(--color-accent);
+}
+
+.store-ticket-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* No photo: a flat field with an arch and a sun, so the stub is never empty. */
+.store-ticket-art::before {
+  content: "";
+  position: absolute;
+  bottom: -4%;
+  left: 10%;
+  width: 80%;
+  height: 62%;
+  background: var(--stub-art);
+  border: 2px solid var(--color-ink);
+  border-radius: 999px 999px 0 0;
+}
+
+.store-ticket-art::after {
+  content: "";
+  position: absolute;
+  top: 26%;
+  right: 10%;
+  width: 4.5rem;
+  height: 4.5rem;
+  background: var(--color-surface);
+  border: 2px solid var(--color-ink);
+  border-radius: 50%;
+  box-shadow: var(--nb-shadow-sm);
+}
+
+.store-ticket-sticker {
+  position: absolute;
+  top: 1.25rem;
+  left: 1.25rem;
+  padding: 0.5rem 1rem;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 2px solid var(--color-ink);
+  border-radius: 999px;
+  box-shadow: var(--nb-shadow-sm);
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  line-height: 1;
+  text-transform: uppercase;
+  transform: rotate(-3deg);
+}
+
+.store-barcode {
+  position: absolute;
+  top: 5.25rem;
+  left: 1.25rem;
+  width: 8rem;
+  height: 2.5rem;
+  background:
+    repeating-linear-gradient(90deg, var(--color-ink) 0 2px, transparent 2px 5px, var(--color-ink) 5px 6px, transparent 6px 10px),
+    var(--color-surface);
+  background-clip: content-box, border-box;
+  border: 2px solid var(--color-ink);
+  border-radius: 8px;
+}
+
+@media (max-width: 767px) {
+  .store-ticket {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .store-ticket::before,
+  .store-ticket::after {
+    display: none;
+  }
+
+  .store-ticket-main {
+    padding: 1.5rem;
+  }
+
+  .store-ticket-stub {
+    min-height: 8.25rem;
+    border-left: 0;
+    border-top: 2px dashed var(--color-ink);
+    border-radius: 0 0 10px 10px;
+  }
+
+  .store-ticket-sticker {
+    top: 1rem;
+    left: 1rem;
+    font-size: 1.25rem;
+  }
+
+  .store-barcode {
+    top: auto;
+    bottom: 0.875rem;
+    left: 1rem;
+    width: 6.25rem;
+    height: 2rem;
+  }
+}

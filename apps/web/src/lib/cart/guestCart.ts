@@ -44,6 +44,12 @@ const readGuestLines = (): GuestCartLine[] => {
   );
 };
 
+/** Replaces the visitor's cart; an empty list removes the key. Throws if the browser blocks storage. */
+const writeGuestLines = (lines: GuestCartLine[]): void => {
+  if (lines.length === 0) window.localStorage.removeItem(GUEST_CART_KEY);
+  else window.localStorage.setItem(GUEST_CART_KEY, JSON.stringify(lines));
+};
+
 /**
  * Adds `qty` units (one by default) of a variant to the visitor's cart. Resolves
  * `false` when the browser refuses the write (blocked storage) or the line would
@@ -71,4 +77,13 @@ const announceCartChange = (): void => {
 };
 
 export type { GuestCartLine };
-export { GUEST_CART_KEY, CART_CHANGED_EVENT, CART_LINE_MAX_QTY, countGuestCart, addToGuestCart, announceCartChange };
+export {
+  GUEST_CART_KEY,
+  CART_CHANGED_EVENT,
+  CART_LINE_MAX_QTY,
+  countGuestCart,
+  readGuestLines,
+  writeGuestLines,
+  addToGuestCart,
+  announceCartChange,
+};
