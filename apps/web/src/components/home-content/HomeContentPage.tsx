@@ -8,6 +8,8 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useSettings } from "@/hooks/useSettings";
 import { AnnouncementModal } from "./AnnouncementModal";
 import { AnnouncementPanel } from "./AnnouncementPanel";
+import { EventsModal } from "./EventsModal";
+import { EventsPanel } from "./EventsPanel";
 import { HeroModal } from "./HeroModal";
 import { HeroPanel } from "./HeroPanel";
 import { OfferBannerModal } from "./OfferBannerModal";
@@ -15,12 +17,14 @@ import { OfferBannerPanel } from "./OfferBannerPanel";
 
 /**
  * Contenido de home: what the team edits to change the storefront's home.
- * The announcement bar, the hero and the offer banner; each home section that becomes editable
+ * The announcement bar, the hero, the offer banner and the events; each home section that becomes editable
  * (spec §4) adds its own panel here.
  */
 const HomeContentPage = () => {
   const { state, refresh, replace } = useSettings();
-  const [editing, setEditing] = useState<"announcement" | "hero" | "offerBanner" | null>(null);
+  // The shop's day, to tell which events are still upcoming (the API drops the past ones by the same clock).
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City" }).format(new Date());
+  const [editing, setEditing] = useState<"announcement" | "hero" | "offerBanner" | "events" | null>(null);
 
   if (state.status === "error") {
     return (
@@ -49,6 +53,7 @@ const HomeContentPage = () => {
           <AnnouncementPanel announcement={state.settings.storefront.announcement} onEdit={() => setEditing("announcement")} />
           <HeroPanel hero={state.settings.storefront.hero} onEdit={() => setEditing("hero")} />
           <OfferBannerPanel banner={state.settings.storefront.offerBanner} onEdit={() => setEditing("offerBanner")} />
+          <EventsPanel events={state.settings.storefront.events} today={today} onEdit={() => setEditing("events")} />
         </div>
       )}
       {state.status === "ready" && editing === "announcement" ? (
@@ -67,6 +72,9 @@ const HomeContentPage = () => {
           onClose={() => setEditing(null)}
           onSaved={replace}
         />
+      ) : null}
+      {state.status === "ready" && editing === "events" ? (
+        <EventsModal events={state.settings.storefront.events} onClose={() => setEditing(null)} onSaved={replace} />
       ) : null}
     </div>
   );

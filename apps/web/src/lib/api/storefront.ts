@@ -1,6 +1,8 @@
-import { PRINT_HOME_POSITION_MAX, type CategoryColor, type PublicOfferBanner, type PublicProductSummary, type PublicStorefrontHero, type StorefrontAnnouncement } from "@gira/shared";
+import { PRINT_HOME_POSITION_MAX, type ApiMeta, type CategoryColor, type PublicEvents, type PublicOfferBanner, type PublicProductSummary, type PublicStorefrontHero, type StorefrontAnnouncement } from "@gira/shared";
+import { buildCatalogApiQuery, CATALOG_PAGE_SIZE, type CatalogQuery } from "@/lib/store/catalogQuery";
+import { ApiError } from "./ApiError";
 import { request, expectData } from "./request";
-import { CATALOG_CATEGORIES_PATH, CATALOG_PRINTS_PATH, CATALOG_PRODUCTS_PATH, STOREFRONT_ANNOUNCEMENT_PATH, STOREFRONT_HERO_PATH, STOREFRONT_OFFER_BANNER_PATH } from "./paths";
+import { CATALOG_CATEGORIES_PATH, CATALOG_PRINTS_PATH, CATALOG_PRODUCTS_PATH, STOREFRONT_ANNOUNCEMENT_PATH, STOREFRONT_EVENTS_PATH, STOREFRONT_HERO_PATH, STOREFRONT_OFFER_BANNER_PATH } from "./paths";
 
 /** Edits in Ajustes reach the storefront within this many seconds. */
 const ANNOUNCEMENT_REVALIDATE_SECONDS = 60;
@@ -67,6 +69,26 @@ const getOfferBanner = async (): Promise<PublicOfferBanner | null> => {
   }
 };
 
+/** Edits in «Contenido de home» reach the storefront within this many seconds. */
+const EVENTS_REVALIDATE_SECONDS = 60;
+
+/**
+ * The upcoming events (past days are dropped by the API). Like the banner, they
+ * must never break the home: any failure collapses to null and the section is skipped.
+ */
+const getEvents = async (): Promise<PublicEvents | null> => {
+  try {
+    return expectData(
+      await request<{ events: PublicEvents }>(STOREFRONT_EVENTS_PATH, {
+        next: { revalidate: EVENTS_REVALIDATE_SECONDS },
+        timeoutMs: 3_000,
+      }),
+    ).events;
+  } catch {
+    return null;
+  }
+};
+
 /** Products the team flagged «Más vendido» show within this many seconds of the flag. */
 const BEST_SELLERS_REVALIDATE_SECONDS = 60;
 const BEST_SELLERS_LIMIT = 12;
@@ -89,6 +111,36 @@ const getBestSellers = async (): Promise<PublicProductSummary[]> => {
     return products.filter((product) => product.card !== undefined);
   } catch {
     return [];
+  }
+};
+
+/** Catalog edits (prices, flags, stock) reach the listing within this many seconds. */
+const CATALOG_REVALIDATE_SECONDS = 60;
+
+type CatalogPageResult =
+  | { status: "ok"; products: PublicProductSummary[]; meta: ApiMeta }
+  | { status: "error" };
+
+/**
+ * One page of the catalog. A category or print slug the API does not know
+ * (404) is an empty result, not a failure: the page says "nothing here". Any
+ * other failure is reported as `error` so the page can offer a retry. A model
+ * with no purchasable variant has no card and is dropped.
+ */
+const getCatalogPage = async (query: CatalogQuery): Promise<CatalogPageResult> => {
+  try {
+    const result = await request<{ products: PublicProductSummary[] }>(`${CATALOG_PRODUCTS_PATH}${buildCatalogApiQuery(query)}`, {
+      next: { revalidate: CATALOG_REVALIDATE_SECONDS },
+      timeoutMs: 5_000,
+    });
+    const { products } = expectData(result);
+    const meta = result.meta ?? { total: products.length, page: query.page, pages: 1, limit: CATALOG_PAGE_SIZE };
+    return { status: "ok", products: products.filter((product) => product.card !== undefined), meta };
+  } catch (error) {
+    if (error instanceof ApiError && error.kind === "http" && error.status === 404) {
+      return { status: "ok", products: [], meta: { total: 0, page: 1, pages: 1, limit: CATALOG_PAGE_SIZE } };
+    }
+    return { status: "error" };
   }
 };
 
@@ -173,5 +225,5 @@ const getFeaturedPrints = async (): Promise<PublicPrintSummary[]> => {
   }
 };
 
-export type { PublicCategorySummary, PublicPrintSummary };
-export { getAnnouncement, getHero, getOfferBanner, getBestSellers, getNewArrivals, getCategories, getFeaturedPrints };
+export type { CatalogPageResult, PublicCategorySummary, PublicPrintSummary };
+export { getAnnouncement, getHero, getOfferBanner, getEvents, getBestSellers, getNewArrivals, getCatalogPage, getCategories, getFeaturedPrints };

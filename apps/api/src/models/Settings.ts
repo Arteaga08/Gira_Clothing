@@ -10,6 +10,12 @@ import {
   HERO_MAX_CARDS,
   HERO_MAX_SLIDES,
   HERO_SURFACE_COLORS,
+  EVENTS_EMPTY_MESSAGE_MAX_LENGTH,
+  EVENT_ALT_MAX_LENGTH,
+  EVENT_CITY_MAX_LENGTH,
+  EVENT_TITLE_MAX_LENGTH,
+  EVENT_URL_MAX_LENGTH,
+  EVENT_VENUE_MAX_LENGTH,
   OFFER_ALT_MAX_LENGTH,
   OFFER_BUTTON_MAX_LENGTH,
   OFFER_MESSAGE_MAX_LENGTH,
@@ -81,6 +87,19 @@ interface HeroSlideAttrs {
   cards: HeroCard[];
 }
 
+interface EventAttrs {
+  _id?: Types.ObjectId;
+  title: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  city: string;
+  venue: string;
+  mapsUrl: string;
+  image: ImageAttrs | null;
+  alt: string;
+}
+
 interface StorefrontSettings {
   announcement: {
     enabled: boolean;
@@ -96,6 +115,11 @@ interface StorefrontSettings {
     message: string;
     buttonLabel: string;
     productId: Types.ObjectId | null;
+  };
+  events: {
+    items: EventAttrs[];
+    emptyMessage: string;
+    emptyLinkUrl: string;
   };
 }
 
@@ -148,6 +172,18 @@ const heroSlideSchema = new Schema<HeroSlideAttrs>(
   },
   { _id: false },
 );
+
+const eventSchema = new Schema<EventAttrs>({
+  title: { type: String, trim: true, maxlength: EVENT_TITLE_MAX_LENGTH, required: true },
+  date: { type: String, match: /^\d{4}-\d{2}-\d{2}$/, required: true },
+  startTime: { type: String, match: /^\d{2}:\d{2}$/, required: true },
+  endTime: { type: String, match: /^(\d{2}:\d{2})?$/, default: "" },
+  city: { type: String, trim: true, maxlength: EVENT_CITY_MAX_LENGTH, required: true },
+  venue: { type: String, trim: true, maxlength: EVENT_VENUE_MAX_LENGTH, required: true },
+  mapsUrl: { type: String, trim: true, maxlength: EVENT_URL_MAX_LENGTH, default: "" },
+  image: { type: heroImageSchema, default: null },
+  alt: { type: String, trim: true, maxlength: EVENT_ALT_MAX_LENGTH, default: "" },
+});
 
 const settingsSchema = new Schema<SettingsAttrs, SettingsModel>(
   {
@@ -246,6 +282,11 @@ const settingsSchema = new Schema<SettingsAttrs, SettingsModel>(
         message: { type: String, trim: true, maxlength: OFFER_MESSAGE_MAX_LENGTH, default: "" },
         buttonLabel: { type: String, trim: true, maxlength: OFFER_BUTTON_MAX_LENGTH, default: "" },
         productId: { type: Schema.Types.ObjectId, ref: "Product", default: null },
+      },
+      events: {
+        items: { type: [eventSchema], default: [] },
+        emptyMessage: { type: String, trim: true, maxlength: EVENTS_EMPTY_MESSAGE_MAX_LENGTH, default: "" },
+        emptyLinkUrl: { type: String, trim: true, maxlength: EVENT_URL_MAX_LENGTH, default: "" },
       },
     },
   },

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { CSSProperties, ReactNode } from "react";
+import { SiteFooter } from "@/components/store/footer/SiteFooter";
 import { AnnouncementBar } from "@/components/store/navbar/AnnouncementBar";
 import { SiteHeader } from "@/components/store/navbar/SiteHeader";
 import { getAnnouncement } from "@/lib/api/storefront";
@@ -13,7 +14,7 @@ const metadata: Metadata = {
 };
 
 /**
- * Shell of the public store: announcement marquee, sticky navbar, content.
+ * Shell of the public store: announcement marquee, sticky navbar, content, footer.
  * The session is read only to label the account link; an unreachable API
  * degrades to the visitor view and never blocks the storefront.
  */
@@ -28,6 +29,7 @@ const StoreLayout = async ({ children }: { children: ReactNode }) => {
       <AnnouncementBar announcement={announcement} />
       <SiteHeader authenticated={session.kind === "authenticated"} />
       <main id="main-content">{children}</main>
+      <SiteFooter />
     </div>
   );
 };

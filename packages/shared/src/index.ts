@@ -180,6 +180,10 @@ import type {
   PublicStorefrontHero,
   StorefrontOfferBanner,
   PublicOfferBanner,
+  StorefrontEvent,
+  StorefrontEvents,
+  PublicEvent,
+  PublicEvents,
   StorefrontSettings,
   Settings,
 } from "./types/settings.js";
@@ -197,6 +201,14 @@ import {
   OFFER_MESSAGE_MAX_LENGTH,
   OFFER_BUTTON_MAX_LENGTH,
   OFFER_ALT_MAX_LENGTH,
+  EVENTS_MAX_ITEMS,
+  EVENTS_MAX_LATER,
+  EVENT_TITLE_MAX_LENGTH,
+  EVENT_CITY_MAX_LENGTH,
+  EVENT_VENUE_MAX_LENGTH,
+  EVENT_ALT_MAX_LENGTH,
+  EVENT_URL_MAX_LENGTH,
+  EVENTS_EMPTY_MESSAGE_MAX_LENGTH,
 } from "./constants/storefront.js";
 import type {
   RevenueEntry,
@@ -358,6 +370,10 @@ export type {
   PublicStorefrontHero,
   StorefrontOfferBanner,
   PublicOfferBanner,
+  StorefrontEvent,
+  StorefrontEvents,
+  PublicEvent,
+  PublicEvents,
   StorefrontSettings,
   Settings,
   RevenueEntry,
@@ -393,6 +409,14 @@ export {
   OFFER_MESSAGE_MAX_LENGTH,
   OFFER_BUTTON_MAX_LENGTH,
   OFFER_ALT_MAX_LENGTH,
+  EVENTS_MAX_ITEMS,
+  EVENTS_MAX_LATER,
+  EVENT_TITLE_MAX_LENGTH,
+  EVENT_CITY_MAX_LENGTH,
+  EVENT_VENUE_MAX_LENGTH,
+  EVENT_ALT_MAX_LENGTH,
+  EVENT_URL_MAX_LENGTH,
+  EVENTS_EMPTY_MESSAGE_MAX_LENGTH,
 };
 export type { StatsGranularity, PeriodPreset };
 export { STATS_GRANULARITIES, MAX_STATS_DAYS, PERIOD_PRESETS };

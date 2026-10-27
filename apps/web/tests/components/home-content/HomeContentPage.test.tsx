@@ -5,7 +5,7 @@ import { HomeContentPage } from "@/components/home-content/HomeContentPage";
 import { ToastProvider } from "@/components/ui/Toast";
 
 const { client, uploads, products } = vi.hoisted(() => ({
-  client: { get: vi.fn(), updateAnnouncement: vi.fn(), updateHero: vi.fn(), updateOfferBanner: vi.fn() },
+  client: { get: vi.fn(), updateAnnouncement: vi.fn(), updateHero: vi.fn(), updateOfferBanner: vi.fn(), updateEvents: vi.fn() },
   uploads: { uploadImage: vi.fn() },
   products: { fetchHeroProductOptions: vi.fn() },
 }));
@@ -17,13 +17,16 @@ const IMAGE = { url: "https://res.cloudinary.com/gira/image/upload/a.jpg", publi
 
 const EMPTY_BANNER = { enabled: false, image: null, alt: "", message: "", buttonLabel: "", productId: null };
 
+const EMPTY_EVENTS = { items: [] as unknown[], emptyMessage: "", emptyLinkUrl: "" };
+
 const makeSettings = (
   announcement = { enabled: false, messages: [] as string[] },
   hero: { slides: unknown[] } = { slides: [] },
   offerBanner: Record<string, unknown> = EMPTY_BANNER,
+  events: { items: unknown[]; emptyMessage: string; emptyLinkUrl: string } = EMPTY_EVENTS,
 ) => ({
   id: "s1",
-  storefront: { announcement, hero, offerBanner },
+  storefront: { announcement, hero, offerBanner, events },
 });
 
 const renderPage = () =>
@@ -38,6 +41,7 @@ beforeEach(() => {
   client.updateAnnouncement.mockReset();
   client.updateHero.mockReset();
   client.updateOfferBanner.mockReset();
+  client.updateEvents.mockReset();
   uploads.uploadImage.mockReset().mockResolvedValue(IMAGE);
   products.fetchHeroProductOptions.mockReset().mockResolvedValue([{ value: "p1", label: "Playera Flor" }]);
 });
@@ -169,6 +173,99 @@ describe("HomeContentPage", () => {
           productId: null,
         }),
       );
+    });
+  });
+  describe("Eventos", () => {
+    const openEvents = async () => {
+      const card = (await screen.findByRole("heading", { name: "Eventos" })).closest("section") ?? document.body;
+      await userEvent.click(within(card as HTMLElement).getByRole("button", { name: "Editar" }));
+    };
+
+    it("la tarjeta avisa que no hay eventos próximos", async () => {
+      renderPage();
+      expect(await screen.findByText("Sin eventos próximos")).toBeInTheDocument();
+    });
+
+    it("la tarjeta cuenta los próximos y nombra el más cercano, sin contar los pasados", async () => {
+      client.get.mockResolvedValue(
+        makeSettings(undefined, undefined, undefined, {
+          items: [
+            { id: "e1", title: "Bazar viejo", date: "2020-01-01", startTime: "10:00", endTime: "", city: "MTY", venue: "X", mapsUrl: "", image: null, alt: "" },
+            { id: "e2", title: "Bazar Callejero", date: "2099-11-14", startTime: "11:00", endTime: "", city: "Monterrey", venue: "Fundidora", mapsUrl: "", image: null, alt: "" },
+          ],
+          emptyMessage: "Pronto",
+          emptyLinkUrl: "",
+        }),
+      );
+      renderPage();
+      expect(await screen.findByText("1 próximo")).toBeInTheDocument();
+      expect(screen.getByText(/Bazar Callejero/)).toBeInTheDocument();
+      expect(screen.queryByText(/Bazar viejo/)).not.toBeInTheDocument();
+    });
+
+    it("agrega un evento, pide el mensaje de vacío y guarda lo escrito con los espacios recortados", async () => {
+      client.updateEvents.mockResolvedValue(makeSettings());
+      renderPage();
+      await openEvents();
+
+      await userEvent.click(await screen.findByRole("button", { name: "Agregar evento" }));
+      await userEvent.type(screen.getByLabelText("Nombre del evento"), "  Bazar Callejero ");
+      await userEvent.type(screen.getByLabelText("Fecha"), "2099-11-14");
+      await userEvent.type(screen.getByLabelText("Hora de inicio"), "11:00");
+      await userEvent.type(screen.getByLabelText("Ciudad"), "Monterrey");
+      await userEvent.type(screen.getByLabelText("Lugar"), "Parque Fundidora");
+
+      await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+      expect(await screen.findByText("Escribe el mensaje que se muestra cuando no hay eventos.")).toBeInTheDocument();
+      expect(client.updateEvents).not.toHaveBeenCalled();
+
+      await userEvent.type(screen.getByLabelText("Mensaje"), "Pronto anunciamos la siguiente parada");
+      await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+
+      await waitFor(() => expect(client.updateEvents).toHaveBeenCalledTimes(1));
+      const sent = client.updateEvents.mock.calls[0]?.[0] as { items: Record<string, unknown>[]; emptyMessage: string };
+      expect(sent.emptyMessage).toBe("Pronto anunciamos la siguiente parada");
+      expect(sent.items[0]).toMatchObject({
+        title: "Bazar Callejero",
+        date: "2099-11-14",
+        startTime: "11:00",
+        city: "Monterrey",
+        venue: "Parque Fundidora",
+        mapsUrl: "",
+        image: null,
+      });
+    });
+
+    it("rechaza un enlace del mapa sin https antes de llamar al API", async () => {
+      renderPage();
+      await openEvents();
+      await userEvent.click(await screen.findByRole("button", { name: "Agregar evento" }));
+      await userEvent.type(screen.getByLabelText("Nombre del evento"), "Bazar");
+      await userEvent.type(screen.getByLabelText("Fecha"), "2099-11-14");
+      await userEvent.type(screen.getByLabelText("Hora de inicio"), "11:00");
+      await userEvent.type(screen.getByLabelText("Ciudad"), "Monterrey");
+      await userEvent.type(screen.getByLabelText("Lugar"), "Fundidora");
+      await userEvent.type(screen.getByLabelText("Enlace del mapa"), "http://maps.example.com");
+      await userEvent.type(screen.getByLabelText("Mensaje"), "Pronto");
+      await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+
+      expect(await screen.findByText("Evento 1: el enlace del mapa debe empezar con https://.")).toBeInTheDocument();
+      expect(client.updateEvents).not.toHaveBeenCalled();
+    });
+
+    it("quita un evento de la lista", async () => {
+      client.get.mockResolvedValue(
+        makeSettings(undefined, undefined, undefined, {
+          items: [{ id: "e2", title: "Bazar Callejero", date: "2099-11-14", startTime: "11:00", endTime: "", city: "Monterrey", venue: "Fundidora", mapsUrl: "", image: null, alt: "" }],
+          emptyMessage: "Pronto",
+          emptyLinkUrl: "",
+        }),
+      );
+      renderPage();
+      await openEvents();
+      await userEvent.click(await screen.findByRole("button", { name: "Quitar el evento 1" }));
+      expect(screen.queryByLabelText("Nombre del evento")).not.toBeInTheDocument();
+      expect(screen.getByText("Aún no hay eventos guardados.")).toBeInTheDocument();
     });
   });
 });

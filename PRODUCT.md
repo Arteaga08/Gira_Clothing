@@ -75,4 +75,6 @@ Usuarios: clientas y clientes que navegan desde el celular, sin prisa, y compran
   (excepción documentada en DESIGN.md). Todo se edita en «Contenido de home».
 - Banner de ofertas (debajo de Novedades): foto a sangre, frase en bucle infinito y un botón lila.
   Foto, descripción, frase, texto del botón, producto al que lleva y visibilidad se editan en «Contenido de home».
+- Eventos (debajo del banner de ofertas): cartel del próximo evento sobre franja lila y los siguientes en renglones; sin eventos, un mensaje editable. Eventos, mensaje y enlace se editan en «Contenido de home»; los eventos pasados se ocultan solos.
+- Footer (en todas las páginas de la tienda): estructura del de Esencia Glow, verde bosque con «GIRA» rosa a todo el ancho, cuatro columnas (acordeón en móvil), créditos y redes fijas en código. Sin boletín.
 
