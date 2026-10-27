@@ -1,5 +1,5 @@
 import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
-import type { InputHTMLAttributes } from "react";
+import type { InputHTMLAttributes, ReactNode } from "react";
 import { useId } from "react";
 import { cn } from "@/lib/cn";
 import { Icon } from "./Icon";
@@ -9,6 +9,8 @@ interface FieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "id"> {
   error?: string | undefined;
   helper?: string;
   icon?: PhosphorIcon;
+  /** Sits inside the box after the input, e.g. a show/hide toggle. */
+  trailing?: ReactNode;
   containerClassName?: string;
 }
 
@@ -21,6 +23,7 @@ const Field = ({
   error,
   helper,
   icon,
+  trailing,
   className,
   containerClassName,
   ...rest
@@ -53,6 +56,7 @@ const Field = ({
           className={cn("min-w-0 flex-1 bg-transparent text-sm outline-none", className)}
           {...rest}
         />
+        {trailing}
       </div>
       {message ? (
         <p

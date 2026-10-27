@@ -1,12 +1,16 @@
 /**
  * Public storefront URLs. Navbar links point here; each destination page
- * arrives with its own milestone (catalog M14, account M15, cart M16).
+ * arrives with its own milestone (catalog M14, access pages M15a, account M15b, cart M16).
  */
 const STORE_ROUTES = {
   home: "/",
   shop: "/tienda",
   cart: "/carrito",
   login: "/ingresar",
+  register: "/crear-cuenta",
+  forgotPassword: "/recuperar-contrasena",
+  resetPassword: "/restablecer-contrasena",
+  verifyEmail: "/verificar-correo",
   account: "/cuenta",
   saved: "/cuenta/guardados",
   /** Catalog showing only the products flagged «Novedad» (the `novedad` filter maps to the API's `newArrival`). */
@@ -22,4 +26,12 @@ const categoryRoute = (slug: string): string => `/tienda?categoria=${encodeURICo
 /** Catalog filtered by print; the catalog arrives with M14 (the `estampa` filter maps to the API's `print`). */
 const printRoute = (slug: string): string => `/tienda?estampa=${encodeURIComponent(slug)}`;
 
-export { STORE_ROUTES, productRoute, categoryRoute, printRoute };
+/**
+ * Keeps `?redirect=` when a visitor hops between the access pages (login ↔ register), so a
+ * purchase interrupted by the login still lands where it was. The default destination is
+ * left out of the URL.
+ */
+const withRedirect = (path: string, redirect: string | undefined): string =>
+  redirect === undefined || redirect === STORE_ROUTES.account ? path : `${path}?redirect=${encodeURIComponent(redirect)}`;
+
+export { STORE_ROUTES, productRoute, categoryRoute, printRoute, withRedirect };

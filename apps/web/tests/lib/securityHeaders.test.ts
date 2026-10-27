@@ -63,3 +63,14 @@ describe("buildSecurityHeaders", () => {
     );
   });
 });
+
+describe("buildTokenPageHeaders", () => {
+  it("las páginas con token no filtran la URL en Referer ni se guardan en caché", async () => {
+    const { buildTokenPageHeaders, TOKEN_PAGE_PATHS } = await import("@/lib/security/headers");
+    expect(TOKEN_PAGE_PATHS).toEqual(["/verificar-correo", "/restablecer-contrasena"]);
+    expect(buildTokenPageHeaders()).toEqual([
+      { key: "Referrer-Policy", value: "no-referrer" },
+      { key: "Cache-Control", value: "no-store" },
+    ]);
+  });
+});
