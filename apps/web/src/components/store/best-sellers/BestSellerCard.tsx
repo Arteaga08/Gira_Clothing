@@ -3,6 +3,7 @@ import { PriceTag } from "@/components/store/PriceTag";
 import { productRoute } from "@/lib/store/routes";
 import { CATEGORY_TONE } from "@/lib/store/categoryColors";
 import { cn } from "@/lib/cn";
+import { WishlistHeart } from "@/components/store/wishlist/WishlistHeart";
 import { AddToCartButton } from "./AddToCartButton";
 import { cardImageUrl } from "./cardImage";
 
@@ -16,7 +17,8 @@ interface BestSellerCardProps {
 /**
  * Tin-label card: a band in the category's colour with the name, a softer band
  * with up to three words, the photo (a link to the product; a second photo
- * shows while hovering, instantly) and the price with its cart button.
+ * shows while hovering, instantly) with the save heart over it, and the price
+ * with its cart button.
  */
 const BestSellerCard = ({ product, authenticated, index }: BestSellerCardProps) => {
   const card = product.card;
@@ -38,6 +40,7 @@ const BestSellerCard = ({ product, authenticated, index }: BestSellerCardProps) 
           {words}
         </p>
       ) : null}
+      <div className="relative flex grow flex-col">
       <a href={productRoute(product.slug)} aria-label={`Ver ${product.name}`} className="best-photo relative block aspect-[4/5] grow overflow-hidden bg-surface-sunken">
         {main ? (
           // eslint-disable-next-line @next/next/no-img-element -- Cloudinary URL from the API; no next/image loader is configured
@@ -48,6 +51,8 @@ const BestSellerCard = ({ product, authenticated, index }: BestSellerCardProps) 
           <img src={cardImageUrl(hover.url)} alt="" width={640} height={800} loading="lazy" decoding="async" className="best-photo-hover absolute inset-0 size-full object-cover" />
         ) : null}
       </a>
+      <WishlistHeart variantId={card.variantId} productName={product.name} authenticated={authenticated} className="absolute right-3 top-3" />
+      </div>
       <div className={cn("flex items-center justify-between gap-2 border-t-2 border-ink px-4 py-3", tone.soft)}>
         <PriceTag price={card.price} compareAtPrice={card.compareAtPrice} className="text-lg" />
         <AddToCartButton variantId={card.variantId} productName={product.name} isAvailable={card.isAvailable} authenticated={authenticated} />

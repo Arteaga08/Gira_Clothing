@@ -281,6 +281,8 @@ import {
   UPLOAD_MAX_BYTES,
   UPLOAD_MIME_TYPES,
 } from "./constants/catalog.js";
+import type { WishlistItem } from "./types/wishlist.js";
+import { WISHLIST_MAX_ITEMS } from "./constants/wishlist.js";
 import { PASSWORD_MIN_LENGTH, PASSWORD_MAX_BYTES } from "./constants/password.js";
 import type { AuditActor, AuditActorFilter, AuditChange, AuditLogEntry } from "./types/audit.js";
 import { AUDIT_ACTOR_FILTERS } from "./types/audit.js";
@@ -441,6 +443,8 @@ export {
   ORDER_STATUS_GROUPS,
   matchStatusGroup,
 };
+export type { WishlistItem };
+export { WISHLIST_MAX_ITEMS };
 export { PASSWORD_MIN_LENGTH, PASSWORD_MAX_BYTES };
 export { STOCK_ON_HAND_MAX, STOCK_DELTA_MAX, STOCK_REASON_MAX };
 export {

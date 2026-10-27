@@ -438,6 +438,7 @@ const getPublicProduct = async (slug: string): Promise<PublicProductDetail> => {
 };
 
 export type {
+  CardVariantLean,
   PublicFamily,
   PublicPrint,
   PublicCategory,
@@ -451,4 +452,5 @@ export {
   listPublicCategories,
   listPublicProducts,
   getPublicProduct,
+  toPublicProductCard,
 };
