@@ -474,6 +474,112 @@
   color: var(--color-text-primary);
 }
 
+.store-band-lilac {
+  --cut-fill: var(--color-tile-alt);
+  background: var(--color-tile-alt);
+  color: var(--color-text-primary);
+}
+
+/*
+ * Events. The bone sheet is taped to the lila wall: a slight tilt and two
+ * strips of tape (a tone step with an ink edge) over its top corners. The tilt
+ * is static and only from md up; on a phone the sheet sits straight so it
+ * never pushes past the page margin. The row of «Después» fills with bone on
+ * hover and focus.
+ */
+.events-sheet {
+  position: relative;
+}
+
+.events-sheet::before,
+.events-sheet::after {
+  content: "";
+  position: absolute;
+  top: -14px;
+  width: 5.5rem;
+  height: 1.75rem;
+  background: var(--color-brand-subtle);
+  border: 2px solid var(--color-ink);
+}
+
+.events-sheet::before {
+  left: 8%;
+  transform: rotate(-6deg);
+}
+
+.events-sheet::after {
+  right: 8%;
+  transform: rotate(5deg);
+}
+
+@media (min-width: 768px) {
+  .events-sheet {
+    transform: rotate(-1.5deg);
+  }
+}
+
+.events-later-link {
+  transition: background-color 150ms ease;
+}
+
+.events-later-link:hover,
+.events-later-link:focus-visible {
+  background: var(--color-surface);
+}
+
+/*
+ * Footer. Verde bosque with bone text; its lomas cut takes the same fill.
+ * Rules between rows are 2px bone at a quarter strength, a tone step on the
+ * green rather than a hairline. Links underline on hover; the network
+ * stickers press like the buttons.
+ */
+.store-footer {
+  --cut-fill: var(--color-brand);
+  background: var(--color-brand);
+  color: var(--color-text-inverse);
+  overflow-x: clip;
+}
+
+.store-footer .footer-rule {
+  border-color: color-mix(in srgb, var(--color-text-inverse) 25%, transparent);
+}
+
+.footer-link {
+  color: color-mix(in srgb, var(--color-text-inverse) 85%, transparent);
+  text-underline-offset: 4px;
+}
+
+.footer-link:hover,
+.footer-link:focus-visible {
+  color: var(--color-text-inverse);
+  text-decoration: underline;
+}
+
+.footer-link:focus-visible,
+.footer-social:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.footer-social {
+  transition: transform 150ms var(--store-nav-ease), box-shadow 150ms var(--store-nav-ease);
+}
+
+.footer-social:hover {
+  transform: translate(-2px, -2px);
+}
+
+.footer-social:active {
+  transform: translate(2px, 2px);
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .footer-social {
+    transition: none;
+  }
+}
+
 /*
  * Prints. The selected print's photo fills the section; its base is ink, and
  * so is its cupón cut (a photo cannot fill a cut). Photos and names stay
@@ -1008,5 +1114,40 @@
   .offer-marquee__item {
     white-space: normal;
     text-align: center;
+  }
+}
+
+/*
+ * Catálogo. The round sticker of the banner turns slowly; the «Ordenar por»
+ * island opens by animating its grid rows (never its height), the way the
+ * panel's collapsible groups do. Reduced motion: both stand still.
+ */
+.catalog-sticker {
+  animation: catalog-sticker-spin 24s linear infinite;
+}
+
+@keyframes catalog-sticker-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.catalog-acc {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 250ms var(--store-nav-ease);
+}
+
+.catalog-acc[data-open="true"] {
+  grid-template-rows: 1fr;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .catalog-sticker {
+    animation: none;
+  }
+
+  .catalog-acc {
+    transition: none;
   }
 }

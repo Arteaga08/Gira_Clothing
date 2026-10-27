@@ -1,9 +1,11 @@
-import { AuditAction, AuditModule } from "@gira/shared";
+import { AuditAction, AuditModule, EVENTS_MAX_LATER } from "@gira/shared";
 import { Types } from "mongoose";
 import type {
+  PublicEvents,
   PublicOfferBanner,
   PublicStorefrontHero,
   StorefrontAnnouncement,
+  StorefrontEvents,
   StorefrontHero,
   StorefrontOfferBanner,
   ShippingOrigin,
@@ -43,7 +45,12 @@ interface PublicSettings {
   reservation: ReservationSettings;
   inventory: InventorySettings;
   tax: TaxSettings;
-  storefront: { announcement: StorefrontAnnouncement; hero: StorefrontHero; offerBanner: StorefrontOfferBanner };
+  storefront: {
+    announcement: StorefrontAnnouncement;
+    hero: StorefrontHero;
+    offerBanner: StorefrontOfferBanner;
+    events: StorefrontEvents;
+  };
 }
 
 const toAnnouncementView = (doc: SettingsDocument): StorefrontAnnouncement => ({
@@ -88,6 +95,34 @@ const toOfferBannerView = (doc: SettingsDocument): StorefrontOfferBanner => {
   };
 };
 
+const toEventsView = (doc: SettingsDocument): StorefrontEvents => {
+  const events = doc.storefront?.events;
+  return {
+    // Explicit mapping: spreading a Mongoose subdocument would leak its internals.
+    items: (events?.items ?? []).map((item) => ({
+      id: item._id ? item._id.toString() : "",
+      title: item.title,
+      date: item.date,
+      startTime: item.startTime,
+      endTime: item.endTime ?? "",
+      city: item.city,
+      venue: item.venue,
+      mapsUrl: item.mapsUrl ?? "",
+      image: item.image
+        ? {
+            url: item.image.url,
+            publicId: item.image.publicId,
+            width: item.image.width,
+            height: item.image.height,
+          }
+        : null,
+      alt: item.alt ?? "",
+    })),
+    emptyMessage: events?.emptyMessage ?? "",
+    emptyLinkUrl: events?.emptyLinkUrl ?? "",
+  };
+};
+
 const toShippingView = (shipping: ShippingSettings): PublicShippingSettings => ({
   // Explicit mapping: spreading a Mongoose subdocument would leak its internals.
   origin: shipping.origin
@@ -118,6 +153,7 @@ const toPublicSettings = (doc: SettingsDocument): PublicSettings => ({
     announcement: toAnnouncementView(doc),
     hero: toHeroView(doc),
     offerBanner: toOfferBannerView(doc),
+    events: toEventsView(doc),
   },
 });
 
@@ -453,6 +489,69 @@ const updateOfferBannerSettings = async (
   return toPublicSettings(settings);
 };
 
+/** Today's calendar day in the shop's time zone, as YYYY-MM-DD (en-CA formats it that way). */
+const SHOP_TIME_ZONE = "America/Mexico_City";
+const todayInShop = (now: Date): string =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: SHOP_TIME_ZONE }).format(now);
+
+/**
+ * What the storefront may read of the events: past days are dropped, the rest
+ * sorted by day and start time. The first is the poster, up to EVENTS_MAX_LATER
+ * follow it. With none upcoming the section still shows the editable message.
+ */
+const getPublicEvents = async (now: Date = new Date()): Promise<PublicEvents> => {
+  const { items, emptyMessage, emptyLinkUrl } = toEventsView(await getSettings());
+  const today = todayInShop(now);
+  const upcoming = items
+    .filter((item) => item.date >= today)
+    .sort((a, b) => `${a.date}T${a.startTime}`.localeCompare(`${b.date}T${b.startTime}`))
+    .map(({ title, date, startTime, endTime, city, venue, mapsUrl, image, alt }) => ({
+      title,
+      date,
+      startTime,
+      endTime,
+      city,
+      venue,
+      mapsUrl,
+      image: image ? { url: image.url, width: image.width, height: image.height } : null,
+      alt,
+    }));
+  return {
+    next: upcoming[0] ?? null,
+    later: upcoming.slice(1, 1 + EVENTS_MAX_LATER),
+    emptyMessage,
+    emptyLinkUrl,
+  };
+};
+
+const updateEventsSettings = async (
+  input: Omit<StorefrontEvents, "items"> & { items: Omit<StorefrontEvents["items"][number], "id">[] },
+  ctx: RequestContext,
+): Promise<PublicSettings> => {
+  const settings = await getSettings();
+  const before = { ...toEventsView(settings) };
+
+  settings.storefront.events = {
+    items: input.items.map((item) => ({ ...item, image: item.image ? { ...item.image } : null })),
+    emptyMessage: input.emptyMessage,
+    emptyLinkUrl: input.emptyLinkUrl,
+  };
+
+  await settings.save();
+  await recordAudit({
+    actorId: ctx.actorId,
+    actorType: "user",
+    action: AuditAction.SETTINGS_EVENTS_UPDATED,
+    module: AuditModule.SETTINGS,
+    targetId: settings.id as string,
+    before,
+    after: { ...toEventsView(settings) },
+    ip: ctx.ip,
+  });
+
+  return toPublicSettings(settings);
+};
+
 export type {
   PublicSettings,
   ShippingSettings,
@@ -476,4 +575,6 @@ export {
   getPublicHero,
   updateOfferBannerSettings,
   getPublicOfferBanner,
+  updateEventsSettings,
+  getPublicEvents,
 };

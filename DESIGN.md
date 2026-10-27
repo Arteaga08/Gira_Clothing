@@ -133,7 +133,9 @@ They identify; they never stand for a state (that is the status vocabulary below
 Below the hero, home sections alternate verde bosque with colour bands (menta first). Each band cuts
 into the section above with a shape drawn in ink, and every boundary takes a different shape, in this
 cycling order: ola, cupón, nubes, olita, festón, lomas, onda larga, then back to ola. No sawtooth shapes (they read as teeth). The hero never gets a cut. Classes `store-band-*` and `store-cut-*` live
-in `store-skin.css`.
+in `store-skin.css`. Bands in use: `store-band-mint` (Categorías), `store-band-bone` (Novedades),
+`store-band-lilac` (Eventos, festón); Estampas and the offer banner sit on ink because a photo cannot
+fill a cut. Amarillo is never a band.
 
 ### Status colors
 Nine order-status hues and five shipment-status hues (`--status-*`, `--ship-*`) are their own flat

@@ -25,6 +25,7 @@ const CART_PATH = "/cart";
 const STOREFRONT_ANNOUNCEMENT_PATH = "/storefront/announcement";
 const STOREFRONT_HERO_PATH = "/storefront/hero";
 const STOREFRONT_OFFER_BANNER_PATH = "/storefront/offer-banner";
+const STOREFRONT_EVENTS_PATH = "/storefront/events";
 const CATALOG_PRODUCTS_PATH = "/catalog/products";
 const CATALOG_CATEGORIES_PATH = "/catalog/categories";
 const CATALOG_PRINTS_PATH = "/catalog/prints";
@@ -49,6 +50,7 @@ export {
   STOREFRONT_ANNOUNCEMENT_PATH,
   STOREFRONT_HERO_PATH,
   STOREFRONT_OFFER_BANNER_PATH,
+  STOREFRONT_EVENTS_PATH,
   CATALOG_PRODUCTS_PATH,
   CATALOG_CATEGORIES_PATH,
   CATALOG_PRINTS_PATH,

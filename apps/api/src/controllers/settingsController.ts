@@ -16,6 +16,8 @@ import {
   getPublicHero,
   updateOfferBannerSettings,
   getPublicOfferBanner,
+  updateEventsSettings,
+  getPublicEvents,
   type ShippingSettings,
   type CurrencySettings,
   type ReservationSettings,
@@ -99,6 +101,16 @@ const publicOfferBanner = asyncHandler(async (_req: Request, res: Response) => {
   sendResponse(res, 200, "Banner de ofertas obtenido correctamente.", { banner });
 });
 
+const updateEvents = asyncHandler(async (req: Request, res: Response) => {
+  const settings = await updateEventsSettings(req.body as Parameters<typeof updateEventsSettings>[0], buildContext(req));
+  sendResponse(res, 200, "Eventos actualizados correctamente.", { settings });
+});
+
+const publicEvents = asyncHandler(async (_req: Request, res: Response) => {
+  const events = await getPublicEvents();
+  sendResponse(res, 200, "Eventos obtenidos correctamente.", { events });
+});
+
 export {
   detail,
   updateShipping,
@@ -112,4 +124,6 @@ export {
   publicHero,
   updateOfferBanner,
   publicOfferBanner,
+  updateEvents,
+  publicEvents,
 };

@@ -102,10 +102,59 @@ interface PublicOfferBanner {
   product: { slug: string; name: string } | null;
 }
 
+/** One stop of the tour, edited in «Contenido de home». */
+interface StorefrontEvent {
+  /** Stable key for the editor; generated on the server when missing. */
+  id: string;
+  title: string;
+  /** Calendar day as YYYY-MM-DD, no time zone. */
+  date: string;
+  /** HH:mm. */
+  startTime: string;
+  /** HH:mm, or empty when the event has no closing time. */
+  endTime: string;
+  city: string;
+  venue: string;
+  /** https URL of the map, or empty. */
+  mapsUrl: string;
+  image: ImageAttrs | null;
+  /** Describes the photo for screen readers; required with a photo. */
+  alt: string;
+}
+
+/** Events of the home. With none upcoming, the section shows emptyMessage. */
+interface StorefrontEvents {
+  items: StorefrontEvent[];
+  emptyMessage: string;
+  /** https URL for the button shown with emptyMessage (e.g. Instagram), or empty. */
+  emptyLinkUrl: string;
+}
+
+/** What the public storefront may read of an event: no ids, no publicId. */
+interface PublicEvent {
+  title: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  city: string;
+  venue: string;
+  mapsUrl: string;
+  image: Pick<ImageAttrs, "url" | "width" | "height"> | null;
+  alt: string;
+}
+
+interface PublicEvents {
+  next: PublicEvent | null;
+  later: PublicEvent[];
+  emptyMessage: string;
+  emptyLinkUrl: string;
+}
+
 interface StorefrontSettings {
   announcement: StorefrontAnnouncement;
   hero: StorefrontHero;
   offerBanner: StorefrontOfferBanner;
+  events: StorefrontEvents;
 }
 
 interface Settings {
@@ -134,6 +183,10 @@ export type {
   PublicStorefrontHero,
   StorefrontOfferBanner,
   PublicOfferBanner,
+  StorefrontEvent,
+  StorefrontEvents,
+  PublicEvent,
+  PublicEvents,
   StorefrontSettings,
   Settings,
 };

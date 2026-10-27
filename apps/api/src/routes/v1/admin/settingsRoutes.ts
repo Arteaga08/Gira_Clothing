@@ -9,6 +9,7 @@ import {
   updateAnnouncementSchema,
   updateHeroSchema,
   updateOfferBannerSchema,
+  updateEventsSchema,
 } from "../../../validators/settingsValidator.js";
 import {
   detail,
@@ -20,6 +21,7 @@ import {
   updateAnnouncement,
   updateHero,
   updateOfferBanner,
+  updateEvents,
 } from "../../../controllers/settingsController.js";
 
 const settingsRouter = Router();
@@ -33,5 +35,6 @@ settingsRouter.patch("/tax", validate(updateTaxSchema), updateTax);
 settingsRouter.patch("/announcement", validate(updateAnnouncementSchema), updateAnnouncement);
 settingsRouter.patch("/hero", validate(updateHeroSchema), updateHero);
 settingsRouter.patch("/offer-banner", validate(updateOfferBannerSchema), updateOfferBanner);
+settingsRouter.patch("/events", validate(updateEventsSchema), updateEvents);
 
 export { settingsRouter };

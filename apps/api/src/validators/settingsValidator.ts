@@ -3,6 +3,13 @@ import {
   ANNOUNCEMENT_MAX_LENGTH,
   ANNOUNCEMENT_MAX_MESSAGES,
   Currency,
+  EVENTS_EMPTY_MESSAGE_MAX_LENGTH,
+  EVENTS_MAX_ITEMS,
+  EVENT_ALT_MAX_LENGTH,
+  EVENT_CITY_MAX_LENGTH,
+  EVENT_TITLE_MAX_LENGTH,
+  EVENT_URL_MAX_LENGTH,
+  EVENT_VENUE_MAX_LENGTH,
   HERO_BUTTON_COLORS,
   HERO_CARD_MAX_LENGTH,
   HERO_HEADLINE_MAX_LENGTH,
@@ -220,8 +227,80 @@ const updateOfferBannerSchema = Joi.object({
   )
   .messages({ "offer.incomplete": "Para mostrar el banner completa la foto, su descripción, la frase y el botón." });
 
+const httpsUrl = (label: string) =>
+  Joi.string()
+    .trim()
+    .allow("")
+    .max(EVENT_URL_MAX_LENGTH)
+    .uri({ scheme: ["https"] })
+    .messages({
+      "string.uri": `${label} debe ser un enlace que empiece con https://.`,
+      "string.uriCustomScheme": `${label} debe ser un enlace que empiece con https://.`,
+      "string.max": `${label} admite hasta ${EVENT_URL_MAX_LENGTH} caracteres.`,
+    });
+
+const requiredText = (label: string, max: number) =>
+  Joi.string()
+    .trim()
+    .min(1)
+    .max(max)
+    .required()
+    .messages({
+      "string.empty": `${label} es obligatorio.`,
+      "any.required": `${label} es obligatorio.`,
+      "string.max": `${label} admite hasta ${max} caracteres.`,
+    });
+
+const eventItemSchema = Joi.object({
+  title: requiredText("El nombre del evento", EVENT_TITLE_MAX_LENGTH),
+  date: Joi.string()
+    .pattern(/^\d{4}-\d{2}-\d{2}$/)
+    .required()
+    .custom((value: string, helpers) =>
+      Number.isNaN(Date.parse(`${value}T00:00:00Z`)) ? helpers.error("event.date") : value,
+    )
+    .messages({
+      "string.pattern.base": "La fecha del evento no es válida.",
+      "any.required": "La fecha del evento es obligatoria.",
+      "event.date": "La fecha del evento no es válida.",
+    }),
+  startTime: Joi.string()
+    .pattern(/^([01]\d|2[0-3]):[0-5]\d$/)
+    .required()
+    .messages({
+      "string.pattern.base": "La hora de inicio no es válida.",
+      "any.required": "La hora de inicio es obligatoria.",
+    }),
+  endTime: Joi.string()
+    .allow("")
+    .pattern(/^([01]\d|2[0-3]):[0-5]\d$/)
+    .default("")
+    .messages({ "string.pattern.base": "La hora de cierre no es válida." }),
+  city: requiredText("La ciudad", EVENT_CITY_MAX_LENGTH),
+  venue: requiredText("El lugar", EVENT_VENUE_MAX_LENGTH),
+  mapsUrl: httpsUrl("El enlace del mapa").default(""),
+  image: imageObjectSchema.allow(null).default(null),
+  alt: Joi.string().trim().allow("").max(EVENT_ALT_MAX_LENGTH).default("").messages({
+    "string.max": `La descripción de la foto admite hasta ${EVENT_ALT_MAX_LENGTH} caracteres.`,
+  }),
+}).custom((value: { image: unknown; alt: string }, helpers) =>
+  value.image && !value.alt ? helpers.error("event.alt") : value,
+).messages({ "event.alt": "Describe la foto del evento para poder mostrarla." });
+
+// The empty message is always required: it is what the section shows when no
+// upcoming event is left, so it must never be blank.
+const updateEventsSchema = Joi.object({
+  items: Joi.array().items(eventItemSchema).max(EVENTS_MAX_ITEMS).required().messages({
+    "array.max": `Puedes guardar hasta ${EVENTS_MAX_ITEMS} eventos.`,
+    "any.required": "Envía la lista de eventos.",
+  }),
+  emptyMessage: requiredText("El mensaje para cuando no hay eventos", EVENTS_EMPTY_MESSAGE_MAX_LENGTH),
+  emptyLinkUrl: httpsUrl("El enlace del botón").default(""),
+});
+
 export {
   updateHeroSchema,
+  updateEventsSchema,
   updateOfferBannerSchema,
   updateShippingSchema,
   updateCurrencySchema,
