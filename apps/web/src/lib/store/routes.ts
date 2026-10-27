@@ -8,6 +8,7 @@ const STORE_ROUTES = {
   cart: "/carrito",
   login: "/ingresar",
   account: "/cuenta",
+  saved: "/cuenta/guardados",
   /** Catalog showing only the products flagged «Novedad» (the `novedad` filter maps to the API's `newArrival`). */
   newArrivals: "/tienda?novedad=si",
 } as const;

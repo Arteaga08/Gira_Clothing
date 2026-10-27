@@ -9,6 +9,7 @@ import { cartRouter } from "./cartRoutes.js";
 import { orderRouter } from "./orderRoutes.js";
 import { shippingRouter } from "./shippingRoutes.js";
 import { storefrontRouter } from "./storefrontRoutes.js";
+import { wishlistRouter } from "./wishlistRoutes.js";
 
 /**
  * API v1 router. Mounts feature routers and the health check.
@@ -34,5 +35,6 @@ v1Router.use("/cart", cartRouter);
 v1Router.use("/orders", orderRouter);
 v1Router.use("/shipping", shippingRouter);
 v1Router.use("/storefront", storefrontRouter);
+v1Router.use("/wishlist", wishlistRouter);
 
 export { v1Router };

@@ -8,6 +8,7 @@ import { T_LABEL } from "@/components/ui/typography";
 import { useCartAdd, type CartAddStatus } from "@/components/store/best-sellers/useCartAdd";
 import { CART_LINE_MAX_QTY } from "@/lib/cart/guestCart";
 import { formatPesos } from "@/lib/catalog/money";
+import { WishlistHeart } from "@/components/store/wishlist/WishlistHeart";
 import { PrintPicker } from "./PrintPicker";
 import { PurchaseAssurances } from "./PurchaseAssurances";
 
@@ -45,7 +46,10 @@ const PurchasePanel = ({ productName, variants, selected, onSelect, unitPrice, q
     <div className="grid content-start gap-4 p-5 md:p-6">
       {variants.length > 0 ? (
         <>
-          <p className={T_LABEL}>Elige tu estampa</p>
+          <div className="flex items-center justify-between gap-3">
+            <p className={T_LABEL}>Elige tu estampa</p>
+            <WishlistHeart variantId={variant?.id ?? ""} productName={productName} authenticated={authenticated} />
+          </div>
           <PrintPicker variants={variants} selected={selected} onSelect={onSelect} />
           <div className="flex items-center justify-between gap-4 border-y-2 border-ink py-3.5">
             <IconButton variant="edit" icon={Minus} label="Quitar una" disabled={qty <= 1} onClick={() => onQtyChange(qty - 1)} />

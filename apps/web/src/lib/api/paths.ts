@@ -22,6 +22,7 @@ const ADMIN_CUSTOMERS_PATH = "/admin/customers";
 const ADMIN_SETTINGS_PATH = "/admin/settings";
 const ADMIN_AUDIT_LOGS_PATH = "/admin/audit-logs";
 const CART_PATH = "/cart";
+const WISHLIST_PATH = "/wishlist";
 const STOREFRONT_ANNOUNCEMENT_PATH = "/storefront/announcement";
 const STOREFRONT_HERO_PATH = "/storefront/hero";
 const STOREFRONT_OFFER_BANNER_PATH = "/storefront/offer-banner";
@@ -47,6 +48,7 @@ export {
   ADMIN_SETTINGS_PATH,
   ADMIN_AUDIT_LOGS_PATH,
   CART_PATH,
+  WISHLIST_PATH,
   STOREFRONT_ANNOUNCEMENT_PATH,
   STOREFRONT_HERO_PATH,
   STOREFRONT_OFFER_BANNER_PATH,

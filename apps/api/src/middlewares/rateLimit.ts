@@ -151,6 +151,12 @@ const cartLimiter = createLimiter({
   message: "Demasiadas operaciones sobre el carrito. Espera un momento.",
 });
 
+const wishlistLimiter = createLimiter({
+  windowMs: FIFTEEN_MIN,
+  limit: 120,
+  message: "Demasiadas operaciones sobre tus guardados. Espera un momento.",
+});
+
 // Anti card-testing: a scripted checkout loop is how stolen cards get validated.
 const checkoutLimiter = createLimiter({
   windowMs: FIFTEEN_MIN,
@@ -214,6 +220,7 @@ export {
   forgotEmailLimiter,
   catalogLimiter,
   cartLimiter,
+  wishlistLimiter,
   checkoutLimiter,
   orderLookupLimiter,
   trackingLimiter,
