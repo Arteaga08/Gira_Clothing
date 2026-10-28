@@ -9,6 +9,11 @@ const PROFILE = { firstName: "María", lastName: "López", email: "m@correo.mx",
 const ok = (data?: unknown) => jsonResponse(200, { status: "success", message: "ok", data });
 
 describe("ProfileForm", () => {
+  it("al abrirse toma el foco en el primer campo (el botón «Editar» ya no existe)", () => {
+    render(<ProfileForm profile={PROFILE} onSaved={vi.fn()} onCancel={vi.fn()} />);
+    expect(screen.getByLabelText("Nombre")).toHaveFocus();
+  });
+
   it("muestra el correo de solo lectura", () => {
     render(<ProfileForm profile={PROFILE} onSaved={vi.fn()} onCancel={vi.fn()} />);
     const email = screen.getByLabelText("Correo");

@@ -56,7 +56,7 @@ const SavedGrid = ({ initialItems }: SavedGridProps) => {
       <p role="status" className="min-h-5 text-sm font-bold text-danger">
         {problem ?? ""}
       </p>
-      <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
         {items.map((item) => (
           <SavedCard key={item.variantId} item={item} onRemove={(id) => void remove(id)} />
         ))}

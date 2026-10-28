@@ -11,6 +11,8 @@ const { router, mergeGuestCart } = vi.hoisted(() => ({
 
 vi.mock("next/navigation", () => ({ useRouter: () => router, usePathname: () => "/ingresar" }));
 vi.mock("@/lib/cart/mergeGuestCart", () => ({ mergeGuestCart }));
+const { announceDroppedLines } = vi.hoisted(() => ({ announceDroppedLines: vi.fn() }));
+vi.mock("@/lib/cart/mergeNotice", () => ({ announceDroppedLines }));
 
 const ok = (data?: unknown) => jsonResponse(200, { status: "success", message: "ok", data });
 const AUTHENTICATED = { status: "authenticated", user: { id: "1", role: "customer" } };
@@ -58,6 +60,22 @@ describe("CustomerLoginForm", () => {
     expect(url).toBe("http://api.test/api/v1/auth/login");
     expect(init.credentials).toBe("include");
     expect(JSON.parse(init.body as string)).toEqual({ email: "maria@correo.mx", password: "Gira2026xyz" });
+  });
+
+  it("anuncia las líneas de carrito descartadas antes de navegar", async () => {
+    const fetchMock = stubFetch();
+    fetchMock.mockResolvedValueOnce(ok(AUTHENTICATED));
+    mergeGuestCart.mockResolvedValue({ moved: 1, dropped: 2, kept: 0 });
+    announceDroppedLines.mockClear();
+    router.replace.mockClear();
+    setup();
+
+    await fill();
+    await submit();
+
+    await waitFor(() => expect(router.replace).toHaveBeenCalled());
+    expect(announceDroppedLines).toHaveBeenCalledWith(2);
+    expect(announceDroppedLines.mock.invocationCallOrder[0]).toBeLessThan(router.replace.mock.invocationCallOrder[0] ?? 0);
   });
 
   it("credenciales incorrectas: muestra el mensaje del API y no navega", async () => {

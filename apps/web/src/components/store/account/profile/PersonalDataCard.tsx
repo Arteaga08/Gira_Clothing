@@ -24,7 +24,7 @@ const Row = ({ label, value }: { label: string; value: string | null }) => (
 /** «Datos personales»: read-only by default, the form while editing. */
 const PersonalDataCard = ({ profile, editing, onEdit, onSaved, onCancel }: PersonalDataCardProps) => (
   <section aria-labelledby="personal-title" className="grid gap-4">
-    <h2 id="personal-title" className={`${T_PANEL_TITLE} text-2xl`}>
+    <h2 id="personal-title" tabIndex={-1} className={`${T_PANEL_TITLE} text-2xl`}>
       Datos personales
     </h2>
     {editing ? (

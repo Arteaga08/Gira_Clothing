@@ -289,8 +289,27 @@ import type {
   AccountResponse,
   UpdateProfileRequest,
   ChangePasswordRequest,
+  SavedAddress,
+  BillingInfo,
+  AddressesResponse,
+  BillingResponse,
+  SaveAddressRequest,
+  UpdateAddressRequest,
+  SaveBillingRequest,
 } from "./types/account.js";
-import { CITY_MAX_LENGTH, BIRTH_DATE_MIN } from "./constants/account.js";
+import type { SatCatalogEntry } from "./constants/account.js";
+import {
+  CITY_MAX_LENGTH,
+  BIRTH_DATE_MIN,
+  SAVED_ADDRESSES_MAX,
+  ADDRESS_LABEL_MAX_LENGTH,
+  RFC_PATTERN,
+  LEGAL_NAME_MAX_LENGTH,
+  FISCAL_REGIMES,
+  CFDI_USES,
+  FISCAL_REGIME_CODES,
+  CFDI_USE_CODES,
+} from "./constants/account.js";
 import type { AuditActor, AuditActorFilter, AuditChange, AuditLogEntry } from "./types/audit.js";
 import { AUDIT_ACTOR_FILTERS } from "./types/audit.js";
 import type {
@@ -453,8 +472,32 @@ export {
 export type { WishlistItem };
 export { WISHLIST_MAX_ITEMS };
 export { PASSWORD_MIN_LENGTH, PASSWORD_MAX_BYTES };
-export type { AccountProfile, AccountResponse, UpdateProfileRequest, ChangePasswordRequest };
-export { CITY_MAX_LENGTH, BIRTH_DATE_MIN };
+export type {
+  AccountProfile,
+  AccountResponse,
+  UpdateProfileRequest,
+  ChangePasswordRequest,
+  SavedAddress,
+  BillingInfo,
+  AddressesResponse,
+  BillingResponse,
+  SaveAddressRequest,
+  UpdateAddressRequest,
+  SaveBillingRequest,
+  SatCatalogEntry,
+};
+export {
+  CITY_MAX_LENGTH,
+  BIRTH_DATE_MIN,
+  SAVED_ADDRESSES_MAX,
+  ADDRESS_LABEL_MAX_LENGTH,
+  RFC_PATTERN,
+  LEGAL_NAME_MAX_LENGTH,
+  FISCAL_REGIMES,
+  CFDI_USES,
+  FISCAL_REGIME_CODES,
+  CFDI_USE_CODES,
+};
 export { STOCK_ON_HAND_MAX, STOCK_DELTA_MAX, STOCK_REASON_MAX };
 export {
   PRODUCT_NAME_MIN,

@@ -1,6 +1,6 @@
 /**
  * Public storefront URLs. Navbar links point here; each destination page
- * arrives with its own milestone (catalog M14, access pages M15a, account M15b/c, cart M16).
+ * arrives with its own milestone (catalog M14, access pages M15a, account M15, cart M16).
  */
 const STORE_ROUTES = {
   home: "/",
@@ -14,6 +14,8 @@ const STORE_ROUTES = {
   account: "/cuenta",
   orders: "/cuenta/pedidos",
   profile: "/cuenta/perfil",
+  addresses: "/cuenta/direcciones",
+  billing: "/cuenta/facturacion",
   saved: "/cuenta/guardados",
   /** Catalog showing only the products flagged «Novedad» (the `novedad` filter maps to the API's `newArrival`). */
   newArrivals: "/tienda?novedad=si",
