@@ -1,6 +1,6 @@
 import { Schema, model, type HydratedDocument, type Model } from "mongoose";
 import bcrypt from "bcryptjs";
-import { UserRole } from "@gira/shared";
+import { UserRole, PHONE_PATTERN, CITY_MAX_LENGTH } from "@gira/shared";
 
 /**
  * User model. Password and TOTP secret both use `select: false` and are never
@@ -41,6 +41,10 @@ interface UserAttrs {
   firstName: string;
   lastName: string;
   email: string;
+  /** Optional profile data the customer edits in «Mi cuenta» (M15b). */
+  phone?: string | undefined;
+  birthDate?: Date | undefined;
+  city?: string | undefined;
   password: string;
   role: UserRole;
   emailVerified: boolean;
@@ -92,6 +96,10 @@ const userSchema = new Schema<UserAttrs, UserModel, UserMethods>(
       lowercase: true,
       trim: true,
     },
+    phone: { type: String, match: PHONE_PATTERN },
+    // Calendar date stored as UTC midnight; the API reads and writes it as YYYY-MM-DD.
+    birthDate: { type: Date },
+    city: { type: String, trim: true, maxlength: CITY_MAX_LENGTH },
     password: { type: String, required: true, select: false },
     role: {
       type: String,

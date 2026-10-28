@@ -94,6 +94,13 @@ const resetPasswordSchema = Joi.object({
   password: newPassword,
 });
 
+// Signed-in change: the current one is only checked for presence and a byte
+// ceiling (a huge body never reaches bcrypt); the new one follows the policy.
+const changePasswordSchema = Joi.object({
+  currentPassword: currentPassword.custom(withinBcryptLimit).messages({ "password.bytes": BYTES_MESSAGE }),
+  newPassword,
+});
+
 /** The 6-digit TOTP, sent on its own (never with the password) to `/auth/2fa/*`. */
 const twoFactorCodeSchema = Joi.object({
   code: Joi.string()
@@ -113,5 +120,7 @@ export {
   verifyEmailSchema,
   emailOnlySchema,
   resetPasswordSchema,
+  changePasswordSchema,
   twoFactorCodeSchema,
+  personName,
 };

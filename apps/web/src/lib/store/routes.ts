@@ -1,6 +1,6 @@
 /**
  * Public storefront URLs. Navbar links point here; each destination page
- * arrives with its own milestone (catalog M14, access pages M15a, account M15b, cart M16).
+ * arrives with its own milestone (catalog M14, access pages M15a, account M15b/c, cart M16).
  */
 const STORE_ROUTES = {
   home: "/",
@@ -12,10 +12,15 @@ const STORE_ROUTES = {
   resetPassword: "/restablecer-contrasena",
   verifyEmail: "/verificar-correo",
   account: "/cuenta",
+  orders: "/cuenta/pedidos",
+  profile: "/cuenta/perfil",
   saved: "/cuenta/guardados",
   /** Catalog showing only the products flagged «Novedad» (the `novedad` filter maps to the API's `newArrival`). */
   newArrivals: "/tienda?novedad=si",
 } as const;
+
+/** One of the signed-in customer's orders, by its internal id (not the public id). */
+const orderRoute = (id: string): string => `/cuenta/pedidos/${id}`;
 
 /** Product page; it arrives with the catalog milestone (M14). */
 const productRoute = (slug: string): string => `/tienda/${slug}`;
@@ -34,4 +39,4 @@ const printRoute = (slug: string): string => `/tienda?estampa=${encodeURICompone
 const withRedirect = (path: string, redirect: string | undefined): string =>
   redirect === undefined || redirect === STORE_ROUTES.account ? path : `${path}?redirect=${encodeURIComponent(redirect)}`;
 
-export { STORE_ROUTES, productRoute, categoryRoute, printRoute, withRedirect };
+export { STORE_ROUTES, orderRoute, productRoute, categoryRoute, printRoute, withRedirect };

@@ -284,6 +284,13 @@ import {
 import type { WishlistItem } from "./types/wishlist.js";
 import { WISHLIST_MAX_ITEMS } from "./constants/wishlist.js";
 import { PASSWORD_MIN_LENGTH, PASSWORD_MAX_BYTES } from "./constants/password.js";
+import type {
+  AccountProfile,
+  AccountResponse,
+  UpdateProfileRequest,
+  ChangePasswordRequest,
+} from "./types/account.js";
+import { CITY_MAX_LENGTH, BIRTH_DATE_MIN } from "./constants/account.js";
 import type { AuditActor, AuditActorFilter, AuditChange, AuditLogEntry } from "./types/audit.js";
 import { AUDIT_ACTOR_FILTERS } from "./types/audit.js";
 import type {
@@ -446,6 +453,8 @@ export {
 export type { WishlistItem };
 export { WISHLIST_MAX_ITEMS };
 export { PASSWORD_MIN_LENGTH, PASSWORD_MAX_BYTES };
+export type { AccountProfile, AccountResponse, UpdateProfileRequest, ChangePasswordRequest };
+export { CITY_MAX_LENGTH, BIRTH_DATE_MIN };
 export { STOCK_ON_HAND_MAX, STOCK_DELTA_MAX, STOCK_REASON_MAX };
 export {
   PRODUCT_NAME_MIN,

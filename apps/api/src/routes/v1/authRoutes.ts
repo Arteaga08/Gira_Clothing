@@ -11,6 +11,7 @@ import {
   registerEmailLimiter,
   resendEmailLimiter,
   forgotEmailLimiter,
+  passwordChangeLimiter,
 } from "../../middlewares/rateLimit.js";
 import {
   registerSchema,
@@ -18,6 +19,7 @@ import {
   verifyEmailSchema,
   emailOnlySchema,
   resetPasswordSchema,
+  changePasswordSchema,
   twoFactorCodeSchema,
 } from "../../validators/authValidator.js";
 import {
@@ -26,6 +28,7 @@ import {
   resendVerificationEmail,
   forgotPassword,
   resetPassword,
+  changePassword,
   login,
   me,
   logout,
@@ -70,6 +73,14 @@ authRouter.post("/login", loginIpLimiter, loginLimiter, validate(loginSchema), l
 authRouter.post("/logout", protect, logout);
 authRouter.post("/logout-all", protect, logoutAll);
 authRouter.get("/me", protect, me);
+authRouter.patch(
+  "/password",
+  protect,
+  restrictTo(UserRole.CUSTOMER),
+  passwordChangeLimiter,
+  validate(changePasswordSchema),
+  changePassword,
+);
 
 // Second factor. Unlike the rest of the admin surface these routes are reachable
 // BEFORE a session exists (the challenge cookie is the credential), so they carry

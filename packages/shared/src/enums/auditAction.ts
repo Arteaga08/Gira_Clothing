@@ -26,6 +26,8 @@ enum AuditAction {
   EMAIL_VERIFIED = "email_verified",
   PASSWORD_RESET_REQUESTED = "password_reset_requested",
   PASSWORD_RESET_COMPLETED = "password_reset_completed",
+  /** A signed-in customer changed their password; their other sessions were closed (M15b). */
+  PASSWORD_CHANGED = "password_changed",
   TWO_FACTOR_SETUP = "two_factor_setup",
   TWO_FACTOR_ENABLED = "two_factor_enabled",
   // Kept: historical audit rows still carry it, even though the endpoint is gone (M8.4).

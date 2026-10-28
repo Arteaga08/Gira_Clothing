@@ -2,6 +2,7 @@ import { Router } from "express";
 import mongoose from "mongoose";
 import { globalLimiter } from "../../middlewares/rateLimit.js";
 import { sendResponse } from "../../utils/sendResponse.js";
+import { accountRouter } from "./accountRoutes.js";
 import { authRouter } from "./authRoutes.js";
 import { adminRouter } from "./admin/index.js";
 import { catalogRouter } from "./catalogRoutes.js";
@@ -29,6 +30,7 @@ v1Router.get("/health", (_req, res) => {
 v1Router.use("/admin", adminRouter);
 
 v1Router.use(globalLimiter);
+v1Router.use("/account", accountRouter);
 v1Router.use("/auth", authRouter);
 v1Router.use("/catalog", catalogRouter);
 v1Router.use("/cart", cartRouter);

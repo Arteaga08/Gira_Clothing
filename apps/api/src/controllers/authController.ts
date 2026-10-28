@@ -21,6 +21,7 @@ import {
 } from "../services/authService.js";
 import { verifyEmail as verifyEmailService, resendVerification } from "../services/emailVerificationService.js";
 import { requestPasswordReset, resetPassword as resetPasswordService } from "../services/passwordResetService.js";
+import { changePassword as changePasswordService } from "../services/passwordChangeService.js";
 import { recordAudit } from "../services/auditService.js";
 
 /**
@@ -86,6 +87,15 @@ const login = asyncHandler(async (req: Request, res: Response) => {
   });
 });
 
+const changePassword = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user || !req.sessionId) {
+    throw new AppError("No has iniciado sesión.", 401);
+  }
+  const { currentPassword, newPassword } = req.body as { currentPassword: string; newPassword: string };
+  await changePasswordService(req.user._id, req.sessionId, currentPassword, newPassword, { ip: req.ip });
+  sendResponse(res, 200, "Cambiamos tu contraseña y cerramos tus otras sesiones.");
+});
+
 const me = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     throw new AppError("No has iniciado sesión.", 401);
@@ -126,6 +136,7 @@ const logoutAll = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export {
+  changePassword,
   register,
   verifyEmail,
   resendVerificationEmail,

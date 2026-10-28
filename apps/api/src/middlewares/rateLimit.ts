@@ -157,6 +157,25 @@ const wishlistLimiter = createLimiter({
   message: "Demasiadas operaciones sobre tus guardados. Espera un momento.",
 });
 
+// Both account limiters count per signed-in user: they run after `protect`, so
+// one customer behind a shared IP never eats another's budget.
+const userKey = (req: Request): string => (req.user ? String(req.user._id) : ipKey(req));
+
+const accountWriteLimiter = createLimiter({
+  windowMs: FIFTEEN_MIN,
+  limit: 60,
+  keyGenerator: userKey,
+  message: "Demasiados cambios en tu cuenta. Espera unos minutos.",
+});
+
+// Guessing the current password through a stolen session is the abuse here.
+const passwordChangeLimiter = createLimiter({
+  windowMs: FIFTEEN_MIN,
+  limit: 5,
+  keyGenerator: userKey,
+  message: "Demasiados intentos de cambio de contraseña. Espera unos minutos.",
+});
+
 // Anti card-testing: a scripted checkout loop is how stolen cards get validated.
 const checkoutLimiter = createLimiter({
   windowMs: FIFTEEN_MIN,
@@ -221,6 +240,8 @@ export {
   catalogLimiter,
   cartLimiter,
   wishlistLimiter,
+  accountWriteLimiter,
+  passwordChangeLimiter,
   checkoutLimiter,
   orderLookupLimiter,
   trackingLimiter,
