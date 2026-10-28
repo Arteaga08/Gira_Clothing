@@ -1,4 +1,5 @@
-import { NotificationChannelKind, NotificationType } from "@gira/shared";
+import { NotificationChannelKind, NotificationType, OrderStatus } from "@gira/shared";
+import { Order } from "../models/Order.js";
 import { getMailer } from "../adapters/mailer/index.js";
 import { getNotificationChannel } from "../adapters/notification/index.js";
 import {
@@ -12,8 +13,11 @@ import {
   renderOrderPreparing,
   renderOrderShipped,
   renderOrderDelivered,
+  renderOrderPaymentFailed,
+  renderOrderRefunded,
   type OrderEmailSnapshot,
   type ShippedEmailSnapshot,
+  type RefundEmailSnapshot,
   type RenderedMail,
 } from "../templates/orderEmails.js";
 import {
@@ -55,6 +59,10 @@ const renderEmail = (doc: NotificationDocument): RenderedMail => {
       return renderOrderShipped(payload as ShippedEmailSnapshot);
     case NotificationType.ORDER_DELIVERED:
       return renderOrderDelivered(payload as ShippedEmailSnapshot);
+    case NotificationType.ORDER_PAYMENT_FAILED:
+      return renderOrderPaymentFailed(payload as OrderEmailSnapshot);
+    case NotificationType.ORDER_REFUNDED:
+      return renderOrderRefunded(payload as RefundEmailSnapshot);
     default:
       throw new Error(`Tipo de correo no soportado: ${doc.type}`);
   }
@@ -94,7 +102,20 @@ const renderTeam = (doc: NotificationDocument): TeamMessage => {
 };
 
 /** What happened to a claimed message: delivered, or skipped because its channel is unconfigured. */
+/**
+ * "Your payment did not go through" is only true while the order is still
+ * waiting for payment: a retry that landed in the meantime makes it wrong.
+ */
+const isStale = async (doc: NotificationDocument): Promise<boolean> => {
+  if (doc.type !== NotificationType.ORDER_PAYMENT_FAILED || !doc.order) return false;
+  return !(await Order.exists({ _id: doc.order, status: OrderStatus.PENDING_PAYMENT }));
+};
+
 const deliver = async (doc: NotificationDocument): Promise<"sent" | "skipped"> => {
+  if (await isStale(doc)) {
+    await markSkipped(doc._id);
+    return "skipped";
+  }
   if (doc.channel === NotificationChannelKind.EMAIL) {
     const mail = renderEmail(doc);
     const { providerId } = await getMailer().send({ to: doc.to, ...mail });

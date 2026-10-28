@@ -3,6 +3,7 @@ import request from "supertest";
 import { buildApp } from "../../src/app.js";
 import { Variant } from "../../src/models/Variant.js";
 import { Product } from "../../src/models/Product.js";
+import { Print } from "../../src/models/Print.js";
 import { Cart } from "../../src/models/Cart.js";
 import { loginAsAdmin, loginAsCustomer, ORIGIN } from "../helpers/auth.js";
 
@@ -100,7 +101,7 @@ describe("Cart · lectura", () => {
     expect(res.body.data.cart.lines).toEqual([]);
   });
 
-  it("tras un PUT devuelve la línea con precio vivo e isAvailable", async () => {
+  it("tras un PUT devuelve la línea con precio vivo y status available", async () => {
     const adminCookie = await loginAsAdmin(app);
     const { variantId } = await seedVariant(adminCookie, "R1", { basePrice: 12000 });
     const customerCookie = await loginAsCustomer(app);
@@ -117,7 +118,8 @@ describe("Cart · lectura", () => {
     expect(line.qty).toBe(2);
     expect(line.unitPriceMxn).toBe(12000);
     expect(line).not.toHaveProperty("available");
-    expect(line.isAvailable).toBe(true);
+    expect(line).not.toHaveProperty("isAvailable");
+    expect(line.status).toBe("available");
   });
 });
 
@@ -187,17 +189,17 @@ describe("Cart · escritura", () => {
     expect(res.status).toBe(400);
   });
 
-  it("variante inexistente responde 400", async () => {
+  it("variante inexistente responde 410", async () => {
     const customerCookie = await loginAsCustomer(app);
     const res = await request(app)
       .put(`${CART_BASE}/lines/507f1f77bcf86cd799439011`)
       .set("Origin", ORIGIN)
       .set("Cookie", customerCookie)
       .send({ qty: 1 });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(410);
   });
 
-  it("variante inactiva responde 409", async () => {
+  it("variante inactiva responde 410", async () => {
     const adminCookie = await loginAsAdmin(app);
     const { variantId } = await seedVariant(adminCookie, "W5");
     await Variant.updateOne({ _id: variantId }, { $set: { isActive: false } });
@@ -207,7 +209,35 @@ describe("Cart · escritura", () => {
       .set("Origin", ORIGIN)
       .set("Cookie", customerCookie)
       .send({ qty: 1 });
-    expect(res.status).toBe(409);
+    expect(res.status).toBe(410);
+    expect(res.body.message).toBe("Este producto ya no está disponible.");
+  });
+
+  it("producto retirado responde 410", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { productId, variantId } = await seedVariant(adminCookie, "W6");
+    await Product.updateOne({ _id: productId }, { $set: { isActive: false } });
+    const customerCookie = await loginAsCustomer(app);
+    const res = await request(app)
+      .put(`${CART_BASE}/lines/${variantId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", customerCookie)
+      .send({ qty: 1 });
+    expect(res.status).toBe(410);
+  });
+
+  it("sin existencias se agrega igual (el stock no se revisa al escribir)", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { variantId } = await seedVariant(adminCookie, "W7");
+    await Variant.updateOne({ _id: variantId }, { $set: { onHand: 0 } });
+    const customerCookie = await loginAsCustomer(app);
+    const res = await request(app)
+      .put(`${CART_BASE}/lines/${variantId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", customerCookie)
+      .send({ qty: 2 });
+    expect(res.status).toBe(200);
+    expect(res.body.data.cart.lines[0].status).toBe("out_of_stock");
   });
 });
 
@@ -331,7 +361,7 @@ describe("Cart · rebaja", () => {
 });
 
 describe("Cart · disponibilidad", () => {
-  it("una línea sin stock aparece con isAvailable:false, sin romper la respuesta", async () => {
+  it("una línea sin stock aparece con status out_of_stock, sin romper la respuesta", async () => {
     const adminCookie = await loginAsAdmin(app);
     const { variantId } = await seedVariant(adminCookie, "AV1");
     const customerCookie = await loginAsCustomer(app);
@@ -347,10 +377,72 @@ describe("Cart · disponibilidad", () => {
     const res = await request(app).get(CART_BASE).set("Cookie", customerCookie);
     expect(res.status).toBe(200);
     expect(res.body.data.cart.lines[0]).not.toHaveProperty("available");
-    expect(res.body.data.cart.lines[0].isAvailable).toBe(false);
+    expect(res.body.data.cart.lines[0].status).toBe("out_of_stock");
   });
 
-  it("isAvailable compara la cantidad del carrito contra lo disponible, no solo > 0", async () => {
+  it("una línea cuya variante se retiró sale como retired", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { variantId } = await seedVariant(adminCookie, "AV3");
+    const customerCookie = await loginAsCustomer(app);
+    await request(app)
+      .put(`${CART_BASE}/lines/${variantId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", customerCookie)
+      .send({ qty: 1 });
+    await Variant.updateOne({ _id: variantId }, { $set: { isActive: false } });
+
+    const res = await request(app).get(CART_BASE).set("Cookie", customerCookie);
+    expect(res.body.data.cart.lines[0]).toMatchObject({ variantId, status: "retired" });
+  });
+
+  it("una línea cuyo producto se retiró sale como retired aunque haya stock", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { productId, variantId } = await seedVariant(adminCookie, "AV4");
+    const customerCookie = await loginAsCustomer(app);
+    await request(app)
+      .put(`${CART_BASE}/lines/${variantId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", customerCookie)
+      .send({ qty: 1 });
+    await Product.updateOne({ _id: productId }, { $set: { isActive: false } });
+
+    const res = await request(app).get(CART_BASE).set("Cookie", customerCookie);
+    expect(res.body.data.cart.lines[0].status).toBe("retired");
+  });
+
+  it("una variante borrada en duro sale como retired con lo mínimo para quitarla", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { variantId } = await seedVariant(adminCookie, "AV5");
+    const customerCookie = await loginAsCustomer(app);
+    await request(app)
+      .put(`${CART_BASE}/lines/${variantId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", customerCookie)
+      .send({ qty: 3 });
+    await Variant.deleteOne({ _id: variantId });
+
+    const res = await request(app).get(CART_BASE).set("Cookie", customerCookie);
+    expect(res.body.data.cart.lines).toEqual([{ variantId, qty: 3, status: "retired" }]);
+  });
+
+  it("una estampa borrada en duro no rompe el carrito: la línea sale como retired", async () => {
+    const adminCookie = await loginAsAdmin(app);
+    const { variantId } = await seedVariant(adminCookie, "AV6");
+    const customerCookie = await loginAsCustomer(app);
+    await request(app)
+      .put(`${CART_BASE}/lines/${variantId}`)
+      .set("Origin", ORIGIN)
+      .set("Cookie", customerCookie)
+      .send({ qty: 1 });
+    const variant = await Variant.findById(variantId).lean();
+    await Print.deleteOne({ _id: variant!.print });
+
+    const res = await request(app).get(CART_BASE).set("Cookie", customerCookie);
+    expect(res.status).toBe(200);
+    expect(res.body.data.cart.lines).toEqual([{ variantId, qty: 1, status: "retired" }]);
+  });
+
+  it("status compara la cantidad del carrito contra lo disponible, no solo > 0", async () => {
     const adminCookie = await loginAsAdmin(app);
     const { variantId } = await seedVariant(adminCookie, "AV2");
     const customerCookie = await loginAsCustomer(app);
@@ -363,7 +455,7 @@ describe("Cart · disponibilidad", () => {
     await Variant.updateOne({ _id: variantId }, { $set: { onHand: 3 } });
 
     const res = await request(app).get(CART_BASE).set("Cookie", customerCookie);
-    expect(res.body.data.cart.lines[0].isAvailable).toBe(false);
+    expect(res.body.data.cart.lines[0].status).toBe("out_of_stock");
   });
 });
 

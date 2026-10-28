@@ -27,7 +27,15 @@ const MAX_ORDER_ACTIVITY = 100;
 /** A refund the provider's webhook has not confirmed after this long may be requested again. */
 const REFUND_REQUEST_STALE_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * Smallest total a card can be charged, MXN centavos ($10, Stripe's MXN minimum).
+ * A checkout below it is rejected before any stock is reserved: there is no
+ * free-order path, and coupons are created by hand by the owners.
+ */
+const MIN_CHARGEABLE_MXN = 1000;
+
 export {
+  MIN_CHARGEABLE_MXN,
   MAX_STATUS_HISTORY,
   ORDER_NUMBER_ALPHABET,
   ORDER_NUMBER_PREFIX,

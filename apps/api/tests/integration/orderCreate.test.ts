@@ -14,8 +14,8 @@ import { Product } from "../../src/models/Product.js";
 import { Order } from "../../src/models/Order.js";
 import { StockReservation } from "../../src/models/StockReservation.js";
 import { AuditLog } from "../../src/models/AuditLog.js";
-import { loginAsAdmin, loginAsCustomer, ORIGIN } from "../helpers/auth.js";
-import { withQuote } from "../helpers/orders.js";
+import { createCustomer, loginAsAdmin, loginAsCustomer, loginCustomer, ORIGIN } from "../helpers/auth.js";
+import { newCustomerId, withQuote } from "../helpers/orders.js";
 import { idempotencyOwner, scopeIdempotencyKey } from "../../src/utils/idempotency.js";
 
 const { getFailFlag, setShouldFail } = vi.hoisted(() => {
@@ -156,7 +156,7 @@ afterEach(() => {
 });
 
 describe("orderService.createOrder · camino feliz", () => {
-  it("invitado con lines crea una orden pending_payment con publicId, reserva y clientSecret", async () => {
+  it("un cliente con lines crea una orden pending_payment con publicId, reserva y clientSecret", async () => {
     const adminCookie = await loginAsAdmin(app);
     const { variantId } = await seedVariant(adminCookie, "H1");
 
@@ -250,6 +250,7 @@ describe("orderService.createOrder · idempotencia", () => {
     const adminCookie = await loginAsAdmin(app);
     const { variantId } = await seedVariant(adminCookie, "I1");
     const key = uniqueKey();
+    const userId = await newCustomerId();
 
     const first = await createOrder(
       {
@@ -259,7 +260,7 @@ describe("orderService.createOrder · idempotencia", () => {
         shipping: validShipping,
         idempotencyKey: key,
       },
-      {},
+      { userId },
     );
     const second = await createOrder(
       {
@@ -269,7 +270,7 @@ describe("orderService.createOrder · idempotencia", () => {
         shipping: validShipping,
         idempotencyKey: key,
       },
-      {},
+      { userId },
     );
 
     expect(second.order.publicId).toBe(first.order.publicId);
@@ -290,7 +291,8 @@ describe("orderService.createOrder · idempotencia", () => {
       idempotencyKey: key,
     };
 
-    const [a, b] = await Promise.all([createOrder(input, {}), createOrder(input, {})]);
+    const userId = await newCustomerId();
+    const [a, b] = await Promise.all([createOrder(input, { userId }), createOrder(input, { userId })]);
     expect(a.order.publicId).toBe(b.order.publicId);
 
     expect(await Order.countDocuments({})).toBe(1);
@@ -300,6 +302,7 @@ describe("orderService.createOrder · idempotencia", () => {
     const adminCookie = await loginAsAdmin(app);
     const { variantId } = await seedVariant(adminCookie, "I3");
     const key = uniqueKey();
+    const userId = await newCustomerId();
 
     await createOrder(
       {
@@ -309,13 +312,13 @@ describe("orderService.createOrder · idempotencia", () => {
         shipping: validShipping,
         idempotencyKey: key,
       },
-      {},
+      { userId },
     );
 
     const stored = await Order.findOne({}).lean();
     expect(stored?.idempotencyKey).not.toBe(key);
     expect(stored?.idempotencyKey).toBe(
-      scopeIdempotencyKey(key, idempotencyOwner(undefined, validCustomer.email)),
+      scopeIdempotencyKey(key, idempotencyOwner(String(userId))),
     );
     // Buscar por la clave cruda no encuentra nada: ese era el oráculo de A1.
     expect(await Order.countDocuments({ idempotencyKey: key })).toBe(0);
@@ -325,6 +328,8 @@ describe("orderService.createOrder · idempotencia", () => {
     const adminCookie = await loginAsAdmin(app);
     const { variantId } = await seedVariant(adminCookie, "I4", { onHand: 5 });
     const sharedKey = uniqueKey();
+    const victimaId = await newCustomerId();
+    const atacanteId = await newCustomerId();
 
     const victima = await createOrder(
       {
@@ -334,7 +339,7 @@ describe("orderService.createOrder · idempotencia", () => {
         shipping: validShipping,
         idempotencyKey: sharedKey,
       },
-      {},
+      { userId: victimaId },
     );
 
     const atacante = await createOrder(
@@ -345,12 +350,13 @@ describe("orderService.createOrder · idempotencia", () => {
         shipping: validShipping,
         idempotencyKey: sharedKey,
       },
-      {},
+      { userId: atacanteId },
     );
 
     // Dos órdenes distintas: el atacante NO recibe el pedido de la víctima.
     expect(atacante.order.publicId).not.toBe(victima.order.publicId);
-    expect(atacante.order.customer.email).toBe("atacante@example.com");
+    const stored = await Order.findOne({ publicId: atacante.order.publicId }).lean();
+    expect(String(stored?.user)).toBe(String(atacanteId));
     expect(await Order.countDocuments({})).toBe(2);
   });
 });
@@ -490,12 +496,16 @@ describe("M9a · checkout por HTTP", () => {
     ...extra,
   });
 
-  const postOrder = async (body: Record<string, unknown>) =>
-    request(app)
+  const postOrder = async (body: Record<string, unknown>) => {
+    const customer = await createCustomer();
+    const cookie = await loginCustomer(app, customer);
+    return request(app)
       .post("/api/v1/orders")
       .set("Origin", ORIGIN)
+      .set("Cookie", cookie)
       .set("Idempotency-Key", randomUUID())
-      .send(await withQuote(body));
+      .send(await withQuote(body, customer.id));
+  };
 
   it("devuelve folio y desglose de IVA, y sella termsAcceptedAt sin exponerlo", async () => {
     const adminCookie = await loginAsAdmin(app);

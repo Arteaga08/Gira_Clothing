@@ -113,7 +113,9 @@ const createStripePaymentProvider = (config: StripeConfig): PaymentProvider => {
           currency: input.currency.toLowerCase(),
           metadata: input.metadata,
           ...(input.receiptEmail ? { receipt_email: input.receiptEmail } : {}),
-          automatic_payment_methods: { enabled: true },
+          // Card only, mirrored by the storefront's deferred Payment Element:
+          // a mismatch would let the widget offer a method the intent refuses.
+          payment_method_types: ["card"],
         },
         { idempotencyKey: input.idempotencyKey },
       );

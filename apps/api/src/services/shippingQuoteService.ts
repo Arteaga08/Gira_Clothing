@@ -181,7 +181,8 @@ const resolveQuotedRate = async (input: ResolveRateInput): Promise<ResolvedRate>
   if (!quote || quote.expiresAt.getTime() <= Date.now()) {
     throw invalid("La cotización de envío venció. Vuelve a elegir tu envío.");
   }
-  if (quote.user && String(quote.user) !== String(input.userId ?? "")) {
+  // Checkout is accounts-only: a quote must be the buyer's own (a guest quote has no owner).
+  if (String(quote.user ?? "") !== String(input.userId ?? "")) {
     throw invalid("La cotización de envío no es válida. Vuelve a elegir tu envío.");
   }
   if (quote.currency !== input.currency) {

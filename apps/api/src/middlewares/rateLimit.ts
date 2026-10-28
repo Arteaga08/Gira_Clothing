@@ -151,6 +151,13 @@ const cartLimiter = createLimiter({
   message: "Demasiadas operaciones sobre el carrito. Espera un momento.",
 });
 
+// Public read of the guest cart: one call per cart page view, by IP.
+const cartPreviewLimiter = createLimiter({
+  windowMs: FIFTEEN_MIN,
+  limit: 120,
+  message: "Demasiadas consultas del carrito. Espera un momento.",
+});
+
 const wishlistLimiter = createLimiter({
   windowMs: FIFTEEN_MIN,
   limit: 120,
@@ -177,10 +184,28 @@ const passwordChangeLimiter = createLimiter({
 });
 
 // Anti card-testing: a scripted checkout loop is how stolen cards get validated.
+// Runs after `protect`: checkout is accounts-only, so it counts per customer.
 const checkoutLimiter = createLimiter({
   windowMs: FIFTEEN_MIN,
   limit: 10,
+  keyGenerator: userKey,
   message: "Demasiados intentos de compra. Espera unos minutos e intenta de nuevo.",
+});
+
+// Re-priced on every coupon or carrier change in the checkout: looser than the order itself.
+const checkoutPreviewLimiter = createLimiter({
+  windowMs: FIFTEEN_MIN,
+  limit: 60,
+  keyGenerator: userKey,
+  message: "Demasiadas consultas del resumen. Espera unos minutos.",
+});
+
+// Resume payment / cancel a pending order from "Mis pedidos".
+const orderActionLimiter = createLimiter({
+  windowMs: FIFTEEN_MIN,
+  limit: 20,
+  keyGenerator: userKey,
+  message: "Demasiados intentos sobre tus pedidos. Espera unos minutos.",
 });
 
 // The publicId is unguessable, but a leaked link should not be a scraping tool.
@@ -239,10 +264,13 @@ export {
   forgotEmailLimiter,
   catalogLimiter,
   cartLimiter,
+  cartPreviewLimiter,
   wishlistLimiter,
   accountWriteLimiter,
   passwordChangeLimiter,
   checkoutLimiter,
+  checkoutPreviewLimiter,
+  orderActionLimiter,
   orderLookupLimiter,
   trackingLimiter,
   shippingQuoteLimiter,

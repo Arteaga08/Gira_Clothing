@@ -413,6 +413,16 @@ orderSchema.index({ priority: 1, status: 1, createdAt: -1 });
 orderSchema.index({ idempotencyKey: 1 }, { unique: true });
 // "My orders" panel.
 orderSchema.index({ user: 1, createdAt: -1 });
+// One live checkout per customer (M16), held by the engine: two racing checkouts
+// cannot both insert, and the loser becomes a 409. Partial on `user` existing so
+// pre-M16 guest orders (no user) never collide with each other.
+orderSchema.index(
+  { user: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { status: OrderStatus.PENDING_PAYMENT, user: { $exists: true } },
+  },
+);
 // Admin listing + the reconciliation job's scan for stale pending orders.
 orderSchema.index({ status: 1, createdAt: 1 });
 // Admin search by customer.

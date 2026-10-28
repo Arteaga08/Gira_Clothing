@@ -28,6 +28,13 @@ const TYPE_OPTIONS = [
 ];
 
 /**
+ * Cards cannot be charged under $10 MXN and there is no free-order path, so a
+ * coupon that can eat the whole subtotal (100 %, or any fixed amount) gets a warning.
+ */
+const coversWholeOrder = (values: CouponFormValues): boolean =>
+  values.discountType === "fixed" || Number(values.percentOff) >= 100;
+
+/**
  * The coupon's fields. Controlled: the modal owns the values because the submit
  * button lives in its pinned footer, outside this form.
  */
@@ -108,6 +115,14 @@ const CouponForm = ({ formId, mode, values, errors, error, locked, redeemedCount
           />
         )}
       </div>
+      {coversWholeOrder(values) ? (
+        <Notice variant="warning" title="Ojo con el mínimo de pago">
+          <p>
+            Si con este cupón el pedido queda en menos de $10 (por ejemplo, 100 % con envío gratis), no se podrá
+            pagar.
+          </p>
+        </Notice>
+      ) : null}
       <Field
         label="Compra mínima (MXN)"
         inputMode="decimal"

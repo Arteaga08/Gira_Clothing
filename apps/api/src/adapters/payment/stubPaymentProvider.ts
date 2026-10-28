@@ -59,12 +59,14 @@ const createStubPaymentProvider = (): PaymentProvider => {
     });
   };
 
+  // Stripe's retrieve returns the client secret too: resuming a payment needs it.
   const getPayment = (providerId: string): Promise<PaymentView> =>
     Promise.resolve({
       providerId,
       status: PaymentStatus.REQUIRES_PAYMENT,
       amount: 0,
       currency: Currency.MXN,
+      clientSecret: `${providerId}_secret_stub`,
     });
 
   const getChargeDetails = (): Promise<ChargeDetails> =>

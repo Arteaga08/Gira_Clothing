@@ -16,6 +16,10 @@ enum NotificationType {
   ORDER_PREPARING = "order_preparing",
   ORDER_SHIPPED = "order_shipped",
   ORDER_DELIVERED = "order_delivered",
+  /** The card was declined; the order stays payable. One per order (outbox index). */
+  ORDER_PAYMENT_FAILED = "order_payment_failed",
+  /** Full refund of a paid order, with the amount. One per order (outbox index). */
+  ORDER_REFUNDED = "order_refunded",
   TEAM_ORDER_PAID = "team_order_paid",
   TEAM_PAYMENT_FAILED = "team_payment_failed",
   TEAM_SHIPMENT_INCIDENT = "team_shipment_incident",

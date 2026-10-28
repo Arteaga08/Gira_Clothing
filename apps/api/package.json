@@ -13,7 +13,8 @@
     "seed:admin": "tsx src/scripts/seedAdmin.ts",
     "seed:demo": "tsx src/scripts/seedDemo.ts",
     "2fa:reset-admin": "tsx src/scripts/resetAdminTwoFactor.ts",
-    "backfill:product-weight": "tsx src/scripts/backfillProductWeight.ts"
+    "backfill:product-weight": "tsx src/scripts/backfillProductWeight.ts",
+    "check:pending-orders": "tsx src/scripts/checkPendingOrders.ts"
   },
   "dependencies": {
     "@gira/shared": "workspace:*",

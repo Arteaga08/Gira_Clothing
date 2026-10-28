@@ -10,6 +10,7 @@ import type {
   ApiMeta,
   Currency,
   CustomerOrder,
+  OrderCoupon,
   CustomerShipment,
   ShipmentTrackingStatus,
   ShippingCarrier,
@@ -23,24 +24,19 @@ import {
   type OrderLineSnapshot,
   type ShippingSelectionAttrs,
 } from "../models/Order.js";
-import { Cart } from "../models/Cart.js";
+import { User } from "../models/User.js";
 import { AppError } from "../utils/AppError.js";
 import { isDuplicateKeyError } from "../utils/mongoErrors.js";
 import { applyOrderTransition } from "./orderTransitionService.js";
 import { generatePublicId } from "../utils/publicId.js";
 import { generateOrderNumber } from "../utils/orderNumber.js";
 import { idempotencyOwner, scopeIdempotencyKey } from "../utils/idempotency.js";
-import {
-  resolveOrderLines,
-  quoteTotals,
-  type RequestedLine,
-  type QuotedLine,
-} from "./pricingService.js";
+import type { RequestedLine, QuotedLine } from "./pricingService.js";
+import { priceCheckout, takeCartLines } from "./checkoutPricingService.js";
+import { cancelPendingOrder } from "./pendingOrderService.js";
 import { reserveStock, releaseReservation } from "./reservationService.js";
-import { resolveCouponForCheckout } from "./couponRulesService.js";
 import { claimCoupon } from "./couponRedemptionService.js";
 import { getSettings } from "./settingsService.js";
-import { resolveQuotedRate } from "./shippingQuoteService.js";
 import { getPaymentProvider, type PaymentView } from "../adapters/payment/index.js";
 import { recordAudit } from "./auditService.js";
 import {
@@ -69,13 +65,18 @@ import type { ImageAttrs } from "../models/schemas/image.js";
  *
  * Steps 4 and 5 roll back explicitly on failure: release the hold, mark the
  * order cancelled. Nothing is left holding units it will never sell.
+ *
+ * Accounts only (M16): the buyer's email and name come from the account, and an
+ * unverified email cannot pay (order and tracking emails travel there). One
+ * pending order per customer, enforced by a partial unique index.
  */
 
 interface CreateOrderInput {
   lines?: RequestedLine[];
   useCart?: boolean;
   currency: Currency;
-  customer: OrderCustomer;
+  /** Contact phone for the carrier; email and name are the account's. */
+  customer: { phone: string };
   shipping: ShippingAddress;
   /** The stored quote + rate the customer picked; the amount is never taken from the client. */
   shippingQuote: { quoteId: string; rateId: string };
@@ -87,7 +88,7 @@ interface CreateOrderInput {
 }
 
 interface OrderContext {
-  userId?: Types.ObjectId;
+  userId: Types.ObjectId;
   ip?: string;
 }
 
@@ -113,6 +114,7 @@ interface PublicOrder {
   discount: number;
   shippingCost: number;
   shippingSelection: { carrier: ShippingCarrier; serviceName: string; estimatedDays: number };
+  coupon: OrderCoupon | null;
   tax: number;
   taxRateBps: number;
   total: number;
@@ -138,6 +140,7 @@ interface OrderLean {
   discount: number;
   shippingCost: number;
   shippingSelection: ShippingSelectionAttrs;
+  coupon?: OrderCoupon;
   tax: number;
   taxRateBps: number;
   total: number;
@@ -179,6 +182,9 @@ const toPublicOrder = (doc: OrderLean): PublicOrder => ({
     serviceName: doc.shippingSelection.serviceName,
     estimatedDays: doc.shippingSelection.estimatedDays,
   },
+  coupon: doc.coupon
+    ? { code: doc.coupon.code, discountType: doc.coupon.discountType, value: doc.coupon.value }
+    : null,
   tax: doc.tax,
   taxRateBps: doc.taxRateBps,
   total: doc.total,
@@ -237,10 +243,19 @@ const toCreatedOrder = (order: PublicOrder, clientSecret: string | undefined): C
   ...(clientSecret !== undefined ? { clientSecret } : {}),
 });
 
-const takeCartLines = async (userId: Types.ObjectId): Promise<RequestedLine[]> => {
-  const cart = await Cart.findOne({ user: userId }).lean();
-  if (!cart || cart.lines.length === 0) return [];
-  return cart.lines.map((l) => ({ variantId: String(l.variant), qty: l.qty }));
+const PENDING_EXISTS = "Ya tienes un pedido por pagar. Págalo o cancélalo para hacer otro.";
+
+const isPendingCollision = (err: unknown): boolean => {
+  const e = err as { code?: number; keyPattern?: Record<string, unknown> };
+  return e.code === 11000 && e.keyPattern !== undefined && Object.keys(e.keyPattern).join() === "user";
+};
+
+/** The account behind the checkout. Email and name are frozen from here, never from the body. */
+const loadBuyer = async (userId: Types.ObjectId) => {
+  const user = await User.findById(userId).select("email firstName lastName emailVerified").lean();
+  if (!user) throw new AppError("No has iniciado sesión.", 401);
+  if (!user.emailVerified) throw new AppError("Verifica tu correo antes de pagar.", 403);
+  return user;
 };
 
 const toLineSnapshot = (l: QuotedLine): OrderLineSnapshot => ({
@@ -257,13 +272,12 @@ const toLineSnapshot = (l: QuotedLine): OrderLineSnapshot => ({
 });
 
 const createOrder = async (input: CreateOrderInput, ctx: OrderContext): Promise<CreatedOrder> => {
-  // The client's key is NEVER the stored key: it is namespaced to whoever is
-  // checking out first. Without this, a replay lookup is a global lookup, and
-  // whoever guesses a key someone else used gets that order — customer email,
-  // phone, address and all — handed back as a 201.
+  // The client's key is NEVER the stored key: it is namespaced to the account.
+  // Without this, a replay lookup is a global lookup, and whoever guesses a key
+  // someone else used gets that order — email, phone and address — back as a 201.
   const idempotencyKey = scopeIdempotencyKey(
     input.idempotencyKey,
-    idempotencyOwner(ctx.userId ? String(ctx.userId) : undefined, input.customer.email),
+    idempotencyOwner(String(ctx.userId)),
   );
 
   const existing = await Order.findOne({ idempotencyKey }).lean();
@@ -274,31 +288,28 @@ const createOrder = async (input: CreateOrderInput, ctx: OrderContext): Promise<
     );
   }
 
-  const requested =
-    input.useCart && ctx.userId ? await takeCartLines(ctx.userId) : (input.lines ?? []);
-  if (requested.length === 0) {
-    throw new AppError("No hay artículos para crear la orden.", 400);
+  const buyer = await loadBuyer(ctx.userId);
+  const customer: OrderCustomer = {
+    email: buyer.email,
+    name: `${buyer.firstName} ${buyer.lastName}`.trim(),
+    phone: input.customer.phone,
+  };
+
+  // Cheap early answer; the partial unique index is what really holds under a race.
+  if (await Order.exists({ user: ctx.userId, status: OrderStatus.PENDING_PAYMENT })) {
+    throw new AppError(PENDING_EXISTS, 409);
   }
 
-  const resolved = await resolveOrderLines(requested);
-  // Before reserving anything: an invalid or expired quote must cost no stock.
-  const { rate, parcel } = await resolveQuotedRate({
-    quoteId: input.shippingQuote.quoteId,
-    rateId: input.shippingQuote.rateId,
-    resolved,
-    postalCode: input.shipping.postalCode,
+  // Lines, quote, coupon and the $10 floor are all checked BEFORE anything is held.
+  const { resolved, shipping, quote } = await priceCheckout({
+    requested: input.useCart ? await takeCartLines(ctx.userId) : (input.lines ?? []),
     currency: input.currency,
     userId: ctx.userId,
+    couponCode: input.couponCode,
+    shippingQuote: { ...input.shippingQuote, postalCode: input.shipping.postalCode },
   });
-  // Eligibility is checked BEFORE reserving anything: a bad coupon must cost no stock.
-  const coupon = input.couponCode
-    ? await resolveCouponForCheckout(input.couponCode, ctx.userId)
-    : undefined;
-  const quote = await quoteTotals(resolved, {
-    currency: input.currency,
-    shippingMxn: rate.amountMxn,
-    ...(coupon ? { coupon } : {}),
-  });
+  if (!shipping) throw new AppError("Elige una opción de envío.", 400);
+  const { rate, parcel } = shipping;
 
   const settings = await getSettings();
   const orderId = new mongoose.Types.ObjectId();
@@ -312,7 +323,7 @@ const createOrder = async (input: CreateOrderInput, ctx: OrderContext): Promise<
 
   // Atomic seat + one-per-customer, AFTER stock is held so a lost race hands the stock back.
   // From here on every failure path calls releaseReservation, which also frees the coupon.
-  if (quote.coupon && ctx.userId) {
+  if (quote.coupon) {
     try {
       await claimCoupon({
         couponId: quote.coupon.couponId,
@@ -333,8 +344,8 @@ const createOrder = async (input: CreateOrderInput, ctx: OrderContext): Promise<
         _id: orderId,
         publicId: generatePublicId(),
         orderNumber: generateOrderNumber(),
-        ...(ctx.userId ? { user: ctx.userId } : {}),
-        customer: input.customer,
+        user: ctx.userId,
+        customer,
         shipping: input.shipping,
         lines: quote.lines.map(toLineSnapshot),
         currency: quote.currency,
@@ -362,12 +373,13 @@ const createOrder = async (input: CreateOrderInput, ctx: OrderContext): Promise<
         statusHistory: [{ status: OrderStatus.PENDING_PAYMENT, at: new Date() }],
         payment: { provider: "stripe", status: PaymentStatus.REQUIRES_PAYMENT },
         idempotencyKey,
-        ...(input.useCart && ctx.userId ? { fromCart: true } : {}),
+        ...(input.useCart ? { fromCart: true } : {}),
       });
     } catch (err) {
       // A folio collision is retried with a fresh folio: nothing was inserted.
       if (isOrderNumberCollision(err) && attempt < ORDER_NUMBER_ATTEMPTS) continue;
       await releaseReservation(orderId, "order_creation_failed");
+      if (isPendingCollision(err)) throw new AppError(PENDING_EXISTS, 409);
       if (isOrderNumberCollision(err)) {
         throw new AppError("No se pudo generar el folio de la orden. Intenta de nuevo.", 503);
       }
@@ -393,7 +405,7 @@ const createOrder = async (input: CreateOrderInput, ctx: OrderContext): Promise<
       currency: quote.currency,
       idempotencyKey: order.publicId,
       metadata: { orderId: String(order._id), publicId: order.publicId },
-      receiptEmail: input.customer.email,
+      receiptEmail: customer.email,
     });
   } catch (err) {
     await releaseReservation(orderId, "payment_setup_failed");
@@ -428,7 +440,7 @@ const createOrder = async (input: CreateOrderInput, ctx: OrderContext): Promise<
 
   await recordAudit({
     actorId: ctx.userId,
-    actorType: ctx.userId ? "user" : "system",
+    actorType: "user",
     action: AuditAction.ORDER_CREATED,
     module: AuditModule.ORDERS,
     targetId: String(order._id),
@@ -436,7 +448,7 @@ const createOrder = async (input: CreateOrderInput, ctx: OrderContext): Promise<
   });
   await recordAudit({
     actorId: ctx.userId,
-    actorType: ctx.userId ? "user" : "system",
+    actorType: "user",
     action: AuditAction.PAYMENT_INTENT_CREATED,
     module: AuditModule.PAYMENTS,
     targetId: String(order._id),
@@ -463,10 +475,11 @@ const getOrderByPublicId = async (publicId: string): Promise<PublicOrder> => {
 
 const listMyOrders = async (
   userId: Types.ObjectId,
-  query: RawListQuery,
+  query: RawListQuery & { status?: OrderStatus },
 ): Promise<{ items: CustomerOrder[]; meta: ApiMeta }> => {
   const { filter, sort, skip, limit, page } = parseListQuery(query, MY_ORDERS_LIST_CONFIG, {
     user: userId,
+    ...(query.status ? { status: query.status } : {}),
   });
   const [docs, total] = await Promise.all([
     Order.find(filter).sort(sort).skip(skip).limit(limit).lean(),
@@ -486,6 +499,68 @@ const getMyOrder = async (userId: Types.ObjectId, id: string): Promise<CustomerO
   return toCustomerOrder(doc);
 };
 
+const NOT_PENDING = "Este pedido ya no está por pagar.";
+
+const findMyPendingOrder = async (userId: Types.ObjectId, id: string): Promise<OrderDocument> => {
+  const order = await Order.findOne({ _id: id, user: userId });
+  if (!order) throw new AppError("La orden no existe.", 404);
+  if (order.status !== OrderStatus.PENDING_PAYMENT) throw new AppError(NOT_PENDING, 409);
+  return order;
+};
+
+/**
+ * Resume paying a pending order: the SAME intent's client secret, read back from
+ * the provider (it is never stored). A card declined earlier leaves the order
+ * pending and the intent retryable until the reservation expires.
+ */
+const payMyOrder = async (
+  userId: Types.ObjectId,
+  id: string,
+): Promise<{ order: CustomerOrder; clientSecret: string }> => {
+  const order = await findMyPendingOrder(userId, id);
+  const intentId = order.payment.intentId;
+  if (!intentId) throw new AppError(NOT_PENDING, 409);
+
+  const payment = await getPaymentProvider().getPayment(intentId);
+  if (payment.status === PaymentStatus.SUCCEEDED || payment.status === PaymentStatus.PROCESSING) {
+    throw new AppError("Tu pago ya se está procesando.", 409);
+  }
+  // The expiry sweep or a cancel closed the window; the order follows shortly.
+  if (payment.status === PaymentStatus.CANCELLED) throw new AppError(NOT_PENDING, 409);
+  if (!payment.clientSecret) {
+    throw new AppError("No se pudo reanudar el pago. Intenta de nuevo.", 502);
+  }
+  return { order: toCustomerOrder(order.toObject()), clientSecret: payment.clientSecret };
+};
+
+/** The customer's own cancel: same path as the panel's (intent first, then order, then stock). */
+const cancelMyOrder = async (
+  userId: Types.ObjectId,
+  id: string,
+  ip?: string,
+): Promise<CustomerOrder> => {
+  const order = await findMyPendingOrder(userId, id);
+  const cancelled = await cancelPendingOrder(order, {
+    actorId: userId,
+    reason: "customer_cancelled",
+    cancelReason: "customer_cancelled",
+    paidMessage: "Tu pago ya se procesó; este pedido ya no se puede cancelar.",
+  });
+  if (!cancelled) throw new AppError(NOT_PENDING, 409);
+
+  await recordAudit({
+    actorId: userId,
+    actorType: "user",
+    action: AuditAction.ORDER_STATUS_CHANGED,
+    module: AuditModule.ORDERS,
+    targetId: String(order._id),
+    before: { status: OrderStatus.PENDING_PAYMENT },
+    after: { status: OrderStatus.CANCELLED },
+    ip,
+  });
+  return toCustomerOrder(cancelled.toObject());
+};
+
 export type {
   CreateOrderInput,
   OrderContext,
@@ -501,5 +576,7 @@ export {
   getOrderByPublicId,
   listMyOrders,
   getMyOrder,
+  payMyOrder,
+  cancelMyOrder,
   takeCartLines,
 };

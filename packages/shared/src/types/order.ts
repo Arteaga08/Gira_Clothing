@@ -3,6 +3,7 @@ import type { DisputeStatus, OrderStatus, PaymentStatus } from "../enums/orderSt
 import type { OrderPriority } from "../enums/orderPriority.js";
 import type { OrderStatusGroup } from "../constants/orderStatusGroups.js";
 import type { AuditAction } from "../enums/auditAction.js";
+import type { OrderCoupon } from "./coupon.js";
 import type {
   CustomerShipment,
   OrderLabelAdmin,
@@ -59,12 +60,29 @@ interface PublicOrder {
   discount: number;
   shippingCost: number;
   shippingSelection?: PublicShippingSelection;
+  /** The coupon as it was frozen at checkout; null without one. */
+  coupon: OrderCoupon | null;
   /** IVA included in `total` (a breakdown, not an addition). */
   tax: number;
   taxRateBps: number;
   total: number;
   createdAt: Date;
   paidAt?: Date;
+}
+
+/**
+ * `POST /orders/preview`: what the checkout will charge right now, computed by
+ * the same chain as the order. `shippingCost` is 0 until a carrier is picked.
+ */
+interface CheckoutSummary {
+  currency: Currency;
+  subtotal: number;
+  discount: number;
+  shippingCost: number;
+  tax: number;
+  taxRateBps: number;
+  total: number;
+  coupon: OrderCoupon | null;
 }
 
 /** What the OWNING customer receives ("mis órdenes"): the public view plus the internal id. */
@@ -155,6 +173,7 @@ export type {
   ImageAttrs,
   OrderLine,
   PublicOrder,
+  CheckoutSummary,
   CustomerOrder,
   StatusHistoryEntry,
   OrderPayment,

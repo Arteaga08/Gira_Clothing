@@ -29,9 +29,17 @@ interface OrderEmailSnapshot {
   customerName: string;
   currency: Currency;
   subtotal: number;
+  /** Coupon discount; 0 without one. Absent on payloads queued before M16. */
+  discount?: number;
+  couponCode?: string | undefined;
   shippingCost: number;
   total: number;
   lines: OrderEmailLine[];
+}
+
+interface RefundEmailSnapshot extends OrderEmailSnapshot {
+  /** What went back to the card, in the order's currency. */
+  refundedAmount: number;
 }
 
 interface ShippedEmailSnapshot extends OrderEmailSnapshot {
@@ -53,6 +61,8 @@ const formatMoney = (minorUnits: number, currency: Currency): string => {
 };
 
 const orderUrl = (publicId: string): string => `${env.clientUrl}/orden/${publicId}`;
+/** The account's order list: where a pending order is paid again (no credential in the link). */
+const myOrdersUrl = (): string => `${env.clientUrl}/cuenta/pedidos`;
 const trackingUrl = (publicId: string): string => `${orderUrl(publicId)}/seguimiento`;
 
 const folioHtml = (snapshot: OrderEmailSnapshot): string =>
@@ -77,10 +87,26 @@ const renderLinesText = (lines: OrderEmailLine[], currency: Currency): string =>
     )
     .join("\n");
 
-const totalsHtml = (snapshot: OrderEmailSnapshot): string =>
-  `<p>Subtotal: ${formatMoney(snapshot.subtotal, snapshot.currency)}<br>` +
-  `Envío: ${formatMoney(snapshot.shippingCost, snapshot.currency)}<br>` +
-  `<strong>Total: ${formatMoney(snapshot.total, snapshot.currency)}</strong></p>`;
+const discountLine = (snapshot: OrderEmailSnapshot): string | null => {
+  if (!snapshot.discount) return null;
+  const label = snapshot.couponCode ? `Descuento (${snapshot.couponCode})` : "Descuento";
+  return `${label}: -${formatMoney(snapshot.discount, snapshot.currency)}`;
+};
+
+const totalsHtml = (snapshot: OrderEmailSnapshot): string => {
+  const discount = discountLine(snapshot);
+  return (
+    `<p>Subtotal: ${formatMoney(snapshot.subtotal, snapshot.currency)}<br>` +
+    (discount ? `${escapeHtml(discount)}<br>` : "") +
+    `Envío: ${formatMoney(snapshot.shippingCost, snapshot.currency)}<br>` +
+    `<strong>Total: ${formatMoney(snapshot.total, snapshot.currency)}</strong></p>`
+  );
+};
+
+const totalsText = (snapshot: OrderEmailSnapshot): string => {
+  const discount = discountLine(snapshot);
+  return (discount ? `${discount}\n` : "") + `Total: ${formatMoney(snapshot.total, snapshot.currency)}`;
+};
 
 const renderOrderConfirmation = (snapshot: OrderEmailSnapshot): RenderedMail => ({
   subject: `Confirmamos tu compra ${snapshot.orderNumber} en Gira Clothing`,
@@ -95,7 +121,7 @@ const renderOrderConfirmation = (snapshot: OrderEmailSnapshot): RenderedMail => 
   text:
     `¡Gracias por tu compra, ${snapshot.customerName}!\n\n` +
     `Ya recibimos tu pago.\nFolio: ${snapshot.orderNumber}\n\n${renderLinesText(snapshot.lines, snapshot.currency)}\n\n` +
-    `Total: ${formatMoney(snapshot.total, snapshot.currency)}\n\n` +
+    `${totalsText(snapshot)}\n\n` +
     `Ver mi pedido: ${orderUrl(snapshot.publicId)}`,
 });
 
@@ -149,11 +175,54 @@ const renderOrderDelivered = (snapshot: ShippedEmailSnapshot): RenderedMail => (
     `${parcelText(snapshot)}\n\nVer mi pedido: ${orderUrl(snapshot.publicId)}`,
 });
 
-export type { OrderEmailSnapshot, ShippedEmailSnapshot, OrderEmailLine, RenderedMail };
+// Never mentions a refund: a declined card took no money (ECOMMERCE guidelines, notifications).
+const renderOrderPaymentFailed = (snapshot: OrderEmailSnapshot): RenderedMail => ({
+  subject: `No pudimos cobrar tu pedido ${snapshot.orderNumber}`,
+  html: layout(
+    `${snapshot.customerName}, tu pago no pasó`,
+    `<p>Tu banco no aprobó el cargo, así que no se te cobró nada. Tu pedido sigue apartado por un rato: ` +
+      `puedes intentarlo otra vez con la misma tarjeta o con otra desde Mis pedidos.</p>` +
+      folioHtml(snapshot) +
+      `<p><a href="${myOrdersUrl()}">Ir a Mis pedidos</a></p>`,
+  ),
+  text:
+    `${snapshot.customerName}, tu pago no pasó.\nFolio: ${snapshot.orderNumber}\n\n` +
+    `Tu banco no aprobó el cargo, así que no se te cobró nada. Tu pedido sigue apartado por un rato: ` +
+    `puedes intentarlo otra vez desde Mis pedidos.\n\nIr a Mis pedidos: ${myOrdersUrl()}`,
+});
+
+const renderOrderRefunded = (snapshot: RefundEmailSnapshot): RenderedMail => {
+  const amount = formatMoney(snapshot.refundedAmount, snapshot.currency);
+  return {
+    subject: `Te devolvimos el pago de tu pedido ${snapshot.orderNumber}`,
+    html: layout(
+      `${snapshot.customerName}, ya te devolvimos tu dinero`,
+      `<p>Reembolsamos <strong>${amount}</strong> a la tarjeta con la que pagaste. ` +
+        `Según tu banco, puede tardar unos días en verse en tu estado de cuenta.</p>` +
+        folioHtml(snapshot) +
+        `<p><a href="${orderUrl(snapshot.publicId)}">Ver mi pedido</a></p>`,
+    ),
+    text:
+      `${snapshot.customerName}, ya te devolvimos tu dinero.\nFolio: ${snapshot.orderNumber}\n\n` +
+      `Reembolsamos ${amount} a la tarjeta con la que pagaste. ` +
+      `Según tu banco, puede tardar unos días en verse en tu estado de cuenta.\n\n` +
+      `Ver mi pedido: ${orderUrl(snapshot.publicId)}`,
+  };
+};
+
+export type {
+  OrderEmailSnapshot,
+  ShippedEmailSnapshot,
+  RefundEmailSnapshot,
+  OrderEmailLine,
+  RenderedMail,
+};
 export {
   formatMoney,
   renderOrderConfirmation,
   renderOrderPreparing,
   renderOrderShipped,
   renderOrderDelivered,
+  renderOrderPaymentFailed,
+  renderOrderRefunded,
 };

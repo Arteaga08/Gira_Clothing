@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import mongoose from "mongoose";
 import request from "supertest";
 import type { Express } from "express";
 import { Currency } from "@gira/shared";
@@ -12,7 +13,7 @@ import {
   type OrderContext,
 } from "../../src/services/orderService.js";
 import { createShippingQuote } from "../../src/services/shippingQuoteService.js";
-import { ORIGIN } from "./auth.js";
+import { ORIGIN, createCustomer } from "./auth.js";
 
 const validImage = {
   url: "https://res.cloudinary.com/gira/image/upload/v1/prints/x.jpg",
@@ -31,7 +32,12 @@ const validShipping = {
   country: "MX",
 };
 
+/** Checkout only takes the phone (M16): email and name come from the account. Extra keys are stripped. */
 const validCustomer = { email: "cliente@example.com", name: "Ana Pérez", phone: "5512345678" };
+
+/** A fresh verified customer id: one pending order per customer, so each checkout gets its own. */
+const newCustomerId = async (): Promise<mongoose.Types.ObjectId> =>
+  new mongoose.Types.ObjectId((await createCustomer()).id);
 
 const validOrigin = {
   name: "Gira Clothing",
@@ -57,6 +63,7 @@ const quoteRateFor = async (
   variantId: string,
   qty = 1,
   currency: Currency = Currency.MXN,
+  userId?: mongoose.Types.ObjectId,
 ): Promise<{ quoteId: string; rateId: string }> => {
   await seedShippingOrigin();
   const quote = await createShippingQuote(
@@ -69,7 +76,7 @@ const quoteRateFor = async (
         city: validShipping.city,
       },
     },
-    {},
+    userId ? { userId } : {},
   );
   return { quoteId: quote.quoteId, rateId: quote.rates[0]!.rateId };
 };
@@ -108,8 +115,9 @@ const seedCatalogVariant = async (
   return variantId;
 };
 
-/** A real pending_payment order (with its reservation) created through the checkout service. */
+/** A real pending_payment order (with its reservation) created through the checkout service, for a fresh customer. */
 const createPendingOrder = async (variantId: string, qty = 1): Promise<OrderDocument> => {
+  const userId = await newCustomerId();
   const result = await createOrder(
     {
       lines: [{ variantId, qty }],
@@ -118,9 +126,9 @@ const createPendingOrder = async (variantId: string, qty = 1): Promise<OrderDocu
       shipping: validShipping,
       idempotencyKey: randomUUID(),
       termsAccepted: true,
-      shippingQuote: await quoteRateFor(variantId, qty),
+      shippingQuote: await quoteRateFor(variantId, qty, Currency.MXN, userId),
     },
-    {},
+    { userId },
   );
   const order = await Order.findOne({ publicId: result.order.publicId });
   return order!;
@@ -129,8 +137,12 @@ const createPendingOrder = async (variantId: string, qty = 1): Promise<OrderDocu
 type CheckoutInput = Omit<CreateOrderInput, "shippingQuote"> &
   Partial<Pick<CreateOrderInput, "shippingQuote">>;
 
-/** createOrder for tests that do not care about shipping: quotes the cart first, takes the cheapest rate. */
-const createOrderWithQuote = async (input: CheckoutInput, ctx: OrderContext) => {
+/**
+ * createOrder for tests that do not care about shipping: quotes the cart first, takes the
+ * cheapest rate. Without a userId it checks out as a fresh customer (checkout is accounts-only).
+ */
+const createOrderWithQuote = async (input: CheckoutInput, rawCtx: Partial<OrderContext> = {}) => {
+  const ctx: OrderContext = { ...rawCtx, userId: rawCtx.userId ?? (await newCustomerId()) };
   if (input.shippingQuote) return createOrder(input as CreateOrderInput, ctx);
   const lines =
     input.lines ?? (input.useCart && ctx.userId ? await takeCartLines(ctx.userId) : []);
@@ -153,8 +165,11 @@ const createOrderWithQuote = async (input: CheckoutInput, ctx: OrderContext) => 
   );
 };
 
-/** Same idea for HTTP bodies: adds a `shippingQuote` built from `body.lines` when it is missing. */
-const withQuote = async (body: Record<string, unknown>): Promise<Record<string, unknown>> => {
+/** Same idea for HTTP bodies: adds a `shippingQuote` built from `body.lines` when it is missing, owned by `userId`. */
+const withQuote = async (
+  body: Record<string, unknown>,
+  userId?: mongoose.Types.ObjectId | string,
+): Promise<Record<string, unknown>> => {
   const shipping = body.shipping as { postalCode: string; state: string; city: string } | undefined;
   if (body.shippingQuote !== undefined || !Array.isArray(body.lines) || body.lines.length === 0 || !shipping) {
     return body;
@@ -166,7 +181,7 @@ const withQuote = async (body: Record<string, unknown>): Promise<Record<string, 
       currency: (body.currency as Currency | undefined) ?? Currency.MXN,
       destination: { postalCode: shipping.postalCode, state: shipping.state, city: shipping.city },
     },
-    {},
+    userId ? { userId: new mongoose.Types.ObjectId(String(userId)) } : {},
   );
   return { ...body, shippingQuote: { quoteId: quote.quoteId, rateId: quote.rates[0]!.rateId } };
 };
@@ -180,6 +195,7 @@ export {
   validOrigin,
   seedShippingOrigin,
   quoteRateFor,
+  newCustomerId,
   seedCatalogVariant,
   createPendingOrder,
 };
