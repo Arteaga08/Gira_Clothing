@@ -169,4 +169,11 @@ describe("SelectField", () => {
     expect(trigger).toHaveAttribute("aria-invalid", "true");
     expect(screen.getByText("Elige uno")).toHaveAttribute("id", trigger.getAttribute("aria-describedby"));
   });
+
+  it("el botón no lleva outline-none: anularía el anillo de foco con teclado", () => {
+    render(<SelectField label="Estado" options={[{ value: "a", label: "A" }]} />);
+    const trigger = screen.getByRole("combobox", { name: /Estado/ });
+    expect(trigger.className).not.toMatch(/(^|\s)outline-none(\s|$)/);
+    expect(trigger.className).toContain("focus-visible:outline-focus");
+  });
 });

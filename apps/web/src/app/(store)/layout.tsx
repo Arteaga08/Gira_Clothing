@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { CSSProperties, ReactNode } from "react";
+import { CartMergeNotice } from "@/components/store/cart/CartMergeNotice";
 import { SiteFooter } from "@/components/store/footer/SiteFooter";
 import { AnnouncementBar } from "@/components/store/navbar/AnnouncementBar";
 import { SiteHeader } from "@/components/store/navbar/SiteHeader";
@@ -28,6 +29,7 @@ const StoreLayout = async ({ children }: { children: ReactNode }) => {
     >
       <AnnouncementBar announcement={announcement} />
       <SiteHeader authenticated={session.kind === "authenticated"} />
+      <CartMergeNotice />
       <main id="main-content">{children}</main>
       <SiteFooter />
     </div>

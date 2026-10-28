@@ -12,6 +12,7 @@ import { authFailureMessage, isUnverifiedFailure } from "@/lib/auth/authFailures
 import { focusFirstInvalid } from "@/lib/auth/focus";
 import { emailError } from "@/lib/auth/validation";
 import { mergeGuestCart } from "@/lib/cart/mergeGuestCart";
+import { announceDroppedLines } from "@/lib/cart/mergeNotice";
 import type { AuthPhoto } from "@/lib/store/authPhoto";
 import { STORE_ROUTES, withRedirect } from "@/lib/store/routes";
 import { AuthSwitch } from "./AuthSwitch";
@@ -70,7 +71,7 @@ const CustomerLoginForm = ({ redirectTo, photo }: CustomerLoginFormProps) => {
           setStaff(true);
           return;
         }
-        await mergeGuestCart();
+        announceDroppedLines((await mergeGuestCart()).dropped);
         setNavigating(true);
         router.replace(redirectTo);
         router.refresh();

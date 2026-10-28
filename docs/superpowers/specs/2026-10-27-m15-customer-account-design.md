@@ -42,6 +42,21 @@ muestra una rejilla de tarjetas con resumen y cada sección lleva «< Mi cuenta�
 - `birthDate` es un día de calendario: se guarda como medianoche UTC y se lee/escribe como `YYYY-MM-DD`; «hoy» se calcula en hora de Ciudad de México (API) y en hora local del navegador (formulario).
 - Sin sesión por refresh token (Gira usa sesión por dispositivo). Sin correo de aviso al cambiar la contraseña (no pedido; se propone aparte).
 
+## M15c — Direcciones, Facturación, Guardados en la tarjeta
+
+Decisiones: la ficha de producto conserva solo el corazón; tope de 5 direcciones (ShippingAddress + celular + etiqueta opcional, una predeterminada, la primera lo es sola); un único perfil fiscal completo (RFC, razón social, régimen, uso de CFDI, CP fiscal), solo almacenado.
+
+| Ruta | Qué hace |
+|---|---|
+| `/cuenta/direcciones` | Lista ↔ formulario en el mismo lugar; contador «n de 5»; predeterminar, editar y eliminar (con confirmación). |
+| `/cuenta/facturacion` | Vacío / datos / formulario; editar y eliminar. No emite facturas. |
+| `/cuenta/guardados` | Pasa al `AccountShell` con `requireCustomer`. |
+
+- **API:** `POST /account/addresses`, `PATCH|DELETE /account/addresses/:id`, `POST /account/addresses/:id/default`, `PUT|DELETE /account/billing`; `GET /account` suma `addresses`, `billing`, `savedCount`. Direcciones embebidas en `User`; tope y predeterminada se resuelven con un solo update atómico (409 en la sexta, 404 si no es del cliente). El RFC nunca va a logs ni auditoría.
+- **Contraseña:** el cambio borra `passwordReset` (los enlaces emitidos dejan de servir) y envía un correo de aviso «Tu contraseña cambió — Gira Clothing» sin esperar el envío ni datos sensibles.
+- **Carrito:** el login guarda en `sessionStorage` cuántas líneas se descartaron y `CartMergeNotice` lo muestra una vez.
+- **Teclado:** recorrido real en Chromium de todas las pantallas de Mi cuenta; lo que falle se corrige.
+
 ## Fuera de M15a (a propósito)
 `/cuenta/*` (M15b/c), `/carrito` y checkout (M16), `/orden/[publicId]` (M16), refresh token (Gira usa sesión por dispositivo).
 

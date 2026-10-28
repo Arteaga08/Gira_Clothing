@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { Notice } from "@/components/ui/Notice";
+import { useFocusFirstField } from "@/hooks/useFocusFirstField";
 import { useSubmit } from "@/hooks/useSubmit";
 import { changePassword } from "@/lib/api/account";
 import { authFailureMessage } from "@/lib/auth/authFailures";
@@ -30,6 +31,7 @@ const ChangePasswordForm = ({ onDone, onCancel }: ChangePasswordFormProps) => {
   const [confirm, setConfirm] = useState("");
   const [errors, setErrors] = useState<Errors>({});
   const { pending, error, setError, run } = useSubmit();
+  const formRef = useFocusFirstField();
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -55,7 +57,7 @@ const ChangePasswordForm = ({ onDone, onCancel }: ChangePasswordFormProps) => {
   };
 
   return (
-    <form onSubmit={submit} noValidate className="grid gap-4">
+    <form ref={formRef} onSubmit={submit} noValidate className="grid gap-4">
       {error ? (
         <Notice variant="danger" title="No pudimos cambiar tu contraseña">
           {error}

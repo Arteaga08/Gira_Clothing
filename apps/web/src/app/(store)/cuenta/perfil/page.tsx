@@ -5,7 +5,7 @@ import { AccountShell } from "@/components/store/account/shell/AccountShell";
 import { AccountUnavailable } from "@/components/store/account/shell/AccountUnavailable";
 import { BackToAccount } from "@/components/store/account/shell/BackToAccount";
 import { LoadFailure } from "@/components/store/account/shell/LoadFailure";
-import { getAccountProfile } from "@/lib/api/accountServer";
+import { getAccount } from "@/lib/api/accountServer";
 import { requireCustomer } from "@/lib/account/requireCustomer";
 import { STORE_ROUTES } from "@/lib/store/routes";
 
@@ -16,13 +16,13 @@ const ProfilePage = async () => {
   const guard = await requireCustomer(STORE_ROUTES.profile);
   if (guard.kind === "unavailable") return <AccountUnavailable />;
 
-  const account = await getAccountProfile();
+  const account = await getAccount();
 
   return (
     <AccountShell firstName={guard.user.firstName}>
       <BackToAccount />
       <AccountHeading title="Perfil" lead="Tus datos y la seguridad de tu cuenta." />
-      {account.status === "ok" ? <ProfileSection initialProfile={account.profile} /> : <LoadFailure what="tu perfil" />}
+      {account.status === "ok" ? <ProfileSection initialProfile={account.account.profile} /> : <LoadFailure what="tu perfil" />}
     </AccountShell>
   );
 };

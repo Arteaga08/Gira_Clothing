@@ -1,6 +1,18 @@
 import { Schema, model, type HydratedDocument, type Model } from "mongoose";
 import bcrypt from "bcryptjs";
-import { UserRole, PHONE_PATTERN, CITY_MAX_LENGTH } from "@gira/shared";
+import {
+  UserRole,
+  PHONE_PATTERN,
+  POSTAL_CODE_PATTERN,
+  CITY_MAX_LENGTH,
+  ADDRESS_LABEL_MAX_LENGTH,
+  LEGAL_NAME_MAX_LENGTH,
+  RFC_PATTERN,
+  MEXICAN_STATE_CODES,
+  FISCAL_REGIME_CODES,
+  CFDI_USE_CODES,
+} from "@gira/shared";
+import type { Types } from "mongoose";
 
 /**
  * User model. Password and TOTP secret both use `select: false` and are never
@@ -37,6 +49,31 @@ interface AccountToken {
   issuedAt: Date;
 }
 
+/** A saved shipping address (M15c). At most one has `isDefault`; the service enforces it, never the schema. */
+interface SavedAddressAttrs {
+  _id: Types.ObjectId;
+  label?: string | undefined;
+  recipient: string;
+  line1: string;
+  line2?: string | undefined;
+  district: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  phone: string;
+  isDefault: boolean;
+}
+
+/** Tax data kept for a future invoice. PII: never logged or audited. */
+interface BillingAttrs {
+  rfc: string;
+  legalName: string;
+  fiscalRegime: string;
+  cfdiUse: string;
+  postalCode: string;
+}
+
 interface UserAttrs {
   firstName: string;
   lastName: string;
@@ -45,6 +82,9 @@ interface UserAttrs {
   phone?: string | undefined;
   birthDate?: Date | undefined;
   city?: string | undefined;
+  /** Saved addresses, capped at SAVED_ADDRESSES_MAX by the service's atomic update. */
+  addresses?: SavedAddressAttrs[] | undefined;
+  billing?: BillingAttrs | undefined;
   password: string;
   role: UserRole;
   emailVerified: boolean;
@@ -82,6 +122,31 @@ const accountTokenSchema = new Schema<AccountToken>(
   { _id: false },
 );
 
+const savedAddressSchema = new Schema<SavedAddressAttrs>({
+  label: { type: String, trim: true, maxlength: ADDRESS_LABEL_MAX_LENGTH },
+  recipient: { type: String, required: true, trim: true, maxlength: 120 },
+  line1: { type: String, required: true, trim: true, maxlength: 200 },
+  line2: { type: String, trim: true, maxlength: 200 },
+  district: { type: String, required: true, trim: true, maxlength: 120 },
+  city: { type: String, required: true, trim: true, maxlength: 120 },
+  state: { type: String, required: true, enum: MEXICAN_STATE_CODES },
+  postalCode: { type: String, required: true, match: POSTAL_CODE_PATTERN },
+  country: { type: String, required: true, uppercase: true, enum: ["MX"] },
+  phone: { type: String, required: true, match: PHONE_PATTERN },
+  isDefault: { type: Boolean, default: false },
+});
+
+const billingSchema = new Schema<BillingAttrs>(
+  {
+    rfc: { type: String, required: true, uppercase: true, trim: true, match: RFC_PATTERN },
+    legalName: { type: String, required: true, trim: true, maxlength: LEGAL_NAME_MAX_LENGTH },
+    fiscalRegime: { type: String, required: true, enum: FISCAL_REGIME_CODES },
+    cfdiUse: { type: String, required: true, enum: CFDI_USE_CODES },
+    postalCode: { type: String, required: true, match: POSTAL_CODE_PATTERN },
+  },
+  { _id: false },
+);
+
 const userSchema = new Schema<UserAttrs, UserModel, UserMethods>(
   {
     // Separate on purpose: shipping labels and invoices use them apart.
@@ -100,6 +165,8 @@ const userSchema = new Schema<UserAttrs, UserModel, UserMethods>(
     // Calendar date stored as UTC midnight; the API reads and writes it as YYYY-MM-DD.
     birthDate: { type: Date },
     city: { type: String, trim: true, maxlength: CITY_MAX_LENGTH },
+    addresses: { type: [savedAddressSchema], default: undefined },
+    billing: { type: billingSchema },
     password: { type: String, required: true, select: false },
     role: {
       type: String,
@@ -156,5 +223,5 @@ userSchema.index(
 
 const User = model<UserAttrs, UserModel>("User", userSchema);
 
-export type { UserAttrs, UserDocument, TwoFactor, AccountToken };
+export type { UserAttrs, UserDocument, TwoFactor, AccountToken, SavedAddressAttrs, BillingAttrs };
 export { User, hashPassword };

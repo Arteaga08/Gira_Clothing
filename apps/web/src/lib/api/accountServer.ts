@@ -1,4 +1,4 @@
-import type { AccountProfile, ApiMeta, CustomerOrder, Wire } from "@gira/shared";
+import type { AccountResponse, ApiMeta, CustomerOrder, Wire } from "@gira/shared";
 import { isApiError } from "./ApiError";
 import { expectData } from "./request";
 import { serverRequest } from "./server";
@@ -13,7 +13,7 @@ import { assertOrderId } from "@/lib/orders/orderId";
 const ORDERS_PAGE_SIZE = 10;
 const TIMEOUT_MS = 5_000;
 
-type AccountResult = { status: "ok"; profile: Wire<AccountProfile> } | { status: "error" };
+type AccountResult = { status: "ok"; account: Wire<AccountResponse> } | { status: "error" };
 
 type MyOrdersResult =
   | { status: "ok"; orders: Wire<CustomerOrder>[]; meta: ApiMeta }
@@ -21,10 +21,11 @@ type MyOrdersResult =
 
 type MyOrderResult = { status: "ok"; order: Wire<CustomerOrder> } | { status: "not-found" } | { status: "error" };
 
-const getAccountProfile = async (): Promise<AccountResult> => {
+/** Profile, saved addresses, tax data and the saved-products count, in one read. */
+const getAccount = async (): Promise<AccountResult> => {
   try {
-    const { profile } = expectData(await serverRequest<{ profile: AccountProfile }>(ACCOUNT_PATH, { timeoutMs: TIMEOUT_MS }));
-    return { status: "ok", profile };
+    const account = expectData(await serverRequest<AccountResponse>(ACCOUNT_PATH, { timeoutMs: TIMEOUT_MS }));
+    return { status: "ok", account };
   } catch {
     return { status: "error" };
   }
@@ -55,4 +56,4 @@ const getMyOrder = async (id: string): Promise<MyOrderResult> => {
 };
 
 export type { AccountResult, MyOrdersResult, MyOrderResult };
-export { ORDERS_PAGE_SIZE, getAccountProfile, getMyOrders, getMyOrder };
+export { ORDERS_PAGE_SIZE, getAccount, getMyOrders, getMyOrder };

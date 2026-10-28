@@ -111,4 +111,4 @@ const publicIdParamSchema = Joi.object({
 
 const myOrdersQuerySchema = listQueryBase;
 
-export { createOrderSchema, publicIdParamSchema, myOrdersQuerySchema, shippingAddressSchema };
+export { createOrderSchema, publicIdParamSchema, myOrdersQuerySchema, shippingAddressSchema, phone as shippingPhone };

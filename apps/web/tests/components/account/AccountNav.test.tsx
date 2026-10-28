@@ -20,13 +20,18 @@ describe("AccountNav", () => {
     expect(screen.getByRole("link", { name: "Resumen" })).not.toHaveAttribute("aria-current");
   });
 
-  it("Direcciones y Facturación aparecen desactivadas, sin enlace", () => {
+  it("Direcciones y Facturación son enlaces reales, sin «Próximamente»", () => {
     pathname.value = "/cuenta";
     render(<AccountNav />);
-    expect(screen.queryByRole("link", { name: /Direcciones/ })).toBeNull();
-    expect(screen.queryByRole("link", { name: /Facturación/ })).toBeNull();
-    expect(screen.getByText("Direcciones").closest("[aria-disabled='true']")).not.toBeNull();
-    expect(screen.getAllByText("Próximamente")).toHaveLength(2);
+    expect(screen.getByRole("link", { name: "Direcciones" })).toHaveAttribute("href", "/cuenta/direcciones");
+    expect(screen.getByRole("link", { name: "Facturación" })).toHaveAttribute("href", "/cuenta/facturacion");
+    expect(screen.queryByText("Próximamente")).toBeNull();
+  });
+
+  it("marca activa la sección de direcciones", () => {
+    pathname.value = "/cuenta/direcciones";
+    render(<AccountNav />);
+    expect(screen.getByRole("link", { name: "Direcciones" })).toHaveAttribute("aria-current", "page");
   });
 
   it("enlaza Perfil y Guardados", () => {

@@ -6,7 +6,8 @@ import { AccountHeading } from "@/components/store/account/shell/AccountHeading"
 import { AccountShell } from "@/components/store/account/shell/AccountShell";
 import { AccountUnavailable } from "@/components/store/account/shell/AccountUnavailable";
 import { LoadFailure } from "@/components/store/account/shell/LoadFailure";
-import { getMyOrders } from "@/lib/api/accountServer";
+import { getAccount, getMyOrders } from "@/lib/api/accountServer";
+import { addressesSummary, billingSummary, savedSummary } from "@/lib/account/overviewSummaries";
 import { requireCustomer } from "@/lib/account/requireCustomer";
 import { STORE_ROUTES } from "@/lib/store/routes";
 
@@ -19,15 +20,16 @@ const ordersSummary = (total: number): string => {
 
 /**
  * `/cuenta`, the summary: greeting, the newest order and the account's identity. The name and
- * email come from the session itself; only the last order costs an extra read, and its failure
- * stays inside its own panel.
+ * email come from the session itself; the last order and the account read (addresses, tax data,
+ * saved count) are extra reads, and each failure only costs its own counts, never the page.
  */
 const AccountSummaryPage = async () => {
   const guard = await requireCustomer(STORE_ROUTES.account);
   if (guard.kind === "unavailable") return <AccountUnavailable />;
 
   const { user } = guard;
-  const orders = await getMyOrders(1, 1);
+  const [orders, account] = await Promise.all([getMyOrders(1, 1), getAccount()]);
+  const details = account.status === "ok" ? account.account : null;
 
   return (
     <AccountShell firstName={user.firstName}>
@@ -37,13 +39,25 @@ const AccountSummaryPage = async () => {
           {orders.status === "ok" ? <LastOrderPanel order={orders.orders[0] ?? null} /> : <LoadFailure what="tu último pedido" />}
         </div>
         <div className="border-t-2 border-dashed border-ink pt-6 lg:border-l-2 lg:border-t-0 lg:pl-8 lg:pt-0">
-          <AccountDetailsPanel firstName={user.firstName} lastName={user.lastName} email={user.email} />
+          <AccountDetailsPanel
+            firstName={user.firstName}
+            lastName={user.lastName}
+            email={user.email}
+            addressCount={details?.addresses.length ?? 0}
+          />
         </div>
       </div>
       <AccountTiles
         summaries={{
           ...(orders.status === "ok" ? { orders: ordersSummary(orders.meta.total) } : {}),
           profile: user.email,
+          ...(details
+            ? {
+                addresses: addressesSummary(details.addresses.length),
+                billing: billingSummary(details.billing),
+                saved: savedSummary(details.savedCount),
+              }
+            : {}),
         }}
       />
     </AccountShell>

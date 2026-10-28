@@ -12,7 +12,7 @@ interface PasswordCardProps {
 /** «Contraseña»: a line of text and «Cambiar», or the change form while editing. */
 const PasswordCard = ({ editing, onEdit, onDone, onCancel }: PasswordCardProps) => (
   <section aria-labelledby="password-title" className="grid gap-4">
-    <h2 id="password-title" className={`${T_PANEL_TITLE} text-2xl`}>
+    <h2 id="password-title" tabIndex={-1} className={`${T_PANEL_TITLE} text-2xl`}>
       Contraseña
     </h2>
     {editing ? (

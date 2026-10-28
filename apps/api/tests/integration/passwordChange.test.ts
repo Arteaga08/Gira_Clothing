@@ -1,11 +1,13 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import request from "supertest";
 import { AuditAction } from "@gira/shared";
 import { buildApp } from "../../src/app.js";
 import { User } from "../../src/models/User.js";
 import { Session } from "../../src/models/Session.js";
 import { AuditLog } from "../../src/models/AuditLog.js";
+import { hashOneTimeToken } from "../../src/utils/oneTimeToken.js";
 import { ORIGIN, createCustomer, loginCustomer, loginAsAdmin } from "../helpers/auth.js";
+import { spyOnMailer, sentTo, waitForToken, flushMail } from "../helpers/mail.js";
 
 const app = buildApp();
 const NEW_PASSWORD = "NuevaClave2026";
@@ -99,5 +101,67 @@ describe("PATCH /auth/password", () => {
     expect(log).not.toBeNull();
     expect(String(log?.actorId)).toBe(customer.id);
     expect(JSON.stringify(log)).not.toContain(NEW_PASSWORD);
+  });
+
+  it("invalida los enlaces de «olvidé mi contraseña» ya emitidos", async () => {
+    const spy = spyOnMailer();
+    const customer = await createCustomer();
+    const cookie = await loginCustomer(app, customer);
+    await request(app).post("/api/v1/auth/forgot-password").set("Origin", ORIGIN).send({ email: customer.email });
+    const token = await waitForToken(spy, customer.email, "restablecer-contrasena");
+    expect(await User.exists({ email: customer.email, "passwordReset.tokenHash": hashOneTimeToken(token) })).not.toBeNull();
+
+    expect((await changePassword(cookie, { currentPassword: customer.password, newPassword: NEW_PASSWORD })).status).toBe(200);
+
+    const stored = await User.findOne({ email: customer.email }).select("+passwordReset");
+    expect(stored?.passwordReset).toBeUndefined();
+    const reuse = await request(app).post("/api/v1/auth/reset-password").set("Origin", ORIGIN).send({ token, password: "OtraClave2026x" });
+    expect(reuse.status).toBe(400);
+  });
+});
+
+describe("PATCH /auth/password · correo de aviso", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("avisa por correo con el asunto acordado, sin token ni datos del cliente", async () => {
+    const spy = spyOnMailer();
+    const customer = await createCustomer();
+    const cookie = await loginCustomer(app, customer);
+    expect((await changePassword(cookie, { currentPassword: customer.password, newPassword: NEW_PASSWORD })).status).toBe(200);
+
+    await vi.waitFor(() => {
+      if (sentTo(spy, customer.email).length < 1) throw new Error("correo aún no enviado");
+    });
+    const mail = sentTo(spy, customer.email)[0]!;
+    expect(mail.subject).toBe("Tu contraseña cambió — Gira Clothing");
+    const body = `${mail.html}\n${mail.text}`;
+    expect(body).toContain("/recuperar-contrasena");
+    expect(body).not.toMatch(/token=|[a-f0-9]{64}/);
+    expect(body).not.toContain(NEW_PASSWORD);
+    expect(body).not.toContain(customer.password);
+    expect(body).not.toContain(customer.email);
+  });
+
+  it("no manda correo si la contraseña actual es incorrecta", async () => {
+    const spy = spyOnMailer();
+    const customer = await createCustomer();
+    const cookie = await loginCustomer(app, customer);
+    await changePassword(cookie, { currentPassword: "Incorrecta123", newPassword: NEW_PASSWORD });
+    await flushMail();
+    expect(sentTo(spy, customer.email)).toHaveLength(0);
+  });
+
+  it("un fallo del proveedor no rompe el cambio de contraseña", async () => {
+    const spy = spyOnMailer();
+    spy.mockRejectedValue(new Error("proveedor caído"));
+    const customer = await createCustomer();
+    const cookie = await loginCustomer(app, customer);
+    const res = await changePassword(cookie, { currentPassword: customer.password, newPassword: NEW_PASSWORD });
+    expect(res.status).toBe(200);
+    await flushMail();
+    const login = await request(app).post("/api/v1/auth/login").set("Origin", ORIGIN).send({ email: customer.email, password: NEW_PASSWORD });
+    expect(login.status).toBe(200);
   });
 });

@@ -14,14 +14,6 @@ const AccountNav = () => {
   return (
     <nav aria-label="Mi cuenta" className="grid gap-1">
       {ACCOUNT_NAV_ITEMS.map((item) => {
-        if (item.href === null) {
-          return (
-            <span key={item.id} aria-disabled="true" className={cn(ITEM_BASE, "flex items-center justify-between border-transparent text-text-muted")}>
-              {item.label}
-              <span className="font-mono text-2xs uppercase tracking-wide">Próximamente</span>
-            </span>
-          );
-        }
         const active = isNavItemActive(item, pathname);
         return (
           <Link

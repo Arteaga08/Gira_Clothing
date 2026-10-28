@@ -1,6 +1,6 @@
 import { getMailer } from "../adapters/mailer/index.js";
 import { logger } from "../config/logger.js";
-import { renderPasswordResetEmail, renderVerificationEmail } from "../templates/authEmails.js";
+import { renderPasswordChangedEmail, renderPasswordResetEmail, renderVerificationEmail } from "../templates/authEmails.js";
 import type { RenderedMail } from "../templates/emailLayout.js";
 
 /**
@@ -35,5 +35,9 @@ const sendVerificationEmail = ({ to, token }: AccountEmailRequest): Promise<void
 const sendPasswordResetEmail = ({ to, token }: AccountEmailRequest): Promise<void> =>
   deliver("password_reset", to, () => renderPasswordResetEmail({ token }));
 
+/** Security notice: carries no token and nothing about the person, so it takes only the address. */
+const sendPasswordChangedEmail = ({ to }: { to: string }): Promise<void> =>
+  deliver("password_changed", to, () => renderPasswordChangedEmail());
+
 export type { AccountEmailRequest };
-export { sendVerificationEmail, sendPasswordResetEmail };
+export { sendVerificationEmail, sendPasswordResetEmail, sendPasswordChangedEmail };

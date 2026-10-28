@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { renderVerificationEmail, renderPasswordResetEmail } from "../../src/templates/authEmails.js";
+import { renderVerificationEmail, renderPasswordResetEmail, renderPasswordChangedEmail } from "../../src/templates/authEmails.js";
 
 const TOKEN = "f".repeat(64);
 
@@ -25,5 +25,15 @@ describe("correos de cuenta", () => {
       expect(mail.html).not.toContain("Atacante");
       expect(mail.text).not.toContain("Atacante");
     }
+  });
+
+  it("aviso de contraseña cambiada: asunto fijo, enlace a recuperar sin token y sin datos del usuario", () => {
+    const mail = renderPasswordChangedEmail();
+    expect(mail.subject).toBe("Tu contraseña cambió — Gira Clothing");
+    for (const body of [mail.html, mail.text]) {
+      expect(body).toContain("/recuperar-contrasena");
+      expect(body).not.toMatch(/token=/);
+    }
+    expect(mail.text).toMatch(/si no fuiste tú/i);
   });
 });

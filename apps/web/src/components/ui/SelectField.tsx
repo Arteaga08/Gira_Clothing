@@ -223,7 +223,7 @@ const SelectField = ({
         onKeyDown={handleKeyDown}
         className={cn(
           "flex min-h-10 w-full cursor-pointer items-center justify-between gap-3 rounded-nb-sm border-2 bg-surface pl-3 pr-3 text-left text-sm text-text-primary shadow-nb-sm",
-          "outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
+          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
           "disabled:cursor-not-allowed disabled:opacity-50",
           open && "bg-brand-subtle",
           hasError ? "border-danger" : "border-ink",

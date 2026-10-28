@@ -5,6 +5,7 @@ import { BIRTH_DATE_MIN, CITY_MAX_LENGTH, type AccountProfile, type Wire } from 
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { Notice } from "@/components/ui/Notice";
+import { useFocusFirstField } from "@/hooks/useFocusFirstField";
 import { useSubmit } from "@/hooks/useSubmit";
 import { updateProfile } from "@/lib/api/account";
 import { authFailureMessage } from "@/lib/auth/authFailures";
@@ -31,6 +32,7 @@ const ProfileForm = ({ profile, onSaved, onCancel }: ProfileFormProps) => {
   const [values, setValues] = useState<ProfileFormValues>(() => profileToValues(profile));
   const [errors, setErrors] = useState<ProfileFormErrors>({});
   const { pending, error, setError, run } = useSubmit();
+  const formRef = useFocusFirstField();
 
   const set = (key: keyof ProfileFormValues) => (value: string) => {
     setValues((current) => ({ ...current, [key]: value }));
@@ -56,7 +58,7 @@ const ProfileForm = ({ profile, onSaved, onCancel }: ProfileFormProps) => {
   };
 
   return (
-    <form onSubmit={submit} noValidate className="grid gap-4">
+    <form ref={formRef} onSubmit={submit} noValidate className="grid gap-4">
       {error ? (
         <Notice variant="danger" title="No pudimos guardar">
           {error}

@@ -2,7 +2,10 @@ import { describe, it, expect } from "vitest";
 import request from "supertest";
 import { buildApp } from "../../src/app.js";
 import { User } from "../../src/models/User.js";
+import { Print } from "../../src/models/Print.js";
+import { Wishlist } from "../../src/models/Wishlist.js";
 import { ORIGIN, createCustomer, loginCustomer, loginAsAdmin } from "../helpers/auth.js";
+import { seedVariant } from "../helpers/seedInventory.js";
 
 const app = buildApp();
 
@@ -41,8 +44,23 @@ describe("GET /account", () => {
       birthDate: null,
       city: null,
     });
+    expect(res.body.data.addresses).toEqual([]);
+    expect(res.body.data.billing).toBeNull();
+    expect(res.body.data.savedCount).toBe(0);
     const raw = JSON.stringify(res.body);
     expect(raw).not.toMatch(/password|tokenVersion|twoFactor|role|emailVerification|passwordReset/);
+  });
+
+  it("savedCount cuenta solo lo guardado que sigue a la venta", async () => {
+    const { customer, cookie } = await setup();
+    const visible = await seedVariant({ tag: "ac1", onHand: 2 });
+    const retired = await seedVariant({ tag: "ac2", onHand: 2 });
+    await Print.updateOne({ _id: retired.printId }, { $set: { isActive: false } });
+    await Wishlist.create([
+      { user: customer.id, variant: visible.id },
+      { user: customer.id, variant: retired.id },
+    ]);
+    expect((await getAccount(cookie)).body.data.savedCount).toBe(1);
   });
 });
 

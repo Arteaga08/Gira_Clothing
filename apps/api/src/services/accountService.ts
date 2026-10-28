@@ -1,7 +1,10 @@
 import type { Types } from "mongoose";
-import type { AccountProfile, UpdateProfileRequest } from "@gira/shared";
-import { User } from "../models/User.js";
+import type { AccountProfile, AccountResponse, UpdateProfileRequest } from "@gira/shared";
+import { User, type BillingAttrs, type SavedAddressAttrs } from "../models/User.js";
 import { AppError } from "../utils/AppError.js";
+import { toSavedAddress } from "./addressService.js";
+import { toBillingInfo } from "./billingService.js";
+import { listWishlistIds } from "./wishlistService.js";
 
 /**
  * The customer's own profile (M15b). Reads go through an explicit field list
@@ -10,6 +13,7 @@ import { AppError } from "../utils/AppError.js";
  */
 
 const PROFILE_SELECT = "firstName lastName email phone birthDate city";
+const ACCOUNT_SELECT = `${PROFILE_SELECT} addresses billing`;
 
 interface ProfileRow {
   firstName: string;
@@ -18,6 +22,11 @@ interface ProfileRow {
   phone?: string | undefined;
   birthDate?: Date | undefined;
   city?: string | undefined;
+}
+
+interface AccountRow extends ProfileRow {
+  addresses?: SavedAddressAttrs[] | undefined;
+  billing?: BillingAttrs | undefined;
 }
 
 const toAccountProfile = (row: ProfileRow): AccountProfile => ({
@@ -29,10 +38,19 @@ const toAccountProfile = (row: ProfileRow): AccountProfile => ({
   city: row.city ?? null,
 });
 
-const getAccountProfile = async (userId: Types.ObjectId): Promise<AccountProfile> => {
-  const row = await User.findOne({ _id: userId, isActive: true }).select(PROFILE_SELECT).lean<ProfileRow>();
+/** Everything «Mi cuenta» shows at once: profile, saved addresses, tax data and how many products are saved. */
+const getAccount = async (userId: Types.ObjectId): Promise<AccountResponse> => {
+  const [row, savedIds] = await Promise.all([
+    User.findOne({ _id: userId, isActive: true }).select(ACCOUNT_SELECT).lean<AccountRow>(),
+    listWishlistIds(userId),
+  ]);
   if (!row) throw new AppError("No encontramos tu cuenta.", 404);
-  return toAccountProfile(row);
+  return {
+    profile: toAccountProfile(row),
+    addresses: (row.addresses ?? []).map(toSavedAddress),
+    billing: toBillingInfo(row.billing),
+    savedCount: savedIds.length,
+  };
 };
 
 type OptionalField = "phone" | "birthDate" | "city";
@@ -69,4 +87,4 @@ const updateAccountProfile = async (
   return toAccountProfile(row);
 };
 
-export { getAccountProfile, updateAccountProfile };
+export { getAccount, updateAccountProfile };
