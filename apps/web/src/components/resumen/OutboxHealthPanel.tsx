@@ -23,6 +23,8 @@ const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   [NotificationType.ORDER_PREPARING]: "pedido en proceso",
   [NotificationType.ORDER_SHIPPED]: "pedido enviado",
   [NotificationType.ORDER_DELIVERED]: "pedido entregado",
+  [NotificationType.ORDER_PAYMENT_FAILED]: "aviso de pago no aprobado",
+  [NotificationType.ORDER_REFUNDED]: "confirmación de reembolso",
   [NotificationType.TEAM_ORDER_PAID]: "aviso de pedido pagado",
   [NotificationType.TEAM_PAYMENT_FAILED]: "aviso de pago fallido",
   [NotificationType.TEAM_SHIPMENT_INCIDENT]: "aviso de incidencia de envío",

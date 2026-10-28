@@ -12,6 +12,8 @@ const toOrderEmailSnapshot = (order: OrderDocument): OrderEmailSnapshot => ({
   customerName: order.customer.name,
   currency: order.currency,
   subtotal: order.subtotal,
+  discount: order.discount,
+  ...(order.coupon ? { couponCode: order.coupon.code } : {}),
   shippingCost: order.shippingCost,
   total: order.total,
   lines: order.lines.map((line) => ({

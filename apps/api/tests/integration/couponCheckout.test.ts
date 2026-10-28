@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import mongoose from "mongoose";
 import { randomUUID } from "node:crypto";
 import request from "supertest";
-import { CouponDiscountType, Currency, PriceRounding } from "@gira/shared";
+import { CouponDiscountType, Currency, OrderStatus, PriceRounding } from "@gira/shared";
 import { Coupon } from "../../src/models/Coupon.js";
 import { CouponRedemption } from "../../src/models/CouponRedemption.js";
 import { Order } from "../../src/models/Order.js";
@@ -11,7 +11,7 @@ import { Product } from "../../src/models/Product.js";
 import { releaseReservation, commitReservation } from "../../src/services/reservationService.js";
 import { splitTax } from "../../src/utils/orderTax.js";
 import { convertFromMxn } from "../../src/utils/money.js";
-import { createCustomer, loginAsAdmin, ORIGIN } from "../helpers/auth.js";
+import { createCustomer, loginAsAdmin, loginAsCustomer, ORIGIN } from "../helpers/auth.js";
 import {
   createOrderWithQuote,
   seedCatalogVariant,
@@ -136,17 +136,6 @@ describe("checkout con cupón", () => {
     expect((await Coupon.findById(coupon._id))!.redeemedCount).toBe(0);
   });
 
-  it("invitado con cupón: 401 y no reserva ni crea nada", async () => {
-    const variantId = await seedVariant("A4");
-    await makeCoupon();
-    await expect(checkout(variantId, { couponCode: "CHECKOUT10" })).rejects.toMatchObject({
-      statusCode: 401,
-      message: "Inicia sesión para usar un cupón.",
-    });
-    expect(await Order.countDocuments()).toBe(0);
-    expect((await Variant.findById(variantId))!.reserved).toBe(0);
-  });
-
   it("compra mínima no alcanzada: 409 sin reservar", async () => {
     const variantId = await seedVariant("A5");
     await makeCoupon({ minSubtotalMxn: 50_000 });
@@ -160,7 +149,9 @@ describe("checkout con cupón", () => {
     const variantId = await seedVariant("A6");
     await makeCoupon();
     const userId = await newUser();
-    await checkout(variantId, { userId, couponCode: "CHECKOUT10" });
+    const first = await checkout(variantId, { userId, couponCode: "CHECKOUT10" });
+    // Paid, so the one-pending-order rule (M16) does not answer first.
+    await Order.updateOne({ publicId: first.order.publicId }, { $set: { status: OrderStatus.PAID } });
     await expect(checkout(variantId, { userId, couponCode: "CHECKOUT10" })).rejects.toMatchObject({
       statusCode: 409,
       message: "Ya usaste este cupón.",
@@ -189,6 +180,8 @@ describe("checkout con cupón", () => {
     const created = await checkout(variantId, { userId, couponCode: "CHECKOUT10" });
     const order = (await Order.findOne({ publicId: created.order.publicId }))!;
 
+    // What the expiry sweep does: the order expires, then its hold (and coupon seat) is released.
+    await Order.updateOne({ _id: order._id }, { $set: { status: OrderStatus.EXPIRED } });
     expect(await releaseReservation(order._id, "expired")).toBe(true);
     expect((await Coupon.findById(coupon._id))!.redeemedCount).toBe(0);
     expect(await CouponRedemption.countDocuments({ order: order._id })).toBe(0);
@@ -233,6 +226,7 @@ describe("POST /orders · validación del código", () => {
     const res = await request(app)
       .post("/api/v1/orders")
       .set("Origin", ORIGIN)
+      .set("Cookie", await loginAsCustomer(app))
       .send({
         lines: [{ variantId: new mongoose.Types.ObjectId().toString(), qty: 1 }],
         customer: validCustomer,

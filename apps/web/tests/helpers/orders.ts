@@ -31,6 +31,7 @@ const makeRawOrder = (overrides: Partial<RawAdminOrder> = {}): RawAdminOrder => 
   orderNumber: "GC-7KQ3M2XV",
   status: OrderStatus.PAID,
   priority: OrderPriority.NORMAL,
+  coupon: null,
   customer: { email: "ana.ruiz@example.com", name: "Ana Sofía Ruiz", phone: "5598765432" },
   shipping: {
     recipient: "Ana Sofía Ruiz",

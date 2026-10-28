@@ -8,7 +8,8 @@ import { createShippingQuote } from "../../src/services/shippingQuoteService.js"
 import { Order } from "../../src/models/Order.js";
 import { ShippingQuote } from "../../src/models/ShippingQuote.js";
 import { Variant } from "../../src/models/Variant.js";
-import { loginAsAdmin, ORIGIN } from "../helpers/auth.js";
+import { Types } from "mongoose";
+import { createCustomer, loginAsAdmin, loginCustomer, ORIGIN } from "../helpers/auth.js";
 import {
   seedCatalogVariant,
   seedShippingOrigin,
@@ -18,10 +19,18 @@ import {
 
 const app = buildApp();
 let variantId: string;
+// Checkout is accounts-only (M16): orders and quotes belong to this buyer.
+let buyerId: Types.ObjectId;
+let buyerCookie: string;
 beforeEach(async () => {
   const cookie = await loginAsAdmin(app);
   variantId = await seedCatalogVariant(app, cookie, "ORDSHIP");
+  const buyer = await createCustomer();
+  buyerId = new Types.ObjectId(buyer.id);
+  buyerCookie = await loginCustomer(app, buyer);
 });
+
+const ctx = () => ({ userId: buyerId });
 
 const quoteFor = async (qty = 1, currency = Currency.MXN) => {
   await seedShippingOrigin();
@@ -35,7 +44,7 @@ const quoteFor = async (qty = 1, currency = Currency.MXN) => {
         city: validShipping.city,
       },
     },
-    {},
+    { userId: buyerId },
   );
 };
 
@@ -55,7 +64,7 @@ describe("createOrder con cotización de envío", () => {
     const rate = q.rates[1]!; // la 2ª opción, no la más barata
     const { order } = await createOrder(
       build({ shippingQuote: { quoteId: q.quoteId, rateId: rate.rateId } }) as never,
-      {},
+      ctx(),
     );
     expect(order.shippingCost).toBe(rate.amount);
     expect(order.total).toBe(order.subtotal + rate.amount);
@@ -77,7 +86,7 @@ describe("createOrder con cotización de envío", () => {
     await expect(
       createOrder(
         build({ shippingQuote: { quoteId: q.quoteId, rateId: q.rates[0]!.rateId } }) as never,
-        {},
+        ctx(),
       ),
     ).rejects.toMatchObject({ statusCode: 409 });
   });
@@ -86,23 +95,23 @@ describe("createOrder con cotización de envío", () => {
     const q = await quoteFor(1);
     const sel = { quoteId: q.quoteId, rateId: q.rates[0]!.rateId };
     await expect(
-      createOrder(build({ lines: [{ variantId, qty: 2 }], shippingQuote: sel }) as never, {}),
+      createOrder(build({ lines: [{ variantId, qty: 2 }], shippingQuote: sel }) as never, ctx()),
     ).rejects.toMatchObject({ statusCode: 409 });
     await expect(
       createOrder(
         build({ shipping: { ...validShipping, postalCode: "99999" }, shippingQuote: sel }) as never,
-        {},
+        ctx(),
       ),
     ).rejects.toMatchObject({ statusCode: 409 });
     await expect(
-      createOrder(build({ currency: Currency.USD, shippingQuote: sel }) as never, {}),
+      createOrder(build({ currency: Currency.USD, shippingQuote: sel }) as never, ctx()),
     ).rejects.toMatchObject({ statusCode: 409 });
   });
 
   it("una cotización inválida no reserva stock", async () => {
     const before = await Variant.findById(variantId).lean();
     await expect(
-      createOrder(build({ shippingQuote: { quoteId: "nope", rateId: "x" } }) as never, {}),
+      createOrder(build({ shippingQuote: { quoteId: "nope", rateId: "x" } }) as never, ctx()),
     ).rejects.toBeTruthy();
     const after = await Variant.findById(variantId).lean();
     expect(after?.reserved).toBe(before?.reserved);
@@ -114,6 +123,7 @@ describe("POST /orders · validación del checkout", () => {
     request(app)
       .post("/api/v1/orders")
       .set("Origin", ORIGIN)
+      .set("Cookie", buyerCookie)
       .set("Idempotency-Key", randomUUID())
       .send(body);
 

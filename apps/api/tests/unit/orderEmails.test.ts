@@ -5,6 +5,8 @@ import {
   renderOrderPreparing,
   renderOrderShipped,
   renderOrderDelivered,
+  renderOrderPaymentFailed,
+  renderOrderRefunded,
   formatMoney,
 } from "../../src/templates/orderEmails.js";
 
@@ -14,6 +16,7 @@ const snapshot = {
   customerName: "Ana",
   currency: Currency.MXN,
   subtotal: 120000,
+  discount: 0,
   shippingCost: 15000,
   total: 135000,
   lines: [{ productName: "Tote", printName: "Amapolas", qty: 2, lineTotal: 120000 }],
@@ -111,6 +114,54 @@ describe("renderOrderDelivered", () => {
     expect(mail.text).toContain("Folio: GC-7KQ2M9XA");
   });
   it("no filtra el publicId fuera del enlace", () => {
+    expect(mail.html.replace("/orden/abc123", "")).not.toContain("abc123");
+  });
+});
+
+describe("renderOrderConfirmation · cupón", () => {
+  it("muestra el descuento con el código cuando hubo cupón", () => {
+    const mail = renderOrderConfirmation({
+      ...snapshot,
+      discount: 12000,
+      couponCode: "VERANO10",
+      total: 123000,
+    });
+    expect(mail.html).toContain("Descuento (VERANO10): -$120.00 MXN");
+    expect(mail.text).toContain("Descuento (VERANO10): -$120.00 MXN");
+  });
+  it("sin cupón no pinta la línea de descuento", () => {
+    const mail = renderOrderConfirmation(snapshot);
+    expect(mail.html).not.toContain("Descuento");
+  });
+});
+
+describe("renderOrderPaymentFailed", () => {
+  const mail = renderOrderPaymentFailed(snapshot);
+
+  it("avisa con el folio y nunca menciona reembolso", () => {
+    expect(mail.subject).toBe("No pudimos cobrar tu pedido GC-7KQ2M9XA");
+    expect(`${mail.html} ${mail.text}`.toLowerCase()).not.toContain("reembols");
+  });
+  it("invita a reintentar desde Mis pedidos, sin filtrar el publicId", () => {
+    expect(mail.html).toContain("/cuenta/pedidos");
+    expect(mail.text).toContain("/cuenta/pedidos");
+    expect(mail.html).not.toContain("abc123");
+    expect(mail.text).not.toContain("abc123");
+  });
+  it("escapa el nombre", () => {
+    expect(renderOrderPaymentFailed({ ...snapshot, customerName: "<b>x</b>" }).html).not.toContain("<b>x");
+  });
+});
+
+describe("renderOrderRefunded", () => {
+  const mail = renderOrderRefunded({ ...snapshot, refundedAmount: 135000 });
+
+  it("confirma el monto devuelto con el folio", () => {
+    expect(mail.subject).toBe("Te devolvimos el pago de tu pedido GC-7KQ2M9XA");
+    expect(mail.html).toContain("$1,350.00 MXN");
+    expect(mail.text).toContain("$1,350.00 MXN");
+  });
+  it("el publicId solo aparece en el enlace", () => {
     expect(mail.html.replace("/orden/abc123", "")).not.toContain("abc123");
   });
 });

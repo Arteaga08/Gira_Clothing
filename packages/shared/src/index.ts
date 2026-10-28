@@ -105,6 +105,7 @@ import type {
   ImageAttrs,
   OrderLine,
   PublicOrder,
+  CheckoutSummary,
   CustomerOrder,
   StatusHistoryEntry,
   OrderPayment,
@@ -230,6 +231,7 @@ import type {
 import type { PeriodPreset, StatsGranularity } from "./constants/stats.js";
 import { PERIOD_PRESETS, STATS_GRANULARITIES, MAX_STATS_DAYS } from "./constants/stats.js";
 import {
+  MIN_CHARGEABLE_MXN,
   MAX_STATUS_HISTORY,
   ORDER_NUMBER_ALPHABET,
   ORDER_NUMBER_PREFIX,
@@ -282,6 +284,9 @@ import {
   UPLOAD_MIME_TYPES,
 } from "./constants/catalog.js";
 import type { WishlistItem } from "./types/wishlist.js";
+import type { CartLineView, CartView } from "./types/cart.js";
+import { CartLineStatus } from "./enums/cart.js";
+import { CART_MAX_LINES } from "./constants/cart.js";
 import { WISHLIST_MAX_ITEMS } from "./constants/wishlist.js";
 import { PASSWORD_MIN_LENGTH, PASSWORD_MAX_BYTES } from "./constants/password.js";
 import type {
@@ -341,6 +346,7 @@ export type {
   ImageAttrs,
   OrderLine,
   PublicOrder,
+  CheckoutSummary,
   CustomerOrder,
   StatusHistoryEntry,
   OrderPayment,
@@ -454,6 +460,7 @@ export type { StatsGranularity, PeriodPreset };
 export { STATS_GRANULARITIES, MAX_STATS_DAYS, PERIOD_PRESETS };
 export type { OrderStatusGroup };
 export {
+  MIN_CHARGEABLE_MXN,
   MAX_STATUS_HISTORY,
   ORDER_NUMBER_ALPHABET,
   ORDER_NUMBER_PREFIX,
@@ -470,6 +477,8 @@ export {
   matchStatusGroup,
 };
 export type { WishlistItem };
+export type { CartLineView, CartView };
+export { CartLineStatus, CART_MAX_LINES };
 export { WISHLIST_MAX_ITEMS };
 export { PASSWORD_MIN_LENGTH, PASSWORD_MAX_BYTES };
 export type {

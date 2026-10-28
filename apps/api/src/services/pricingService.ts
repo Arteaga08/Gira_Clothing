@@ -1,5 +1,5 @@
 import type { Types } from "mongoose";
-import { Currency, CouponDiscountType } from "@gira/shared";
+import { Currency, CouponDiscountType, MIN_CHARGEABLE_MXN } from "@gira/shared";
 import type { PriceRounding, OrderCoupon } from "@gira/shared";
 import { Variant } from "../models/Variant.js";
 import { AppError } from "../utils/AppError.js";
@@ -211,5 +211,22 @@ const quoteTotals = async (lines: ResolvedLine[], input: QuoteInput): Promise<Qu
   };
 };
 
+const BELOW_MINIMUM_WITH_COUPON =
+  "Con este cupón tu pedido queda en menos de $10 y no se puede pagar con tarjeta.";
+const BELOW_MINIMUM = "Tu pedido queda en menos de $10 y no se puede pagar con tarjeta.";
+
+/**
+ * A card cannot be charged less than $10 MXN, and there is no free-order path.
+ * Checked by the checkout BEFORE any stock is reserved or coupon redeemed; the
+ * owners create coupons by hand and the panel warns them about this floor.
+ */
+const assertChargeable = (quote: Quote): void => {
+  const totalMxn =
+    quote.currency === Currency.MXN ? quote.total : Math.round((quote.total * quote.exchangeRate) / 100);
+  if (totalMxn < MIN_CHARGEABLE_MXN) {
+    throw new AppError(quote.discount > 0 ? BELOW_MINIMUM_WITH_COUPON : BELOW_MINIMUM, 409);
+  }
+};
+
 export type { RequestedLine, ResolvedLine, QuotedLine, Quote, QuoteInput, AppliedCoupon };
-export { resolveOrderLines, quoteTotals, UNAVAILABLE };
+export { resolveOrderLines, quoteTotals, assertChargeable, UNAVAILABLE };

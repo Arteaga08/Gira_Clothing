@@ -20,12 +20,14 @@ interface MergeResult {
 const NOTHING: MergeResult = { moved: 0, dropped: 0, kept: 0 };
 
 /**
- * Only "that variant no longer exists" (404/410) is final. Everything else (a 401/403 while the
- * session settles, 409/429, a full cart, network, 5xx) may pass on the next try, and losing what the
- * visitor chose is worse than retrying, so those lines stay in the browser.
+ * Only 410 is final: the API answers it when the variant is gone for good (missing, or it, its
+ * product or its print retired). Stock is not checked on write, so a sold-out line moves and the
+ * cart flags it. Everything else (a 401/403 while the session settles, 404, 409/429, a full cart,
+ * network, 5xx) may pass on the next try, and losing what the visitor chose is worse than
+ * retrying, so those lines stay in the browser.
  */
 const isDefiniteRefusal = (error: unknown): boolean =>
-  isApiError(error) && error.kind === "http" && (error.status === 404 || error.status === 410);
+  isApiError(error) && error.kind === "http" && error.status === 410;
 
 /**
  * Pours the visitor's browser cart into the account cart after login (spec §3).

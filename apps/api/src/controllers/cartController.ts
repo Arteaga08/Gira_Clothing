@@ -3,7 +3,7 @@ import { Types } from "mongoose";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { sendResponse } from "../utils/sendResponse.js";
 import { AppError } from "../utils/AppError.js";
-import { getCart, setCartLine, removeCartLine, clearCart } from "../services/cartService.js";
+import { getCart, setCartLine, removeCartLine, clearCart, previewCart } from "../services/cartService.js";
 
 /**
  * Cart controllers — orchestrate req/res only, never touch models. Every route
@@ -37,4 +37,11 @@ const clear = asyncHandler(async (req: Request, res: Response) => {
   sendResponse(res, 200, "Carrito vaciado correctamente.", { cart });
 });
 
-export { detail, setLine, removeLine, clear };
+/** Public: the guest cart lives in the browser and only this reads it against the catalog. */
+const preview = asyncHandler(async (req: Request, res: Response) => {
+  const { lines } = req.body as { lines: { variantId: string; qty: number }[] };
+  const cart = await previewCart(lines);
+  sendResponse(res, 200, "Carrito obtenido correctamente.", { cart });
+});
+
+export { detail, setLine, removeLine, clear, preview };

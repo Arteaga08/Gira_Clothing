@@ -72,13 +72,13 @@ describe("mergeGuestCart", () => {
     expect(setAccountCartQty).toHaveBeenCalledWith(V1, 20);
   });
 
-  it("línea rechazada por el API (4xx) se descarta; las demás siguen", async () => {
+  it("línea retirada (410) se descarta; las demás siguen", async () => {
     seedGuest([
       { variantId: V1, qty: 1 },
       { variantId: V2, qty: 1 },
     ]);
     fetchAccountCartLines.mockResolvedValue([]);
-    setAccountCartQty.mockRejectedValueOnce(new ApiError("Esa variante ya no está disponible.", "http", 404));
+    setAccountCartQty.mockRejectedValueOnce(new ApiError("Este producto ya no está disponible.", "http", 410));
 
     const result = await mergeGuestCart();
 
@@ -87,7 +87,7 @@ describe("mergeGuestCart", () => {
     expect(window.localStorage.getItem(GUEST_CART_KEY)).toBeNull();
   });
 
-  it.each([[401], [403], [409], [400], [408]])("un %i no es definitivo: la línea se conserva para el siguiente intento", async (status) => {
+  it.each([[401], [403], [404], [409], [400], [408]])("un %i no es definitivo: la línea se conserva para el siguiente intento", async (status) => {
     seedGuest([{ variantId: V1, qty: 3 }]);
     fetchAccountCartLines.mockResolvedValue([]);
     setAccountCartQty.mockRejectedValueOnce(new ApiError("No pudimos", "http", status));
@@ -98,12 +98,12 @@ describe("mergeGuestCart", () => {
     expect(guestLines()).toEqual([{ variantId: V1, qty: 3 }]);
   });
 
-  it("solo 404/410 (la variante ya no existe) descartan la línea", async () => {
+  it("solo 410 (retirada o inexistente, definitivo) descarta la línea", async () => {
     seedGuest([{ variantId: V1, qty: 1 }, { variantId: V2, qty: 1 }]);
     fetchAccountCartLines.mockResolvedValue([]);
     setAccountCartQty
-      .mockRejectedValueOnce(new ApiError("No existe", "http", 404))
-      .mockRejectedValueOnce(new ApiError("Retirada", "http", 410));
+      .mockRejectedValueOnce(new ApiError("Este producto ya no está disponible.", "http", 410))
+      .mockRejectedValueOnce(new ApiError("Este producto ya no está disponible.", "http", 410));
 
     const result = await mergeGuestCart();
 

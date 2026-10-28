@@ -45,6 +45,8 @@ interface EnqueueInput {
   to: string;
   order?: Types.ObjectId | undefined;
   payload: Record<string, unknown>;
+  /** First delivery no earlier than this (default: now). */
+  notBefore?: Date | undefined;
 }
 
 interface EnqueueOptions {
@@ -70,7 +72,7 @@ const enqueueNotification = async (
       payload: input.payload,
       status: NotificationStatus.PENDING,
       attempts: 0,
-      nextAttemptAt: new Date(),
+      nextAttemptAt: input.notBefore ?? new Date(),
     });
     return true;
   } catch (err) {

@@ -44,7 +44,7 @@ mockCreate.mockImplementation(() =>
 );
 
 const { buildApp } = await import("../../src/app.js");
-const { createOrderWithQuote: createOrder } = await import("../helpers/orders.js");
+const { createOrderWithQuote: createOrder, newCustomerId } = await import("../helpers/orders.js");
 const { expireReservations } = await import("../../src/jobs/expireReservations.js");
 const { reconcilePayments } = await import("../../src/jobs/reconcilePayments.js");
 const { Order } = await import("../../src/models/Order.js");
@@ -740,7 +740,8 @@ describe("carrito · se vacía al pagar, no al crear la orden", () => {
   const seedCartOrder = async (adminCookie: string, suffix: string, useCart: boolean) => {
     const { setCartLine, getCart } = await import("../../src/services/cartService.js");
     const variantId = await seedVariant(adminCookie, suffix, 10);
-    const userId = new mongoose.Types.ObjectId();
+    // Checkout is accounts-only (M16): the cart's owner must be a real, verified customer.
+    const userId = await newCustomerId();
     await setCartLine(userId, variantId, 2);
     const result = await createOrder(
       {

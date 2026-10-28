@@ -5,7 +5,9 @@ import { buildApp } from "../../src/app.js";
 import { Variant } from "../../src/models/Variant.js";
 import { Order } from "../../src/models/Order.js";
 import { resetRateLimitStores } from "../../src/middlewares/rateLimit.js";
-import { loginAsAdmin, loginAsCustomer, ORIGIN } from "../helpers/auth.js";
+import { Types } from "mongoose";
+import { Currency } from "@gira/shared";
+import { createCustomer, loginAsAdmin, loginCustomer, ORIGIN } from "../helpers/auth.js";
 import { quoteRateFor, withQuote } from "../helpers/orders.js";
 
 const app = buildApp();
@@ -80,20 +82,40 @@ const seedVariant = async (adminCookie: string, suffix: string): Promise<string>
 // adivinarla es lo que permitiría recuperar la orden de otra persona.
 const uniqueKey = (): string => randomUUID();
 
+interface Shopper {
+  id: string;
+  cookie: string;
+}
+
+/** Checkout is accounts-only (M16): every order is placed by a logged-in customer. */
+const newShopper = async (): Promise<Shopper> => {
+  const customer = await createCustomer();
+  return { id: customer.id, cookie: await loginCustomer(app, customer) };
+};
+
+const orderBody = (variantId: string, extra: Record<string, unknown> = {}) => ({
+  lines: [{ variantId, qty: 1 }],
+  termsAccepted: true,
+  customer: validCustomer,
+  shipping: validShipping,
+  ...extra,
+});
+
+const postOrder = (shopper: Shopper, body: Record<string, unknown>) =>
+  request(app)
+    .post(ORDERS_BASE)
+    .set("Origin", ORIGIN)
+    .set("Cookie", shopper.cookie)
+    .set("Idempotency-Key", uniqueKey())
+    .send(body);
+
 describe("Order routes · checkout", () => {
-  it("POST /orders anónimo con lines responde 201", async () => {
+  it("POST /orders con sesión y lines responde 201", async () => {
     const adminCookie = await loginAsAdmin(app);
     const variantId = await seedVariant(adminCookie, "R1");
+    const shopper = await newShopper();
 
-    const res = await request(app)
-      .post(ORDERS_BASE)
-      .set("Origin", ORIGIN)
-      .set("Idempotency-Key", uniqueKey())
-      .send(await withQuote({
-        lines: [{ variantId, qty: 1 }],
-        termsAccepted: true, customer: validCustomer,
-        shipping: validShipping,
-      }));
+    const res = await postOrder(shopper, await withQuote(orderBody(variantId), shopper.id));
 
     expect(res.status).toBe(201);
     expect(res.body.data.order.publicId).toBeDefined();
@@ -103,26 +125,21 @@ describe("Order routes · checkout", () => {
   it("POST /orders con cookie de cliente y useCart responde 201", async () => {
     const adminCookie = await loginAsAdmin(app);
     const variantId = await seedVariant(adminCookie, "R2");
-    const customerCookie = await loginAsCustomer(app);
+    const shopper = await newShopper();
 
     await request(app)
       .put(`/api/v1/cart/lines/${variantId}`)
       .set("Origin", ORIGIN)
-      .set("Cookie", customerCookie)
+      .set("Cookie", shopper.cookie)
       .send({ qty: 1 });
 
-    const res = await request(app)
-      .post(ORDERS_BASE)
-      .set("Origin", ORIGIN)
-      .set("Cookie", customerCookie)
-      .set("Idempotency-Key", uniqueKey())
-      .send({
-        useCart: true,
-        termsAccepted: true,
-        customer: validCustomer,
-        shipping: validShipping,
-        shippingQuote: await quoteRateFor(variantId, 1),
-      });
+    const res = await postOrder(shopper, {
+      useCart: true,
+      termsAccepted: true,
+      customer: validCustomer,
+      shipping: validShipping,
+      shippingQuote: await quoteRateFor(variantId, 1, Currency.MXN, new Types.ObjectId(shopper.id)),
+    });
 
     expect(res.status).toBe(201);
   });
@@ -130,12 +147,14 @@ describe("Order routes · checkout", () => {
   it("sin Origin responde 403 (verifyOrigin)", async () => {
     const adminCookie = await loginAsAdmin(app);
     const variantId = await seedVariant(adminCookie, "R3");
+    const shopper = await newShopper();
 
     const res = await request(app)
       .post(ORDERS_BASE)
       .set("Origin", "http://evil.example.com")
+      .set("Cookie", shopper.cookie)
       .set("Idempotency-Key", uniqueKey())
-      .send(await withQuote({ lines: [{ variantId, qty: 1 }], termsAccepted: true, customer: validCustomer, shipping: validShipping }));
+      .send(await withQuote(orderBody(variantId), shopper.id));
 
     expect(res.status).toBe(403);
   });
@@ -143,63 +162,57 @@ describe("Order routes · checkout", () => {
   it("sin Idempotency-Key responde 400", async () => {
     const adminCookie = await loginAsAdmin(app);
     const variantId = await seedVariant(adminCookie, "R4");
+    const shopper = await newShopper();
 
     const res = await request(app)
       .post(ORDERS_BASE)
       .set("Origin", ORIGIN)
-      .send(await withQuote({ lines: [{ variantId, qty: 1 }], termsAccepted: true, customer: validCustomer, shipping: validShipping }));
+      .set("Cookie", shopper.cookie)
+      .send(await withQuote(orderBody(variantId), shopper.id));
 
     expect(res.status).toBe(400);
   });
 
   it("lines vacías responde 400", async () => {
-    const res = await request(app)
-      .post(ORDERS_BASE)
-      .set("Origin", ORIGIN)
-      .set("Idempotency-Key", uniqueKey())
-      .send(await withQuote({ lines: [], termsAccepted: true, customer: validCustomer, shipping: validShipping }));
+    const shopper = await newShopper();
+    const res = await postOrder(shopper, orderBody("", { lines: [] }));
     expect(res.status).toBe(400);
   });
 
-  it("email de cliente inválido responde 400", async () => {
+  it("teléfono inválido responde 400", async () => {
     const adminCookie = await loginAsAdmin(app);
     const variantId = await seedVariant(adminCookie, "R5");
-    const res = await request(app)
-      .post(ORDERS_BASE)
-      .set("Origin", ORIGIN)
-      .set("Idempotency-Key", uniqueKey())
-      .send(await withQuote({
-        lines: [{ variantId, qty: 1 }],
-        customer: { email: "no-es-email", name: "Ana" },
-        shipping: validShipping,
-      }));
+    const shopper = await newShopper();
+    const res = await postOrder(
+      shopper,
+      await withQuote(orderBody(variantId, { customer: { phone: "123" } }), shopper.id),
+    );
     expect(res.status).toBe(400);
   });
 
   it("sin dirección de envío responde 400", async () => {
     const adminCookie = await loginAsAdmin(app);
     const variantId = await seedVariant(adminCookie, "R6");
-    const res = await request(app)
-      .post(ORDERS_BASE)
-      .set("Origin", ORIGIN)
-      .set("Idempotency-Key", uniqueKey())
-      .send({ lines: [{ variantId, qty: 1 }], termsAccepted: true, customer: validCustomer });
+    const shopper = await newShopper();
+    const res = await postOrder(shopper, {
+      lines: [{ variantId, qty: 1 }],
+      termsAccepted: true,
+      customer: validCustomer,
+    });
     expect(res.status).toBe(400);
   });
 
   it("total/unitPrice enviados por el cliente se ignoran (stripUnknown)", async () => {
     const adminCookie = await loginAsAdmin(app);
     const variantId = await seedVariant(adminCookie, "R7");
-    const res = await request(app)
-      .post(ORDERS_BASE)
-      .set("Origin", ORIGIN)
-      .set("Idempotency-Key", uniqueKey())
-      .send(await withQuote({
-        lines: [{ variantId, qty: 1, unitPrice: 1 }],
-        termsAccepted: true, customer: validCustomer,
-        shipping: validShipping,
-        total: 1,
-      }));
+    const shopper = await newShopper();
+    const res = await postOrder(
+      shopper,
+      await withQuote(
+        orderBody(variantId, { lines: [{ variantId, qty: 1, unitPrice: 1 }], total: 1 }),
+        shopper.id,
+      ),
+    );
     expect(res.status).toBe(201);
     // Server-computed total: subtotal (12000) + the quoted shipping (the stub's
     // cheapest rate, 12000) — never the fake `total: 1` the client sent.
@@ -212,11 +225,8 @@ describe("Order routes · consulta pública", () => {
   it("GET /orders/:publicId sin sesión responde 200 con la orden", async () => {
     const adminCookie = await loginAsAdmin(app);
     const variantId = await seedVariant(adminCookie, "P1");
-    const created = await request(app)
-      .post(ORDERS_BASE)
-      .set("Origin", ORIGIN)
-      .set("Idempotency-Key", uniqueKey())
-      .send(await withQuote({ lines: [{ variantId, qty: 1 }], termsAccepted: true, customer: validCustomer, shipping: validShipping }));
+    const shopper = await newShopper();
+    const created = await postOrder(shopper, await withQuote(orderBody(variantId), shopper.id));
     const publicId = created.body.data.order.publicId as string;
 
     const res = await request(app).get(`${ORDERS_BASE}/${publicId}`);
@@ -235,11 +245,8 @@ describe("Order routes · consulta pública", () => {
   it("no filtra idempotencyKey, payment.intentId, user ni _id", async () => {
     const adminCookie = await loginAsAdmin(app);
     const variantId = await seedVariant(adminCookie, "P2");
-    const created = await request(app)
-      .post(ORDERS_BASE)
-      .set("Origin", ORIGIN)
-      .set("Idempotency-Key", uniqueKey())
-      .send(await withQuote({ lines: [{ variantId, qty: 1 }], termsAccepted: true, customer: validCustomer, shipping: validShipping }));
+    const shopper = await newShopper();
+    const created = await postOrder(shopper, await withQuote(orderBody(variantId), shopper.id));
     const publicId = created.body.data.order.publicId as string;
 
     const res = await request(app).get(`${ORDERS_BASE}/${publicId}`);
@@ -252,6 +259,7 @@ describe("Order routes · consulta pública", () => {
     expect(order.lines).toBeDefined();
     expect(order.total).toBeDefined();
     expect(order.status).toBeDefined();
+    expect(order.coupon).toBeNull();
   });
 });
 
@@ -264,23 +272,13 @@ describe("Order routes · panel de usuario", () => {
   it("GET /orders/mine devuelve solo las órdenes propias, paginado", async () => {
     const adminCookie = await loginAsAdmin(app);
     const variantId = await seedVariant(adminCookie, "M1");
-    const customerA = await loginAsCustomer(app);
-    const customerB = await loginAsCustomer(app);
+    const customerA = await newShopper();
+    const customerB = await newShopper();
 
-    await request(app)
-      .post(ORDERS_BASE)
-      .set("Origin", ORIGIN)
-      .set("Cookie", customerA)
-      .set("Idempotency-Key", uniqueKey())
-      .send(await withQuote({ lines: [{ variantId, qty: 1 }], termsAccepted: true, customer: validCustomer, shipping: validShipping }));
-    await request(app)
-      .post(ORDERS_BASE)
-      .set("Origin", ORIGIN)
-      .set("Cookie", customerB)
-      .set("Idempotency-Key", uniqueKey())
-      .send(await withQuote({ lines: [{ variantId, qty: 1 }], termsAccepted: true, customer: validCustomer, shipping: validShipping }));
+    await postOrder(customerA, await withQuote(orderBody(variantId), customerA.id));
+    await postOrder(customerB, await withQuote(orderBody(variantId), customerB.id));
 
-    const res = await request(app).get(`${ORDERS_BASE}/mine`).set("Cookie", customerA);
+    const res = await request(app).get(`${ORDERS_BASE}/mine`).set("Cookie", customerA.cookie);
     expect(res.status).toBe(200);
     expect(res.body.data.orders).toHaveLength(1);
     expect(res.body.meta.total).toBe(1);
@@ -288,7 +286,7 @@ describe("Order routes · panel de usuario", () => {
 
     const detail = await request(app)
       .get(`${ORDERS_BASE}/mine/${String(res.body.data.orders[0].id)}`)
-      .set("Cookie", customerA);
+      .set("Cookie", customerA.cookie);
     expect(detail.status).toBe(200);
     expect(detail.body.data.order.id).toBe(res.body.data.orders[0].id);
   });
@@ -296,19 +294,15 @@ describe("Order routes · panel de usuario", () => {
   it("ignora ?user= del cliente: nunca devuelve órdenes de otro", async () => {
     const adminCookie = await loginAsAdmin(app);
     const variantId = await seedVariant(adminCookie, "M2");
-    const customerA = await loginAsCustomer(app);
-    const customerB = await loginAsCustomer(app);
+    const customerA = await newShopper();
+    const customerB = await newShopper();
 
-    await request(app)
-      .post(ORDERS_BASE)
-      .set("Origin", ORIGIN)
-      .set("Cookie", customerB)
-      .set("Idempotency-Key", uniqueKey())
-      .send(await withQuote({ lines: [{ variantId, qty: 1 }], termsAccepted: true, customer: validCustomer, shipping: validShipping }));
+    const created = await postOrder(customerB, await withQuote(orderBody(variantId), customerB.id));
+    expect(created.status).toBe(201);
 
     const res = await request(app)
       .get(`${ORDERS_BASE}/mine?user=someone-else`)
-      .set("Cookie", customerA);
+      .set("Cookie", customerA.cookie);
     expect(res.body.data.orders).toEqual([]);
   });
 });
@@ -317,22 +311,17 @@ describe("Order routes · ownership de /mine/:id", () => {
   it("id de una orden ajena responde 404", async () => {
     const adminCookie = await loginAsAdmin(app);
     const variantId = await seedVariant(adminCookie, "O1");
-    const customerA = await loginAsCustomer(app);
-    const customerB = await loginAsCustomer(app);
+    const customerA = await newShopper();
+    const customerB = await newShopper();
 
-    const created = await request(app)
-      .post(ORDERS_BASE)
-      .set("Origin", ORIGIN)
-      .set("Cookie", customerB)
-      .set("Idempotency-Key", uniqueKey())
-      .send(await withQuote({ lines: [{ variantId, qty: 1 }], termsAccepted: true, customer: validCustomer, shipping: validShipping }));
+    const created = await postOrder(customerB, await withQuote(orderBody(variantId), customerB.id));
 
     // /mine/:id uses the internal ObjectId, not publicId.
     const doc = await Order.findOne({ publicId: created.body.data.order.publicId }).lean();
 
     const res = await request(app)
       .get(`${ORDERS_BASE}/mine/${String(doc!._id)}`)
-      .set("Cookie", customerA);
+      .set("Cookie", customerA.cookie);
     expect(res.status).toBe(404);
   });
 });
@@ -346,12 +335,14 @@ describe("Order routes · rate limiting", () => {
     process.env.RATE_LIMIT_ENABLED = "false";
   });
 
-  it("el checkoutLimiter bloquea tras superar el máximo (en producción)", async () => {
+  it("el checkoutLimiter bloquea tras superar el máximo, por cliente (en producción)", async () => {
+    const shopper = await newShopper();
     let last = 0;
     for (let i = 0; i < 11; i += 1) {
       const res = await request(app)
         .post(ORDERS_BASE)
         .set("Origin", ORIGIN)
+        .set("Cookie", shopper.cookie)
         .send({}); // invalid payload is fine — the limiter runs before validation
       last = res.status;
     }

@@ -1,48 +1,40 @@
 import { Types } from "mongoose";
-import { Cart, type CartLine } from "../models/Cart.js";
+import { CART_MAX_LINES, CartLineStatus, type CartLineView, type CartView } from "@gira/shared";
+import { Cart } from "../models/Cart.js";
 import { Variant } from "../models/Variant.js";
 import { AppError } from "../utils/AppError.js";
 import { getSettings } from "./settingsService.js";
-import { resolveOrderLines } from "./pricingService.js";
 import { resolveUnitPrice } from "../utils/unitPrice.js";
-import type { ImageAttrs } from "../models/schemas/image.js";
 
 /**
  * Cart read/write. Prices and availability are always resolved LIVE against the
  * catalog on read — a cart line is just `{variant, qty}`, never a frozen price.
- * Sellability (variant + parents active) is validated on WRITE by delegating to
- * pricingService.resolveOrderLines — the exact same rule the order will apply,
- * so a line that makes it into the cart is guaranteed sellable at write time.
+ *
+ * Contract (M16): a write is refused with 410 only when the variant is gone for
+ * good (missing, or it, its product or its print inactive). Stock is NOT checked
+ * on write: an out-of-stock line is kept and flagged on read, because stock comes
+ * back and the order re-checks it atomically when it reserves.
  */
 
-const MAX_LINES = 30;
+const RETIRED_MESSAGE = "Este producto ya no está disponible.";
 
 interface ProductRef {
   _id: Types.ObjectId;
   name: string;
   basePrice: number;
   salePrice?: number;
+  isActive: boolean;
 }
 
 interface PrintRef {
   _id: Types.ObjectId;
   name: string;
+  isActive: boolean;
 }
 
-interface CartLineView {
-  variantId: string;
-  sku: string;
-  productName: string;
-  printName: string;
-  image?: ImageAttrs;
+interface LineRef {
+  variant: Types.ObjectId;
   qty: number;
-  unitPriceMxn: number;
-  /** Can the cart's quantity be served right now. The stock figure itself never leaves. */
-  isAvailable: boolean;
-}
-
-interface CartView {
-  lines: CartLineView[];
 }
 
 const touchExpiry = async (): Promise<Date> => {
@@ -50,42 +42,72 @@ const touchExpiry = async (): Promise<Date> => {
   return new Date(Date.now() + reservation.cartInactivityDays * 24 * 60 * 60 * 1000);
 };
 
+const loadVariants = (ids: Types.ObjectId[]) =>
+  Variant.find({ _id: { $in: ids } })
+    .populate("product", "name basePrice salePrice isActive")
+    .populate("print", "name isActive")
+    .lean();
+
 /**
- * Resolves live catalog data for each line. A line whose variant no longer
- * exists (hard-deleted, never happens via the API but defensive nonetheless)
- * is silently dropped from the view rather than failing the whole cart.
+ * `account`: the customer's own cart. A retired line keeps its name and photo
+ * (they put it there) and stock is compared against the quantity.
+ * `public`: the anonymous preview, which takes any id. A retired line is bare
+ * (no unreleased product leaks by guessing ids) and availability is the same
+ * yes/no signal the catalog gives, never a number to binary-search.
  */
-const buildCartView = async (lines: CartLine[]): Promise<CartView> => {
+type CartAudience = "account" | "public";
+
+/**
+ * Resolves live catalog data for each line, in the order given. Never fails on
+ * one line: a hard-deleted variant (or parent) comes back as a bare `retired`
+ * line so the customer can still see that something left and remove it.
+ */
+const buildCartView = async (lines: LineRef[], audience: CartAudience = "account"): Promise<CartView> => {
   if (lines.length === 0) return { lines: [] };
 
-  const ids = lines.map((l) => l.variant);
-  const variants = await Variant.find({ _id: { $in: ids } })
-    .populate("product", "name basePrice salePrice")
-    .populate("print", "name")
-    .lean();
+  const variants = await loadVariants(lines.map((l) => l.variant));
   const byId = new Map(variants.map((v) => [String(v._id), v]));
 
-  const views: CartLineView[] = [];
-  for (const line of lines) {
-    const variant = byId.get(String(line.variant));
-    if (!variant) continue;
+  const views = lines.map((line): CartLineView => {
+    const variantId = String(line.variant);
+    const bare: CartLineView = { variantId, qty: line.qty, status: CartLineStatus.RETIRED };
+    const variant = byId.get(variantId);
+    // populate() leaves null when a parent was hard-deleted.
+    const product = variant?.product as unknown as ProductRef | null | undefined;
+    const print = variant?.print as unknown as PrintRef | null | undefined;
+    if (!variant || !product || !print) return bare;
 
-    const product = variant.product as unknown as ProductRef;
-    const print = variant.print as unknown as PrintRef;
-    const available = variant.onHand - variant.reserved;
+    const retired = !variant.isActive || !product.isActive || !print.isActive;
+    if (retired && audience === "public") return bare;
+    const wanted = audience === "public" ? 1 : line.qty;
+    const inStock = variant.onHand - variant.reserved >= wanted;
 
-    views.push({
-      variantId: String(variant._id),
+    return {
+      variantId,
+      qty: line.qty,
+      status: retired
+        ? CartLineStatus.RETIRED
+        : inStock
+          ? CartLineStatus.AVAILABLE
+          : CartLineStatus.OUT_OF_STOCK,
       sku: variant.sku,
       productName: product.name,
       printName: print.name,
       ...(variant.images[0] ? { image: variant.images[0] } : {}),
-      qty: line.qty,
       unitPriceMxn: resolveUnitPrice(product, variant.priceOverride).priceMxn,
-      isAvailable: available >= line.qty,
-    });
-  }
+    };
+  });
   return { lines: views };
+};
+
+/** 410 when the variant can never be bought again; stock is deliberately ignored. */
+const assertNotRetired = async (variantId: Types.ObjectId): Promise<void> => {
+  const [variant] = await loadVariants([variantId]);
+  const product = variant?.product as unknown as ProductRef | undefined;
+  const print = variant?.print as unknown as PrintRef | undefined;
+  if (!variant?.isActive || !product?.isActive || !print?.isActive) {
+    throw new AppError(RETIRED_MESSAGE, 410);
+  }
 };
 
 const getCart = async (userId: Types.ObjectId): Promise<CartView> => {
@@ -111,9 +133,7 @@ const setCartLine = async (
     return getCart(userId);
   }
 
-  // Validates the variant exists and is sellable (400/409) — the same rule
-  // orderService applies at checkout.
-  await resolveOrderLines([{ variantId, qty }]);
+  await assertNotRetired(variantObjectId);
 
   const cart = await Cart.findOneAndUpdate(
     { user: userId },
@@ -122,7 +142,7 @@ const setCartLine = async (
   );
 
   const existingIndex = cart.lines.findIndex((l) => l.variant.equals(variantObjectId));
-  if (existingIndex === -1 && cart.lines.length >= MAX_LINES) {
+  if (existingIndex === -1 && cart.lines.length >= CART_MAX_LINES) {
     throw new AppError("Tu carrito alcanzó el máximo de artículos distintos.", 400);
   }
 
@@ -151,5 +171,11 @@ const clearCart = async (userId: Types.ObjectId): Promise<CartView> => {
   return { lines: [] };
 };
 
-export type { CartView, CartLineView };
-export { getCart, setCartLine, removeCartLine, clearCart };
+/** Guest cart read: the browser only stores `{variantId, qty}`. */
+const previewCart = (lines: { variantId: string; qty: number }[]): Promise<CartView> =>
+  buildCartView(
+    lines.map((l) => ({ variant: new Types.ObjectId(l.variantId), qty: l.qty })),
+    "public",
+  );
+
+export { getCart, setCartLine, removeCartLine, clearCart, previewCart };

@@ -102,6 +102,9 @@ const DEAD_ON_ARRIVAL = new Set<OrderStatus>([OrderStatus.EXPIRED, OrderStatus.C
 
 const SYSTEM = { type: "system" } as const;
 
+/** How long the "your payment did not go through" email waits for a retry to land. */
+const PAYMENT_FAILED_EMAIL_DELAY_MS = 10 * 60 * 1000;
+
 /**
  * Money landed on an order that is already expired/cancelled. The order is NOT
  * moved: what to do with it (surtir si queda stock, o reembolsar) is a business
@@ -299,9 +302,21 @@ const applyPaymentFailed = async (orderId: Types.ObjectId, reason?: string): Pro
   );
   if (!order) return;
 
-  // No email here — Stripe's own Payment Element already tells the customer
-  // the card was declined. The team gets pinged because a failed payment on a
-  // retryable order is exactly the kind of thing that needs a human glance.
+  // The Payment Element tells the customer on the spot, but they may have left
+  // the page (3DS, closed tab): one email per order (the outbox's (order, type)
+  // index) invites them to retry from "Mis pedidos". Fail-soft: a lost email
+  // must not fail the webhook. The team gets pinged because a failed payment on
+  // a retryable order is exactly the kind of thing that needs a human glance.
+  // Delayed: a second card usually lands within minutes, and the dispatcher
+  // skips it if the order is no longer pending by then.
+  await enqueueNotification({
+    channel: NotificationChannelKind.EMAIL,
+    type: NotificationType.ORDER_PAYMENT_FAILED,
+    to: order.customer.email,
+    order: order._id,
+    payload: toOrderEmailSnapshot(order) as unknown as Record<string, unknown>,
+    notBefore: new Date(Date.now() + PAYMENT_FAILED_EMAIL_DELAY_MS),
+  });
   await enqueueNotification(
     {
       channel: NotificationChannelKind.TEAM,
@@ -517,6 +532,21 @@ const refundPaidOrder = async (orderId: Types.ObjectId): Promise<void> => {
     module: AuditModule.PAYMENTS,
     targetId: String(orderId),
   });
+
+  // Fail-soft and once per order (outbox index): the refund already happened.
+  const refunded = await Order.findById(orderId);
+  if (refunded) {
+    await enqueueNotification({
+      channel: NotificationChannelKind.EMAIL,
+      type: NotificationType.ORDER_REFUNDED,
+      to: refunded.customer.email,
+      order: refunded._id,
+      payload: {
+        ...toOrderEmailSnapshot(refunded),
+        refundedAmount: refunded.payment.refundedAmount ?? refunded.total,
+      },
+    });
+  }
 
   // The parcel never left: void its label so the balance comes back. Best-effort:
   // a failure here must not undo a refund that already happened.

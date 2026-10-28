@@ -5,11 +5,30 @@ import {
   COUPON_CODE_PATTERN,
   Currency,
   MEXICAN_STATE_CODES,
+  OrderStatus,
   PHONE_PATTERN,
   POSTAL_CODE_PATTERN,
 } from "@gira/shared";
 import { objectId } from "./commonValidator.js";
 import { listQueryBase } from "./listQueryValidator.js";
+
+const couponCodeSchema = Joi.string()
+  .trim()
+  .uppercase()
+  .min(COUPON_CODE_MIN)
+  .max(COUPON_CODE_MAX)
+  .pattern(COUPON_CODE_PATTERN)
+  .messages({
+    "string.min": "El cupón no es válido.",
+    "string.max": "El cupón no es válido.",
+    "string.pattern.base": "El cupón no es válido.",
+    "string.empty": "El cupón no es válido.",
+  });
+
+const shippingQuoteRefSchema = Joi.object({
+  quoteId: Joi.string().trim().min(10).max(80).required(),
+  rateId: Joi.string().trim().min(10).max(40).required(),
+});
 
 const orderLineSchema = Joi.object({
   variantId: objectId.required(),
@@ -64,33 +83,14 @@ const phone = Joi.string()
 const createOrderSchema = Joi.object({
   lines: Joi.array().items(orderLineSchema).min(1).max(30),
   useCart: Joi.boolean(),
-  couponCode: Joi.string()
-    .trim()
-    .uppercase()
-    .min(COUPON_CODE_MIN)
-    .max(COUPON_CODE_MAX)
-    .pattern(COUPON_CODE_PATTERN)
-    .messages({
-      "string.min": "El cupón no es válido.",
-      "string.max": "El cupón no es válido.",
-      "string.pattern.base": "El cupón no es válido.",
-      "string.empty": "El cupón no es válido.",
-    }),
+  couponCode: couponCodeSchema,
   currency: Joi.string()
     .valid(...Object.values(Currency))
     .default(Currency.MXN),
-  customer: Joi.object({
-    email: Joi.string().trim().lowercase().email().max(160).required().messages({
-      "string.email": "Escribe un correo electrónico válido.",
-    }),
-    name: Joi.string().trim().min(2).max(120).required(),
-    phone,
-  }).required(),
+  // Email and name are the account's (M16); stripUnknown drops them if sent.
+  customer: Joi.object({ phone }).required(),
   shipping: shippingAddressSchema.required(),
-  shippingQuote: Joi.object({
-    quoteId: Joi.string().trim().min(10).max(80).required(),
-    rateId: Joi.string().trim().min(10).max(40).required(),
-  })
+  shippingQuote: shippingQuoteRefSchema
     .required()
     .messages({ "any.required": "Elige una opción de envío." }),
   termsAccepted: Joi.boolean().valid(true).required().messages({
@@ -109,6 +109,20 @@ const publicIdParamSchema = Joi.object({
     .messages({ "string.pattern.base": "El identificador de la orden no es válido." }),
 });
 
-const myOrdersQuerySchema = listQueryBase;
+const myOrdersQuerySchema = listQueryBase.keys({
+  status: Joi.string()
+    .valid(...Object.values(OrderStatus))
+    .messages({ "any.only": "El estado no es válido." }),
+});
 
-export { createOrderSchema, publicIdParamSchema, myOrdersQuerySchema, shippingAddressSchema, phone as shippingPhone };
+/** The quote is checked against the CP it was made for, so the preview needs it too. */
+const checkoutPreviewSchema = Joi.object({
+  couponCode: couponCodeSchema,
+  shippingQuote: shippingQuoteRefSchema,
+  postalCode: Joi.string()
+    .trim()
+    .pattern(POSTAL_CODE_PATTERN)
+    .messages({ "string.pattern.base": "El código postal debe tener 5 dígitos." }),
+}).with("shippingQuote", "postalCode");
+
+export { createOrderSchema, checkoutPreviewSchema, publicIdParamSchema, myOrdersQuerySchema, shippingAddressSchema, phone as shippingPhone };
