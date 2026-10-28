@@ -43,10 +43,27 @@ const purgeSessions = async (userId: UserId): Promise<void> => {
   await Session.deleteMany({ user: userId });
 };
 
+/**
+ * Every session of the account except the one making the request. No
+ * tokenVersion bump: that would also end the current session, and a
+ * password change must keep the device the person is using.
+ */
+const revokeOtherSessions = async (userId: UserId, currentSid: string): Promise<void> => {
+  if (!isValidObjectId(currentSid)) return;
+  await Session.deleteMany({ user: userId, _id: { $ne: currentSid } });
+};
+
 /** Every device of the account: "close all", 2FA reset. */
 const revokeAllSessions = async (userId: UserId): Promise<void> => {
   await User.updateOne({ _id: userId }, { $inc: { tokenVersion: 1 } });
   await purgeSessions(userId);
 };
 
-export { createSession, isSessionActive, revokeSession, purgeSessions, revokeAllSessions };
+export {
+  createSession,
+  isSessionActive,
+  revokeSession,
+  revokeOtherSessions,
+  purgeSessions,
+  revokeAllSessions,
+};

@@ -73,6 +73,8 @@ const T_HERO = "font-display font-normal uppercase text-3xl leading-[0.95] track
 const T_PRODUCT_TITLE = "font-display font-normal uppercase text-xl leading-[1.1] tracking-[0.01em]";
 /** Title of an access-page ticket (login, signup, verify…): store scale, one step above the console's page title. */
 const T_ACCESS_TITLE = "font-display font-normal uppercase text-4xl leading-[0.95] tracking-[0.01em] md:text-5xl";
+/** Title of a «Mi cuenta» section: store scale, a step below the access-page ticket. */
+const T_ACCOUNT_TITLE = "font-display font-normal uppercase text-4xl leading-[0.95] tracking-[0.01em] md:text-5xl";
 /** Rosa chicle fails AA at body size (3.1:1 on hueso) — a price MUST stay ≥18px/700 to clear the 3:1 large-text floor. */
 const T_PRICE = "font-sans text-lg font-bold text-accent";
 
@@ -94,5 +96,6 @@ export {
   T_HERO,
   T_PRODUCT_TITLE,
   T_ACCESS_TITLE,
+  T_ACCOUNT_TITLE,
   T_PRICE,
 };

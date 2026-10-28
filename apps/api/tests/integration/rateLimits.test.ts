@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import request from "supertest";
 import { buildApp } from "../../src/app.js";
 import { resetRateLimitStores } from "../../src/middlewares/rateLimit.js";
-import { loginAsAdmin, createCustomer } from "../helpers/auth.js";
+import { loginAsAdmin, createCustomer, loginCustomer } from "../helpers/auth.js";
 
 const ORIGIN = "http://localhost:3000";
 
@@ -135,5 +135,50 @@ describe("acciones de cuenta: límite por correo (3/15 min) además de IP", () =
     }
     expect((await emailOnly("forgot-password", "nueva@example.com")).status).toBe(429);
     expect((await signup("nueva2@example.com")).status).toBe(429);
+  });
+});
+
+describe("cambio de contraseña y perfil: límite por usuario", () => {
+  const app = buildApp();
+
+  beforeEach(() => {
+    process.env.RATE_LIMIT_ENABLED = "false";
+  });
+  afterEach(() => {
+    process.env.RATE_LIMIT_ENABLED = "false";
+    resetRateLimitStores();
+  });
+
+  it("5 intentos fallidos de cambio bloquean el sexto, pero otro cliente sigue pasando", async () => {
+    const first = await createCustomer();
+    const second = await createCustomer();
+    const cookieA = await loginCustomer(app, first);
+    const cookieB = await loginCustomer(app, second);
+    process.env.RATE_LIMIT_ENABLED = "true";
+    resetRateLimitStores();
+
+    const attempt = (cookie: string) =>
+      request(app)
+        .patch("/api/v1/auth/password")
+        .set("Origin", ORIGIN)
+        .set("Cookie", cookie)
+        .send({ currentPassword: "Incorrecta123", newPassword: "NuevaClave2026" });
+
+    for (let i = 0; i < 5; i += 1) expect((await attempt(cookieA)).status).toBe(400);
+    expect((await attempt(cookieA)).status).toBe(429);
+    expect((await attempt(cookieB)).status).toBe(400);
+  });
+
+  it("el perfil tiene su propio techo de escrituras (60/15 min)", async () => {
+    const cookie = await loginCustomer(app, await createCustomer());
+    process.env.RATE_LIMIT_ENABLED = "true";
+    resetRateLimitStores();
+    const res = await request(app)
+      .patch("/api/v1/account/profile")
+      .set("Origin", ORIGIN)
+      .set("Cookie", cookie)
+      .send({ city: "CDMX" });
+    expect(res.status).toBe(200);
+    expect(Number(res.headers["ratelimit-limit"])).toBe(60);
   });
 });

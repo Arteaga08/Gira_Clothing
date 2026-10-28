@@ -14,7 +14,9 @@ import { filterXSS } from "xss";
  * markup characters belong in this set.
  */
 
-const CREDENTIAL_KEYS = new Set(["password", "token", "secret"]);
+// `currentPassword` / `newPassword` are the signed-in change (PATCH /auth/password): escaping them would
+// compare a different string than the one hashed at signup, or store one the person can never type again.
+const CREDENTIAL_KEYS = new Set(["password", "currentPassword", "newPassword", "token", "secret"]);
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
