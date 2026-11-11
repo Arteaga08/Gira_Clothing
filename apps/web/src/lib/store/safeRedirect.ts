@@ -1,3 +1,4 @@
+import { SAFE_REDIRECT_PREFIXES } from "@gira/shared";
 import { STORE_ROUTES } from "./routes";
 
 /**
@@ -6,7 +7,8 @@ import { STORE_ROUTES } from "./routes";
  * access pages themselves) falls back to `fallback`, so the parameter can
  * never become an open redirect or a login loop.
  */
-const ALLOWED_PREFIXES = [STORE_ROUTES.shop, STORE_ROUTES.account, STORE_ROUTES.cart, "/checkout"] as const;
+// The same list the API uses before it puts a redirect into an email link (`@gira/shared`).
+const ALLOWED_PREFIXES = SAFE_REDIRECT_PREFIXES;
 const MAX_LENGTH = 512;
 // A throwaway origin: a value that resolves anywhere else was never a same-site path.
 const PROBE_ORIGIN = "http://redirect.invalid";

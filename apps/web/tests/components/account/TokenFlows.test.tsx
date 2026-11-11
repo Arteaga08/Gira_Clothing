@@ -64,6 +64,14 @@ describe("VerifyFlow", () => {
     expect(JSON.parse(init.body as string)).toEqual({ token: TOKEN, password: "Gira2026xyz" });
   });
 
+  it("al activar, «Ingresar» conserva el redirect de la compra", async () => {
+    stubFetch().mockResolvedValueOnce(jsonResponse(200, { status: "success", message: "ok" }));
+    render(<VerifyFlow token={TOKEN} redirectTo="/checkout" photo={null} />);
+    await userEvent.type(screen.getByLabelText("Contraseña"), "Gira2026xyz");
+    await userEvent.click(screen.getByRole("button", { name: "Activar mi cuenta" }));
+    expect(await screen.findByRole("link", { name: "Ingresar" })).toHaveAttribute("href", "/ingresar?redirect=%2Fcheckout");
+  });
+
   it("enlace vencido (400): pasa al panel de enlace inválido", async () => {
     const fetchMock = stubFetch();
     fetchMock.mockResolvedValueOnce(jsonResponse(400, { status: "fail", message: "El enlace no es válido o ya venció." }));

@@ -6,6 +6,7 @@ const STORE_ROUTES = {
   home: "/",
   shop: "/tienda",
   cart: "/carrito",
+  checkout: "/checkout",
   login: "/ingresar",
   register: "/crear-cuenta",
   forgotPassword: "/recuperar-contrasena",
@@ -24,6 +25,9 @@ const STORE_ROUTES = {
 /** One of the signed-in customer's orders, by its internal id (not the public id). */
 const orderRoute = (id: string): string => `/cuenta/pedidos/${id}`;
 
+/** Confirmation of a paid or pending order, by the public id the emails link to. */
+const publicOrderRoute = (publicId: string): string => `/orden/${publicId}`;
+
 /** Product page; it arrives with the catalog milestone (M14). */
 const productRoute = (slug: string): string => `/tienda/${slug}`;
 
@@ -41,4 +45,4 @@ const printRoute = (slug: string): string => `/tienda?estampa=${encodeURICompone
 const withRedirect = (path: string, redirect: string | undefined): string =>
   redirect === undefined || redirect === STORE_ROUTES.account ? path : `${path}?redirect=${encodeURIComponent(redirect)}`;
 
-export { STORE_ROUTES, orderRoute, productRoute, categoryRoute, printRoute, withRedirect };
+export { STORE_ROUTES, orderRoute, publicOrderRoute, productRoute, categoryRoute, printRoute, withRedirect };

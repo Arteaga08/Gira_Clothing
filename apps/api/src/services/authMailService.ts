@@ -16,6 +16,8 @@ import type { RenderedMail } from "../templates/emailLayout.js";
 interface AccountEmailRequest {
   to: string;
   token: string;
+  /** Only the activation link carries it. */
+  redirect?: string | undefined;
 }
 
 const deliver = async (kind: string, to: string, render: () => RenderedMail): Promise<void> => {
@@ -29,8 +31,8 @@ const deliver = async (kind: string, to: string, render: () => RenderedMail): Pr
   }
 };
 
-const sendVerificationEmail = ({ to, token }: AccountEmailRequest): Promise<void> =>
-  deliver("email_verification", to, () => renderVerificationEmail({ token }));
+const sendVerificationEmail = ({ to, token, redirect }: AccountEmailRequest): Promise<void> =>
+  deliver("email_verification", to, () => renderVerificationEmail({ token, redirect }));
 
 const sendPasswordResetEmail = ({ to, token }: AccountEmailRequest): Promise<void> =>
   deliver("password_reset", to, () => renderPasswordResetEmail({ token }));

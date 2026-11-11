@@ -1,5 +1,5 @@
 import Joi from "joi";
-import { PASSWORD_MIN_LENGTH, PASSWORD_MAX_BYTES } from "@gira/shared";
+import { PASSWORD_MIN_LENGTH, PASSWORD_MAX_BYTES, SAFE_REDIRECT_MAX_LENGTH } from "@gira/shared";
 
 /**
  * Auth input schemas (Joi, stripUnknown). Messages are in Spanish (user-facing).
@@ -68,11 +68,19 @@ const oneTimeToken = Joi.string()
     "any.required": "El enlace no es válido. Pide uno nuevo.",
   });
 
+/**
+ * Where the person was heading when they signed up (e.g. `/checkout`). Only its type and size are checked
+ * here: whether it is a safe store path is decided where the link is built, which drops an unsafe one
+ * instead of failing the sign-up over a parameter the person never typed.
+ */
+const redirectHint = Joi.string().max(SAFE_REDIRECT_MAX_LENGTH);
+
 const registerSchema = Joi.object({
   firstName: personName("El nombre"),
   lastName: personName("El apellido"),
   email,
   password: newPassword,
+  redirect: redirectHint,
 });
 
 const loginSchema = Joi.object({
@@ -88,6 +96,9 @@ const verifyEmailSchema = Joi.object({
 });
 
 const emailOnlySchema = Joi.object({ email });
+
+/** Resending the activation link keeps the sign-up's redirect; the password-reset request has none. */
+const resendVerificationSchema = Joi.object({ email, redirect: redirectHint });
 
 const resetPasswordSchema = Joi.object({
   token: oneTimeToken,
@@ -116,6 +127,7 @@ const twoFactorCodeSchema = Joi.object({
 
 export {
   registerSchema,
+  resendVerificationSchema,
   loginSchema,
   verifyEmailSchema,
   emailOnlySchema,

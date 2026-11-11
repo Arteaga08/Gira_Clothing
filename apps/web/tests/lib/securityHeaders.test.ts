@@ -25,8 +25,28 @@ describe("buildCsp", () => {
 
   it("connect-src permite solo el ORIGEN de la API (sin path)", () => {
     const csp = buildCsp({ apiUrl: API, isProd: true });
-    expect(csp).toMatch(/connect-src 'self' https:\/\/api\.gira\.mx(;|$)/);
+    expect(csp).toMatch(/connect-src 'self' https:\/\/api\.gira\.mx( https:\/\/api\.stripe\.com)?(;|$)/);
     expect(csp).not.toContain("/api/v1");
+  });
+
+  it("permite Stripe solo en script-src, frame-src y connect-src, con orígenes exactos", () => {
+    const csp = buildCsp({ apiUrl: API, isProd: true });
+    expect(csp).toMatch(/script-src 'self' 'unsafe-inline' https:\/\/js\.stripe\.com(;|$)/);
+    expect(csp).toMatch(/frame-src https:\/\/js\.stripe\.com https:\/\/hooks\.stripe\.com(;|$)/);
+    expect(csp).toMatch(/connect-src 'self' https:\/\/api\.gira\.mx https:\/\/api\.stripe\.com(;|$)/);
+    expect(csp).not.toMatch(/\*\.stripe\.com/);
+  });
+
+  it("Stripe no se cuela en img-src ni en default-src", () => {
+    const csp = buildCsp({ apiUrl: API, isProd: true });
+    expect(csp).not.toMatch(/img-src[^;]*stripe/);
+    expect(csp).toContain("default-src 'self';");
+  });
+
+  it("en desarrollo también conserva unsafe-eval junto a Stripe", () => {
+    expect(buildCsp({ apiUrl: API, isProd: false })).toMatch(
+      /script-src 'self' 'unsafe-inline' 'unsafe-eval' https:\/\/js\.stripe\.com(;|$)/,
+    );
   });
 
   it("unsafe-eval solo existe en desarrollo", () => {
@@ -67,7 +87,7 @@ describe("buildSecurityHeaders", () => {
 describe("buildTokenPageHeaders", () => {
   it("las páginas con token no filtran la URL en Referer ni se guardan en caché", async () => {
     const { buildTokenPageHeaders, TOKEN_PAGE_PATHS } = await import("@/lib/security/headers");
-    expect(TOKEN_PAGE_PATHS).toEqual(["/verificar-correo", "/restablecer-contrasena"]);
+    expect(TOKEN_PAGE_PATHS).toEqual(["/verificar-correo", "/restablecer-contrasena", "/orden/:publicId"]);
     expect(buildTokenPageHeaders()).toEqual([
       { key: "Referrer-Policy", value: "no-referrer" },
       { key: "Cache-Control", value: "no-store" },

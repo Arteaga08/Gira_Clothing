@@ -43,7 +43,8 @@ const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
 });
 
 const resendVerificationEmail = asyncHandler(async (req: Request, res: Response) => {
-  await resendVerification((req.body as { email: string }).email);
+  const { email, redirect } = req.body as { email: string; redirect?: string };
+  await resendVerification(email, redirect);
   sendResponse(res, 200, "Si tu cuenta está pendiente de activar, te enviamos un enlace nuevo.");
 });
 

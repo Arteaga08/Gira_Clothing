@@ -13,6 +13,8 @@
   "dependencies": {
     "@gira/shared": "workspace:*",
     "@phosphor-icons/react": "^2.1.7",
+    "@stripe/react-stripe-js": "7.0.1",
+    "@stripe/stripe-js": "10.2.0",
     "next": "^15.5.27",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

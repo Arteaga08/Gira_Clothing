@@ -12,14 +12,16 @@ interface CheckEmailProps {
   photo: AuthPhoto | null;
   /** Back to the signup form to fix a typo in the address. */
   onUseOther: () => void;
+  /** The purchase the sign-up came from, so a resent link brings the person back to it too. */
+  redirect?: string;
 }
 
 /**
  * «Revisa tu correo» after signup. Registration does not log in: the first link was just
  * sent, so the wait before another one starts at once, and its countdown lives on the stub.
  */
-const CheckEmail = ({ email, photo, onUseOther }: CheckEmailProps) => {
-  const resend = useResendVerification(email);
+const CheckEmail = ({ email, photo, onUseOther, redirect }: CheckEmailProps) => {
+  const resend = useResendVerification(email, redirect);
   const { start } = resend.cooldown;
 
   useEffect(() => {

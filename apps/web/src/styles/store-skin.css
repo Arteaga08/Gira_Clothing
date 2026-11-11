@@ -1156,7 +1156,8 @@
    Form on the left, a stub on the right cut by a perforation with two notches.
    The stub carries the first hero photo (or a flat colour with an arch when
    there is none), a sticker and a barcode; on a phone it drops below as a strip. */
-.store-ticket {
+.store-ticket,
+.store-pass {
   --ticket-stub-width: 300px;
   position: relative;
   display: grid;
@@ -1169,7 +1170,9 @@
 }
 
 .store-ticket::before,
-.store-ticket::after {
+.store-ticket::after,
+.store-pass::before,
+.store-pass::after {
   content: "";
   position: absolute;
   right: var(--ticket-stub-width);
@@ -1183,12 +1186,14 @@
   pointer-events: none;
 }
 
-.store-ticket::before {
+.store-ticket::before,
+.store-pass::before {
   top: -16px;
   clip-path: inset(50% 0 0 0);
 }
 
-.store-ticket::after {
+.store-ticket::after,
+.store-pass::after {
   bottom: -16px;
   clip-path: inset(0 0 50% 0);
 }
@@ -1284,12 +1289,15 @@
 }
 
 @media (max-width: 767px) {
-  .store-ticket {
+  .store-ticket,
+  .store-pass {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .store-ticket::before,
-  .store-ticket::after {
+  .store-ticket::after,
+  .store-pass::before,
+  .store-pass::after {
     display: none;
   }
 
@@ -1317,4 +1325,87 @@
     width: 6.25rem;
     height: 2rem;
   }
+}
+
+/* ── Cart, checkout and order (M16b): the same ticket as a working frame ────
+   Content on the left; the stub on the right holds the summary and the one action, cut by the
+   same perforation. On a phone the stub drops below the content and stops being sticky. */
+.store-pass {
+  --ticket-stub-width: 340px;
+}
+
+.store-pass-main {
+  min-width: 0;
+  padding: 2rem 2.25rem;
+}
+
+.store-pass-stub {
+  --stub-bg: var(--color-tile-alt);
+  min-width: 0;
+  background: var(--stub-bg);
+  border-left: 2px dashed var(--color-ink);
+  border-radius: 0 10px 10px 0;
+}
+
+.store-pass-stub[data-tone="mint"] {
+  --stub-bg: var(--color-brand-subtle);
+}
+
+.store-pass-stub-inner {
+  position: sticky;
+  top: 5.5rem;
+  display: grid;
+  gap: 1rem;
+  padding: 1.75rem 1.5rem;
+}
+
+.store-pass-seal {
+  justify-self: start;
+  padding: 0.125rem 0.625rem;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 2px solid var(--color-ink);
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transform: rotate(-3deg);
+}
+
+.store-pass-bars {
+  height: 2rem;
+  background: repeating-linear-gradient(90deg, var(--color-ink) 0 2px, transparent 2px 5px, var(--color-ink) 5px 6px, transparent 6px 10px);
+}
+
+@media (max-width: 767px) {
+  .store-pass-main {
+    padding: 1.25rem;
+  }
+
+  .store-pass-stub {
+    border-left: 0;
+    border-top: 2px dashed var(--color-ink);
+    border-radius: 0 0 10px 10px;
+  }
+
+  .store-pass-stub-inner {
+    position: static;
+    padding: 1.25rem;
+  }
+}
+
+/* Storefront cursors: flowers by default, the cow-print flower over anything clickable.
+   Files are 48px (browsers cap custom cursors at 128px); the keyword is the fallback. */
+.store-skin {
+  cursor: url("/cursors/flowers-48.png") 8 8, auto;
+}
+
+.store-skin :is(a[href], button:not(:disabled), [role="button"]:not([aria-disabled="true"]), summary, label[for], select:not(:disabled)) {
+  cursor: url("/cursors/flowers-pointer-48.png") 24 24, pointer;
+}
+
+.store-skin :is(button:disabled, [role="button"][aria-disabled="true"]) {
+  cursor: not-allowed;
 }

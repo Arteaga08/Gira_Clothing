@@ -1,11 +1,9 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { ADDRESS_LABEL_MAX_LENGTH, MEXICAN_STATES, type SavedAddress, type Wire } from "@gira/shared";
+import type { SavedAddress, Wire } from "@gira/shared";
 import { Button } from "@/components/ui/Button";
-import { Field } from "@/components/ui/Field";
 import { Notice } from "@/components/ui/Notice";
-import { SelectField } from "@/components/ui/SelectField";
 import { useFocusFirstField } from "@/hooks/useFocusFirstField";
 import { useSubmit } from "@/hooks/useSubmit";
 import { createAddress, updateAddress } from "@/lib/api/account";
@@ -14,8 +12,6 @@ import { goToLogin, isSessionExpired } from "@/lib/account/sessionExpired";
 import {
   EMPTY_ADDRESS_VALUES,
   addressToValues,
-  sanitizeAddressPhone,
-  sanitizePostalCode,
   validateAddress,
   valuesToCreateRequest,
   valuesToUpdateRequest,
@@ -23,6 +19,7 @@ import {
   type AddressFormValues,
 } from "@/lib/account/addressValidation";
 import { STORE_ROUTES } from "@/lib/store/routes";
+import { AddressFields } from "./AddressFields";
 
 interface AddressFormProps {
   /** The address being edited, or `null` to add a new one. */
@@ -32,8 +29,6 @@ interface AddressFormProps {
   onSaved: (addresses: Wire<SavedAddress>[], message: string) => void;
   onCancel: () => void;
 }
-
-const STATE_OPTIONS = MEXICAN_STATES.map((state) => ({ value: state.code, label: state.name }));
 
 /** Add / edit form of a saved address. It takes focus on its first field when it opens. */
 const AddressForm = ({ address, offerDefault, onSaved, onCancel }: AddressFormProps) => {
@@ -73,50 +68,7 @@ const AddressForm = ({ address, offerDefault, onSaved, onCancel }: AddressFormPr
           {error}
         </Notice>
       ) : null}
-      <Field
-        label="Nombre de la dirección (opcional)"
-        placeholder="Casa"
-        maxLength={ADDRESS_LABEL_MAX_LENGTH}
-        value={values.label}
-        error={errors.label}
-        onChange={(e) => set("label")(e.target.value)}
-      />
-      <Field label="Quién recibe" autoComplete="name" value={values.recipient} error={errors.recipient} onChange={(e) => set("recipient")(e.target.value)} />
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Calle y número" autoComplete="address-line1" value={values.line1} error={errors.line1} onChange={(e) => set("line1")(e.target.value)} />
-        <Field
-          label="Interior, referencias (opcional)"
-          autoComplete="address-line2"
-          value={values.line2}
-          error={errors.line2}
-          onChange={(e) => set("line2")(e.target.value)}
-        />
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Colonia" value={values.district} error={errors.district} onChange={(e) => set("district")(e.target.value)} />
-        <Field label="Ciudad" autoComplete="address-level2" value={values.city} error={errors.city} onChange={(e) => set("city")(e.target.value)} />
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <SelectField label="Estado" options={STATE_OPTIONS} value={values.state} error={errors.state} onChange={set("state")} />
-        <Field
-          label="Código postal"
-          inputMode="numeric"
-          autoComplete="postal-code"
-          value={values.postalCode}
-          error={errors.postalCode}
-          onChange={(e) => set("postalCode")(sanitizePostalCode(e.target.value))}
-        />
-      </div>
-      <Field
-        label="Celular"
-        type="tel"
-        inputMode="numeric"
-        autoComplete="tel-national"
-        helper="10 dígitos: la paquetería lo usa para avisarte de la entrega."
-        value={values.phone}
-        error={errors.phone}
-        onChange={(e) => set("phone")(sanitizeAddressPhone(e.target.value))}
-      />
+      <AddressFields values={values} errors={errors} onChange={(key, value) => set(key)(value)} />
       {address === null && offerDefault ? (
         <label className="flex cursor-pointer items-center gap-2.5 text-sm text-text-secondary">
           <input

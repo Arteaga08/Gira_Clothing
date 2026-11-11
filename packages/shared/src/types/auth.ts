@@ -7,12 +7,17 @@ interface LoginRequest {
   password: string;
 }
 
-/** Body of `POST /auth/register`. `role` and `emailVerified` never travel: the server derives them. */
+/**
+ * Body of `POST /auth/register`. `role` and `emailVerified` never travel: the server derives them.
+ * `redirect` is where the sign-up came from (e.g. `/checkout`); it rides in the activation link so the
+ * person comes back to it after verifying and logging in.
+ */
 interface RegisterRequest {
   firstName: string;
   lastName: string;
   email: string;
   password: string;
+  redirect?: string;
 }
 
 /** Body of `POST /auth/verify-email`: the link's token plus the password chosen at signup (anti pre-hijacking). */
@@ -21,9 +26,10 @@ interface VerifyEmailRequest {
   password: string;
 }
 
-/** Body of `POST /auth/resend-verification` and `POST /auth/forgot-password`. */
+/** Body of `POST /auth/resend-verification` and `POST /auth/forgot-password`. Only a resend carries `redirect`. */
 interface EmailOnlyRequest {
   email: string;
+  redirect?: string;
 }
 
 /** Body of `POST /auth/reset-password`. */

@@ -12,6 +12,21 @@ describe("correos de cuenta", () => {
     expect(mail.text).toMatch(/24 horas/);
   });
 
+  it("verificación: si la compra venía de otra pantalla, el enlace lleva ?redirect= para volver a ella", () => {
+    const mail = renderVerificationEmail({ token: TOKEN, redirect: "/checkout" });
+    expect(mail.html).toContain(`/verificar-correo?token=${TOKEN}&amp;redirect=%2Fcheckout`);
+    expect(mail.text).toContain(`/verificar-correo?token=${TOKEN}&redirect=%2Fcheckout`);
+  });
+
+  it.each([["//evil.com"], ["https://evil.com"], ["/ingresar"], ["/resumen"], ["/tienda/../ingresar"], ["/tienda\\x"], [""]])(
+    "verificación: un redirect no permitido (%j) no entra al enlace",
+    (redirect) => {
+      const mail = renderVerificationEmail({ token: TOKEN, redirect });
+      expect(mail.text).toContain(`/verificar-correo?token=${TOKEN}\n`);
+      expect(mail.text).not.toContain("redirect=");
+    },
+  );
+
   it("restablecer: enlace a /restablecer-contrasena?token= y vigencia de 1 hora", () => {
     const mail = renderPasswordResetEmail({ token: TOKEN });
     expect(mail.html).toContain(`/restablecer-contrasena?token=${TOKEN}`);

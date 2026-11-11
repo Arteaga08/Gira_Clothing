@@ -1,3 +1,4 @@
+import { isSafeRedirectPath } from "@gira/shared";
 import { env } from "../config/env.js";
 import { escapeHtml, layout, type RenderedMail } from "./emailLayout.js";
 
@@ -14,9 +15,14 @@ import { escapeHtml, layout, type RenderedMail } from "./emailLayout.js";
 
 interface AccountEmailInput {
   token: string;
+  /** Where the sign-up came from; forwarded into the link only if it is a safe store path. */
+  redirect?: string | undefined;
 }
 
-const verificationUrl = (token: string): string => `${env.clientUrl}/verificar-correo?token=${token}`;
+const verificationUrl = (token: string, redirect?: string): string => {
+  const base = `${env.clientUrl}/verificar-correo?token=${token}`;
+  return isSafeRedirectPath(redirect) ? `${base}&redirect=${encodeURIComponent(redirect)}` : base;
+};
 const resetUrl = (token: string): string => `${env.clientUrl}/restablecer-contrasena?token=${token}`;
 
 const forgotUrl = (): string => `${env.clientUrl}/recuperar-contrasena`;
@@ -27,8 +33,8 @@ const button = (url: string, label: string): string =>
   `<p style="font-size:12px;color:#666">Si el botón no abre, copia este enlace en tu navegador:<br>` +
   `${escapeHtml(url)}</p>`;
 
-const renderVerificationEmail = ({ token }: AccountEmailInput): RenderedMail => {
-  const url = verificationUrl(token);
+const renderVerificationEmail = ({ token, redirect }: AccountEmailInput): RenderedMail => {
+  const url = verificationUrl(token, redirect);
   return {
     subject: "Activa tu cuenta en Gira Clothing",
     html: layout(

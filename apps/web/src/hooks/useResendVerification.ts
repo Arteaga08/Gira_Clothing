@@ -8,7 +8,7 @@ import { useCooldown } from "./useCooldown";
  * `cooldown.start()` is exposed because right after signup the first link was just sent,
  * so the wait starts without a request.
  */
-const useResendVerification = (email: string) => {
+const useResendVerification = (email: string, redirect?: string) => {
   const cooldown = useCooldown(60);
   const [pending, setPending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -20,7 +20,7 @@ const useResendVerification = (email: string) => {
     setPending(true);
     setError(null);
     try {
-      await resendVerification(email);
+      await resendVerification(email, redirect);
       setSent(true);
       start();
     } catch (failure) {
@@ -28,7 +28,7 @@ const useResendVerification = (email: string) => {
     } finally {
       setPending(false);
     }
-  }, [active, email, pending, start]);
+  }, [active, email, pending, redirect, start]);
 
   return { cooldown, pending, sent, error, resend };
 };

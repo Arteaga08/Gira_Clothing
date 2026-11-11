@@ -19,6 +19,8 @@ type MyOrdersResult =
   | { status: "ok"; orders: Wire<CustomerOrder>[]; meta: ApiMeta }
   | { status: "error" };
 
+type PendingOrderResult = { status: "ok"; order: Wire<CustomerOrder> | null } | { status: "error" };
+
 type MyOrderResult = { status: "ok"; order: Wire<CustomerOrder> } | { status: "not-found" } | { status: "error" };
 
 /** Profile, saved addresses, tax data and the saved-products count, in one read. */
@@ -55,5 +57,17 @@ const getMyOrder = async (id: string): Promise<MyOrderResult> => {
   }
 };
 
-export type { AccountResult, MyOrdersResult, MyOrderResult };
-export { ORDERS_PAGE_SIZE, getAccount, getMyOrders, getMyOrder };
+/** The customer's one pending order, if any: the checkout shows it instead of a form when there is one. */
+const getPendingOrder = async (): Promise<PendingOrderResult> => {
+  try {
+    const { orders } = expectData(
+      await serverRequest<{ orders: CustomerOrder[] }>(`${MY_ORDERS_PATH}?status=pending_payment&limit=1`, { timeoutMs: TIMEOUT_MS }),
+    );
+    return { status: "ok", order: orders[0] ?? null };
+  } catch {
+    return { status: "error" };
+  }
+};
+
+export type { AccountResult, MyOrdersResult, MyOrderResult, PendingOrderResult };
+export { ORDERS_PAGE_SIZE, getAccount, getMyOrders, getMyOrder, getPendingOrder };

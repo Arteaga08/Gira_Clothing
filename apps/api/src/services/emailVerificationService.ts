@@ -51,7 +51,7 @@ const verifyEmail = async (token: string, password: string, ctx: RequestContext)
  * still pending — the controller answers the same either way. The cooldown
  * makes a burst of clicks send a single email.
  */
-const resendVerification = async (email: string): Promise<void> => {
+const resendVerification = async (email: string, redirect?: string): Promise<void> => {
   const user = await User.findOne({
     email,
     role: UserRole.CUSTOMER,
@@ -60,7 +60,7 @@ const resendVerification = async (email: string): Promise<void> => {
   });
   if (!user) return;
   const token = await issueAccountToken(user._id, "emailVerification");
-  if (token) void sendVerificationEmail({ to: user.email, token });
+  if (token) void sendVerificationEmail({ to: user.email, token, redirect });
 };
 
 export { verifyEmail, resendVerification };

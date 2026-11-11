@@ -1,7 +1,8 @@
 import { CART_LINE_MAX_QTY } from "@/lib/cart/guestCart";
 import { assertVariantId } from "@/lib/inventory/variantId";
 import { browserRequest } from "./browser";
-import { CART_PATH } from "./paths";
+import type { CartView, Wire } from "@gira/shared";
+import { CART_PATH, CART_PREVIEW_PATH } from "./paths";
 import { expectData } from "./request";
 
 interface CartCountPayload {
@@ -45,4 +46,30 @@ const setAccountCartQty = async (variantId: string, qty: number): Promise<void> 
   expectData(await browserRequest(`${CART_PATH}/lines/${id}`, { method: "PUT", body: { qty } }));
 };
 
-export { fetchCartCount, addToAccountCart, fetchAccountCartLines, setAccountCartQty };
+/** The signed-in customer's whole cart: each line with its price and whether it can still be bought. */
+const fetchAccountCart = async (): Promise<Wire<CartView>> =>
+  expectData(await browserRequest<{ cart: CartView }>(CART_PATH)).cart;
+
+/**
+ * The visitor's cart (it lives in the browser as `{variantId, qty}`) priced and checked by the API.
+ * An empty cart never reaches the network.
+ */
+const previewGuestCart = async (lines: { variantId: string; qty: number }[]): Promise<Wire<CartView>> => {
+  if (lines.length === 0) return { lines: [] };
+  return expectData(await browserRequest<{ cart: CartView }>(CART_PREVIEW_PATH, { method: "POST", body: { lines } })).cart;
+};
+
+const removeAccountCartLine = async (variantId: string): Promise<void> => {
+  const id = assertVariantId(variantId);
+  expectData(await browserRequest(`${CART_PATH}/lines/${id}`, { method: "DELETE" }));
+};
+
+export {
+  fetchCartCount,
+  addToAccountCart,
+  fetchAccountCartLines,
+  setAccountCartQty,
+  fetchAccountCart,
+  previewGuestCart,
+  removeAccountCartLine,
+};
