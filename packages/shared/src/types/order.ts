@@ -1,3 +1,4 @@
+import type { ShippingQuoteRef } from "./shipping.js";
 import type { Currency } from "../enums/money.js";
 import type { DisputeStatus, OrderStatus, PaymentStatus } from "../enums/orderStatus.js";
 import type { OrderPriority } from "../enums/orderPriority.js";
@@ -85,6 +86,30 @@ interface CheckoutSummary {
   coupon: OrderCoupon | null;
 }
 
+/** Body of `POST /orders/preview`: the coupon and the chosen rate, to price what the checkout would charge. */
+interface CheckoutPreviewRequest {
+  couponCode?: string;
+  shippingQuote?: ShippingQuoteRef;
+  /** Required with `shippingQuote`: the quote is checked against the postal code it was made for. */
+  postalCode?: string;
+}
+
+/** Body of `POST /orders` for the signed-in customer's cart. Name and email come from the account. */
+interface CreateCartOrderRequest {
+  useCart: true;
+  couponCode?: string;
+  customer: { phone: string };
+  shipping: ShippingAddress;
+  shippingQuote: ShippingQuoteRef;
+  termsAccepted: true;
+}
+
+/** `POST /orders` and `POST /orders/mine/:id/payment`: the order and the secret that finishes its payment. */
+interface CreatedOrder {
+  order: PublicOrder;
+  clientSecret?: string;
+}
+
 /** What the OWNING customer receives ("mis órdenes"): the public view plus the internal id. */
 interface CustomerOrder extends PublicOrder {
   id: string;
@@ -164,6 +189,9 @@ interface BulkStatusResult {
 }
 
 export type {
+  CheckoutPreviewRequest,
+  CreateCartOrderRequest,
+  CreatedOrder,
   OrderSummary,
   OrderActivityEntry,
   BulkStatusOutcome,

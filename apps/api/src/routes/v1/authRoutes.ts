@@ -15,6 +15,7 @@ import {
 } from "../../middlewares/rateLimit.js";
 import {
   registerSchema,
+  resendVerificationSchema,
   loginSchema,
   verifyEmailSchema,
   emailOnlySchema,
@@ -57,7 +58,7 @@ authRouter.post(
   "/resend-verification",
   authActionLimiter,
   resendEmailLimiter,
-  validate(emailOnlySchema),
+  validate(resendVerificationSchema),
   resendVerificationEmail,
 );
 authRouter.post(

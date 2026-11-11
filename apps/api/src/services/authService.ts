@@ -30,6 +30,8 @@ interface RegisterInput {
   lastName: string;
   email: string;
   password: string;
+  /** Where the sign-up came from; it rides in the activation link (the template drops it if unsafe). */
+  redirect?: string;
 }
 
 interface LoginInput {
@@ -88,9 +90,9 @@ const warmAuthDecoy = async (): Promise<void> => {
 };
 
 /** Issues a fresh activation link and emails it without waiting (see authMailService). */
-const sendActivationLink = async (user: UserDocument): Promise<void> => {
+const sendActivationLink = async (user: UserDocument, redirect?: string): Promise<void> => {
   const token = await issueAccountToken(user._id, "emailVerification");
-  if (token) void sendVerificationEmail({ to: user.email, token });
+  if (token) void sendVerificationEmail({ to: user.email, token, redirect });
 };
 
 /**
@@ -118,7 +120,7 @@ const registerCustomer = async (input: RegisterInput): Promise<void> => {
     existing.lastName = input.lastName;
     existing.password = input.password; // pre-save hook hashes it: same cost as a signup
     await existing.save();
-    await sendActivationLink(existing);
+    await sendActivationLink(existing, input.redirect);
     return;
   }
 
@@ -138,7 +140,7 @@ const registerCustomer = async (input: RegisterInput): Promise<void> => {
     if ((err as { code?: number }).code === 11000) return;
     throw err;
   }
-  await sendActivationLink(created);
+  await sendActivationLink(created, input.redirect);
 };
 
 /** Closes only the session this request came with; other devices stay signed in. */

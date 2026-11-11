@@ -79,6 +79,29 @@ describe("RegisterFlow", () => {
     expect(screen.getByRole("button", { name: "Reenviar en 1:00" })).toBeDisabled();
   });
 
+  it("si venía del checkout, manda redirect=/checkout al API para que viaje en el enlace del correo", async () => {
+    const fetchMock = stubFetch();
+    fetchMock.mockResolvedValueOnce(created);
+    render(<RegisterFlow redirectTo="/checkout" photo={null} />);
+    await fillAll();
+    await accept();
+    await submit();
+
+    await screen.findByRole("heading", { name: "Revisa tu correo" });
+    expect(JSON.parse((fetchMock.mock.calls[0] as [string, RequestInit])[1].body as string)).toMatchObject({ redirect: "/checkout" });
+  });
+
+  it("sin redirect (el destino por defecto) no manda el campo", async () => {
+    const fetchMock = stubFetch();
+    fetchMock.mockResolvedValueOnce(created);
+    setup();
+    await fillAll();
+    await accept();
+    await submit();
+    await screen.findByRole("heading", { name: "Revisa tu correo" });
+    expect(JSON.parse((fetchMock.mock.calls[0] as [string, RequestInit])[1].body as string)).not.toHaveProperty("redirect");
+  });
+
   it("«Usar otro correo» regresa al formulario con lo escrito", async () => {
     const fetchMock = stubFetch();
     fetchMock.mockResolvedValueOnce(created);

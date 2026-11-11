@@ -91,13 +91,17 @@ const verifyEmail = async (input: VerifyEmailRequest): Promise<void> => {
   await browserRequest("/auth/verify-email", { method: "POST", body: input });
 };
 
-const postEmailOnly = async (path: string, email: string): Promise<void> => {
-  const body: EmailOnlyRequest = { email };
+const postEmailOnly = async (path: string, email: string, redirect?: string): Promise<void> => {
+  const body: EmailOnlyRequest = redirect ? { email, redirect } : { email };
   await browserRequest(path, { method: "POST", body });
 };
 
-/** `POST /auth/resend-verification`: answers 200 whether or not the account exists; the API spaces links 60 s apart. */
-const resendVerification = (email: string): Promise<void> => postEmailOnly("/auth/resend-verification", email);
+/**
+ * `POST /auth/resend-verification`: answers 200 whether or not the account exists; the API spaces links 60 s apart.
+ * `redirect` keeps the purchase the sign-up came from riding in the new link.
+ */
+const resendVerification = (email: string, redirect?: string): Promise<void> =>
+  postEmailOnly("/auth/resend-verification", email, redirect);
 
 /** `POST /auth/forgot-password`: answers 200 whether or not the account exists. */
 const forgotPassword = (email: string): Promise<void> => postEmailOnly("/auth/forgot-password", email);

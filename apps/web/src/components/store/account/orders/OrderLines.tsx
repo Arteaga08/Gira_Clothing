@@ -1,4 +1,4 @@
-import type { CustomerOrder, Wire } from "@gira/shared";
+import type { PublicOrder, Wire } from "@gira/shared";
 import { cardImageUrl } from "@/components/store/best-sellers/cardImage";
 import { T_PANEL_TITLE } from "@/components/ui/typography";
 import { formatMoney } from "@/lib/orders/money";
@@ -13,7 +13,7 @@ const TotalRow = ({ label, value, strong = false }: { label: string; value: stri
 );
 
 /** «Productos» of an order: each line with its photo, and the totals as they were charged. */
-const OrderLines = ({ order }: { order: Wire<CustomerOrder> }) => {
+const OrderLines = ({ order }: { order: Wire<PublicOrder> }) => {
   const money = (cents: number) => formatMoney(cents, order.currency);
 
   return (
@@ -40,7 +40,7 @@ const OrderLines = ({ order }: { order: Wire<CustomerOrder> }) => {
       </ul>
       <dl className="mt-3 grid gap-1.5 border-t-2 border-ink pt-3 text-sm sm:ml-auto sm:max-w-xs">
         <TotalRow label="Subtotal" value={money(order.subtotal)} />
-        {order.discount > 0 ? <TotalRow label="Descuento" value={`-${money(order.discount)}`} /> : null}
+        {order.discount > 0 ? <TotalRow label={order.coupon ? `Descuento (${order.coupon.code})` : "Descuento"} value={`-${money(order.discount)}`} /> : null}
         <TotalRow label="Envío" value={order.shippingCost === 0 ? "Gratis" : money(order.shippingCost)} />
         <TotalRow label="Total" value={money(order.total)} strong />
       </dl>

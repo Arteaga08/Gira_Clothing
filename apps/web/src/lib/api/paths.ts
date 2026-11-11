@@ -22,6 +22,10 @@ const ADMIN_CUSTOMERS_PATH = "/admin/customers";
 const ADMIN_SETTINGS_PATH = "/admin/settings";
 const ADMIN_AUDIT_LOGS_PATH = "/admin/audit-logs";
 const CART_PATH = "/cart";
+const CART_PREVIEW_PATH = "/cart/preview";
+const SHIPPING_QUOTES_PATH = "/shipping/quotes";
+const ORDERS_PATH = "/orders";
+const ORDERS_PREVIEW_PATH = "/orders/preview";
 const WISHLIST_PATH = "/wishlist";
 const ACCOUNT_PATH = "/account";
 const MY_ORDERS_PATH = "/orders/mine";
@@ -50,6 +54,10 @@ export {
   ADMIN_SETTINGS_PATH,
   ADMIN_AUDIT_LOGS_PATH,
   CART_PATH,
+  CART_PREVIEW_PATH,
+  SHIPPING_QUOTES_PATH,
+  ORDERS_PATH,
+  ORDERS_PREVIEW_PATH,
   WISHLIST_PATH,
   ACCOUNT_PATH,
   MY_ORDERS_PATH,

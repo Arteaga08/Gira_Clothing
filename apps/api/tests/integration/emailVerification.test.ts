@@ -35,6 +35,47 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+describe("redirect de la compra en el enlace de activación", () => {
+  const lastLink = (spy: MailSpy): string => sentTo(spy, signup.email).at(-1)!.text;
+
+  it("registrarse con ?redirect=/checkout lo lleva en el enlace del correo", async () => {
+    const spy = spyOnMailer();
+    const res = await post("register", { ...signup, redirect: "/checkout" });
+    expect(res.status).toBe(201);
+    await waitForToken(spy, signup.email, "verificar-correo");
+    expect(lastLink(spy)).toMatch(/\/verificar-correo\?token=[a-f0-9]{64}&redirect=%2Fcheckout/);
+  });
+
+  it("un redirect no permitido no rompe el registro: el enlace sale sin él", async () => {
+    const spy = spyOnMailer();
+    const res = await post("register", { ...signup, redirect: "//evil.com" });
+    expect(res.status).toBe(201);
+    await waitForToken(spy, signup.email, "verificar-correo");
+    expect(lastLink(spy)).not.toContain("redirect=");
+  });
+
+  it("sin redirect el enlace es el de siempre", async () => {
+    const spy = spyOnMailer();
+    await registerAndGetToken(spy);
+    expect(lastLink(spy)).not.toContain("redirect=");
+  });
+
+  it("reenviar el enlace conserva el redirect", async () => {
+    const spy = spyOnMailer();
+    await registerAndGetToken(spy);
+    await expireCooldown();
+    const res = await post("resend-verification", { email: signup.email, redirect: "/carrito" });
+    expect(res.status).toBe(200);
+    await waitForToken(spy, signup.email, "verificar-correo", 2);
+    expect(lastLink(spy)).toMatch(/&redirect=%2Fcarrito/);
+  });
+
+  it("un redirect que no es texto es un 400 de validación", async () => {
+    const res = await post("register", { ...signup, redirect: { a: 1 } });
+    expect(res.status).toBe(400);
+  });
+});
+
 describe("verify-email", () => {
   it("token + contraseña correctos activan la cuenta, gastan el token, no abren sesión y se audita", async () => {
     const spy = spyOnMailer();

@@ -1,14 +1,15 @@
 import Link from "next/link";
 import { CaretLeft } from "@phosphor-icons/react/dist/ssr";
-import type { CustomerOrder, Wire } from "@gira/shared";
+import { OrderStatus, type CustomerOrder, type Wire } from "@gira/shared";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { T_ORDER_NUMBER } from "@/components/ui/typography";
 import { formatLongDate } from "@/lib/format";
 import { STORE_ROUTES } from "@/lib/store/routes";
 import { OrderLines } from "./OrderLines";
 import { OrderShippingInfo } from "./OrderShippingInfo";
+import { PendingOrderActions } from "./PendingOrderActions";
 
-/** One order, read-only: folio and status, what was bought and where it goes. Paying or cancelling belongs to M16. */
+/** One order: folio and status, what was bought and where it goes. While it waits for payment it can be paid or cancelled here. */
 const OrderDetailView = ({ order }: { order: Wire<CustomerOrder> }) => (
   <article className="grid gap-6">
     <header className="grid gap-2">
@@ -22,6 +23,7 @@ const OrderDetailView = ({ order }: { order: Wire<CustomerOrder> }) => (
         <span className="text-sm text-text-secondary">{`Hecho el ${formatLongDate(new Date(order.createdAt))}`}</span>
       </div>
     </header>
+    {order.status === OrderStatus.PENDING_PAYMENT ? <PendingOrderActions order={order} /> : null}
     <div className="border-t-2 border-dashed border-ink pt-6">
       <OrderLines order={order} />
     </div>

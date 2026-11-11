@@ -48,6 +48,26 @@ interface ShippingRate {
   estimatedDays: number;
 }
 
+/** Where the parcel goes: what a quote needs (the street never leaves the browser until the order). */
+interface ShippingDestination {
+  postalCode: string;
+  /** Code from MEXICAN_STATES. */
+  state: string;
+  city: string;
+}
+
+/** Body of `POST /shipping/quotes` for the signed-in customer's cart (`useCart`). */
+interface CartShippingQuoteRequest {
+  useCart: true;
+  destination: ShippingDestination;
+}
+
+/** The pointer an order or a preview keeps to a stored quote's chosen rate. */
+interface ShippingQuoteRef {
+  quoteId: string;
+  rateId: string;
+}
+
 interface ShippingQuoteResponse {
   quoteId: string;
   currency: Currency;
@@ -132,6 +152,9 @@ interface PublicTrackingView extends CustomerShipment {
 }
 
 export type {
+  ShippingDestination,
+  CartShippingQuoteRequest,
+  ShippingQuoteRef,
   OrderTrackingAdmin,
   TrackingEventDto,
   AdminOrderTracking,

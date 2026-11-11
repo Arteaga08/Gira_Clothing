@@ -73,6 +73,16 @@ const T_HERO = "font-display font-normal uppercase text-3xl leading-[0.95] track
 const T_PRODUCT_TITLE = "font-display font-normal uppercase text-xl leading-[1.1] tracking-[0.01em]";
 /** Title of an access-page ticket (login, signup, verify…): store scale, one step above the console's page title. */
 const T_ACCESS_TITLE = "font-display font-normal uppercase text-4xl leading-[0.95] tracking-[0.01em] md:text-5xl";
+/** `<h1>` of a store page that sits on the wallpaper (cart, checkout, order): store density, so ink-on-hueso is not an option. */
+const T_STORE_TITLE =
+  "font-display font-normal uppercase text-4xl leading-[0.95] tracking-[0.01em] text-text-inverse md:text-5xl";
+
+/** Headline inside the «pase» (cart, checkout, order): «Gracias por tu compra», «Tienes un pedido por pagar». On a light surface. */
+const T_PASS_TITLE = "font-display font-normal uppercase text-3xl leading-[0.95] tracking-[0.01em] md:text-4xl";
+
+/** `<h2>` of a section or block inside the «pase»: «Envío», «Entra para pagar». */
+const T_PASS_SECTION = "font-display font-normal uppercase text-2xl leading-none tracking-[0.01em]";
+
 /** Title of a «Mi cuenta» section: store scale, a step below the access-page ticket. */
 const T_ACCOUNT_TITLE = "font-display font-normal uppercase text-4xl leading-[0.95] tracking-[0.01em] md:text-5xl";
 /** Rosa chicle fails AA at body size (3.1:1 on hueso) — a price MUST stay ≥18px/700 to clear the 3:1 large-text floor. */
@@ -97,5 +107,8 @@ export {
   T_PRODUCT_TITLE,
   T_ACCESS_TITLE,
   T_ACCOUNT_TITLE,
+  T_STORE_TITLE,
+  T_PASS_TITLE,
+  T_PASS_SECTION,
   T_PRICE,
 };

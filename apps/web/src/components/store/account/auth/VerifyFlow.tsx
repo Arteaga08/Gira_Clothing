@@ -10,7 +10,7 @@ import { verifyEmail } from "@/lib/api/auth";
 import { authFailureMessage } from "@/lib/auth/authFailures";
 import { focusFirstInvalid } from "@/lib/auth/focus";
 import type { AuthPhoto } from "@/lib/store/authPhoto";
-import { STORE_ROUTES } from "@/lib/store/routes";
+import { STORE_ROUTES, withRedirect } from "@/lib/store/routes";
 import { AuthTicket } from "./AuthTicket";
 import { InvalidLinkPanel } from "./InvalidLinkPanel";
 import { PasswordField } from "./PasswordField";
@@ -19,6 +19,8 @@ interface VerifyFlowProps {
   /** The 64-hex token from the link, or null when it was missing or malformed. */
   token: string | null;
   photo: AuthPhoto | null;
+  /** Where the sign-up came from (already checked against the allow-list); «Ingresar» carries it on. */
+  redirectTo?: string;
 }
 
 const WRONG_PASSWORD_MESSAGE = "Esa no es la contraseña de tu cuenta. Revísala e inténtalo de nuevo.";
@@ -28,7 +30,7 @@ const WRONG_PASSWORD_MESSAGE = "Esa no es la contraseña de tu cuenta. Revísala
  * someone who registered another person's address cannot get it verified when its owner clicks
  * the link. It does not log in: the visitor goes on to «Ingresar».
  */
-const VerifyFlow = ({ token, photo }: VerifyFlowProps) => {
+const VerifyFlow = ({ token, photo, redirectTo }: VerifyFlowProps) => {
   const { pending, error, setError, run } = useSubmit();
   const [password, setPassword] = useState("");
   const [missing, setMissing] = useState<string | undefined>(undefined);
@@ -39,7 +41,7 @@ const VerifyFlow = ({ token, photo }: VerifyFlowProps) => {
   if (view === "done") {
     return (
       <AuthTicket title="Cuenta verificada" lead="Tu correo quedó confirmado. Ya puedes entrar con tu contraseña." stubLabel="¡Listo!" tone="mint" photo={photo}>
-        <Link href={STORE_ROUTES.login} className={buttonClassName("primary", "md", "w-full max-w-[26rem]")}>
+        <Link href={withRedirect(STORE_ROUTES.login, redirectTo)} className={buttonClassName("primary", "md", "w-full max-w-[26rem]")}>
           Ingresar
         </Link>
       </AuthTicket>

@@ -1,4 +1,4 @@
-import type { CustomerOrder, Wire } from "@gira/shared";
+import type { CustomerOrder, PublicOrder, Wire } from "@gira/shared";
 import { buttonClassName } from "@/components/ui/Button";
 import { T_PANEL_TITLE } from "@/components/ui/typography";
 import { carrierServiceLabel } from "@/lib/orders/shipping";
@@ -7,7 +7,10 @@ import { carrierServiceLabel } from "@/lib/orders/shipping";
 const isWebUrl = (value: string | undefined): value is string => value !== undefined && /^https?:\/\//i.test(value);
 
 /** «Envío a» of an order: the address it goes to, how it travels and, once shipped, the guide and tracking link. */
-const OrderShippingInfo = ({ order }: { order: Wire<CustomerOrder> }) => {
+/** The customer's own order also carries the shipment once it left; the public one (the emails' link) never does. */
+type ShippingInfoOrder = Wire<PublicOrder> & { shipment?: Wire<CustomerOrder>["shipment"] };
+
+const OrderShippingInfo = ({ order }: { order: ShippingInfoOrder }) => {
   const { shipping, shippingSelection, shipment } = order;
   const street = shipping.line2 ? `${shipping.line1}, ${shipping.line2}` : shipping.line1;
 

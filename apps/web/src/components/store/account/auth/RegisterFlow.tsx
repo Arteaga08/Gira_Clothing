@@ -67,12 +67,28 @@ const RegisterFlow = ({ redirectTo, photo }: RegisterFlowProps) => {
     }
 
     await run(async () => {
-      await register({ firstName: firstName.trim(), lastName: lastName.trim(), email: email.trim(), password });
+      await register({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+        password,
+        // The default destination needs no hint; anything else (the checkout) rides in the activation link.
+        ...(redirectTo === STORE_ROUTES.account ? {} : { redirect: redirectTo }),
+      });
       setSentTo(email.trim());
     });
   };
 
-  if (sentTo) return <CheckEmail email={sentTo} photo={photo} onUseOther={() => setSentTo(null)} />;
+  if (sentTo) {
+    return (
+      <CheckEmail
+        email={sentTo}
+        photo={photo}
+        onUseOther={() => setSentTo(null)}
+        {...(redirectTo === STORE_ROUTES.account ? {} : { redirect: redirectTo })}
+      />
+    );
+  }
 
   return (
     <AuthTicket
